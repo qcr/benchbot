@@ -1,0 +1,15 @@
+[submodule "examples"]
+  path = examples
+  url = git@bitbucket.org:acrv/benchbot_examples
+[submodule "api"]
+  path = api
+  url = git@bitbucket.org:acrv/benchbot_api
+[submodule "simulator"]
+  path = simulator
+  url = git@bitbucket.org:acrv/benchbot_simulator
+[submodule "envs_devel"]
+	path = envs_devel
+	url = git@bitbucket.org:acrv/benchbot_envs_devel
+[submodule "supervisor"]
+	path = supervisor
+	url = git@bitbucket.org:acrv/benchbot_supervisor
