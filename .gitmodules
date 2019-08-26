@@ -13,3 +13,6 @@
 [submodule "supervisor"]
 	path = supervisor
 	url = git@bitbucket.org:acrv/benchbot_supervisor
+[submodule "simulator_retired"]
+	path = simulator_retired
+	url = git@bitbucket.org:acrv/benchbot_stage
