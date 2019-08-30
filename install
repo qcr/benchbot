@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Install any required dependencies
+# TODO
+
+# Check that the Isaac SDK has been copied across (offer to do it for them if it hasn't been)
+# TODO
+
+# Build the docker image
+# TODO
