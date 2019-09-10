@@ -1,0 +1,3 @@
+[submodule ".helpers"]
+	path = .helpers
+	url = git@bitbucket.org:acrv/benchbot_helpers
