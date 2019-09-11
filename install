@@ -9,10 +9,104 @@ image_reference="benchbot/simulator:devel"
 tmp_name="benchbot_manual"
 not_found_text="${colour_red}NOT FOUND${colour_nc}"
 
+# Requirements (array of required, recommended)
+nvidia_driver_version_reqs=("4.18" "4.30")
+cudart_version_reqs=("10.0" "10.1")
+docker_version_reqs=("19.03" "19.03.2")
+
+# File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
+sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
+sim_file_search=("5b8b704b75050f513d52758a44e87e3a" "grep 'Sim' | grep -v 'gitdeps'")
+sim_gitdeps_file_search=("448ec1f592ebe74fdf507b10e01cccc1" "grep 'Sim' | grep 'gitdeps'")
+
 # Start in root of benchbot_devel & ensure helpers exist
 pushd $(dirname $0) >/dev/null
 # TODO guarantee helpers submodule is initialised ...
 source .helpers/bash
+
+################################################################################
+############################## Error Definitions ###############################
+################################################################################
+nvidia_driver_err="\
+  Nvidia Graphics Driver version did not meet minimum requirements:
+
+    At least version ${nvidia_driver_version_reqs[0]} is required to run 
+    BenchBot; please install a suitable version on your host system. The 
+    recommended method for installing is the following command:
+
+      sudo apt install nvidia-driver-430
+"
+cudart_err="\
+  Cuda Runtime version did not meet the minimum requirements:
+
+    At least version ${cudart_version_reqs[0]} is required to run BenchBot;
+    please install a suitable version on your host system. The recommended
+    method for installing is the following commands:
+
+      wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+      sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+      sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+      sudo add-apt-repository \"deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /\"
+      sudo apt-get update
+      sudo apt-get install cuda-cudart-10-1
+"
+docker_err="\
+  Docker version did not meet the minimum requirements:
+
+    At least version ${docker_version_reqs[0]} is required to run BenchBot;
+    please install a suitable version on your host system. The recommended
+    method for installing is the following commands:
+
+      sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"
+      sudo apt-get update
+      sudo apt-get install docker-ce
+"
+sdk_file_err="\
+  Isaac SDK was not found in the './isaac/' directory:
+
+    A *.tgz file was not found in the './isaac/' directory that matched the
+    below MD5sum, or was a unique return for the below grep statement:
+        ${sdk_file_search[0]}
+        ${sdk_file_search[1]}
+
+    Download the latest version of the corresponding file at the website below
+    (you will have to create an account, accept a license, & sign in first):
+        https://developer.nvidia.com/isaac/downloads
+"
+sim_file_err="\
+  Isaac SIM was not found in the './isaac/' directory:
+
+    A *.tgz file was not found in the './isaac/' directory that matched the 
+    below MD5sum, or was a unique return for the below grep statement:
+        ${sim_gitdeps_file_search[0]}
+        ${sim_gitdeps_file_search[1]}
+
+    To get access to the UE4 based Isaac SIM you must go through a number of
+    registration steps. The steps are described in detail at
+    https://docs.nvidia.com/isaac/isaac_sim/setup.html#installing-isaac-sim.
+    
+    Once you have registered an account with Unreal Engine & linked your GitHub
+    account with Unreal, it is recommended to run the following commands to get
+    a local *.tgz of the Isaac SIM:
+
+      git clone --depth 1 --single-branch --branch IsaacSim_1.2 https://github.com/NvPhysX/UnrealEngine IsaacSim
+      pushd IsaacSim && git archive --format=tar.gz -o ../IsaacSim.tgz HEAD && popd
+      rm -rf IsaacSim
+"
+sim_gitdeps_file_err="\
+  Isaac SIM Gitdeps addon was not found in the './isaac/' directory:
+
+    A *.tgz file was not found in the './isaac/' directory that matched the 
+    below MD5sum, or was a unique return for the below grep statement:
+        ${sim_gitdeps_file_search[0]}
+        ${sim_gitdeps_file_search[1]}
+
+    Download the latest version of the corresponding file at the website below
+    (you will have to create an account, accept a license, & sign in first):
+        https://developer.nvidia.com/isaac/downloads
+"
 
 ################################################################################
 ############################# Installation process #############################
@@ -21,38 +115,75 @@ source .helpers/bash
 # PART 1: Report the current state of the system
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
+# Get all of your stats, & whether they are valid for proceeding with the install
 nvidia_driver_version=$(cat /proc/driver/nvidia/version 2>/dev/null | sed '/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/')
-if [ -z ${nvidia_driver_version} ]; then nvidia_driver_version="$not_found"; fi
-
+if [ -z ${nvidia_driver_version} ]; then nvidia_driver_version="$not_found_text"; fi
 cudart_version=$(apt list --installed 2>/dev/null | sed '/cuda-cudart-[0-9]*-[0-9]*/!d' | awk '{print $2}')
-if [ -z ${cudart_version} ]; then cudart_version="$not_found"; fi
-
+if [ -z ${cudart_version} ]; then cudart_version="$not_found_text"; fi
 docker_version=$(docker --version 2>/dev/null | sed 's/Docker version \([^ ,]*\).*/\1/')
 if [ -z ${docker_version} ]; then docker_version="$not_found"; fi
 
-printf '%-25s' "Nvidia driver version:"; printf "${nvidia_driver_version}\n"
-printf '%-25s' "Cuda runtime version:"; printf "${cudart_version}\n"
-printf '%-25s' "Docker version:"; printf "${docker_version}\n"
+[ $(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]}) -lt 2 ]
+nvidia_driver_valid=$?
+[ $(eval_version $cudart_version ${cudart_version_reqs[*]}) -lt 2 ]
+cudart_valid=$?
+[ $(eval_version $docker_version ${docker_version_reqs[*]}) -lt 2 ]
+docker_valid=$?
 
-echo -e "\nTODO: Ensure that Isaac sources are all available..."
-echo "TODO: Provide instructions for how to fix issues"
-echo "TODO: Stop you if you don't have at least required versions of dependencies, & Isaac sources..."
+sdk_file=$(find_file "isaac" "${sdk_file_search[0]}" "${sdk_file_search[1]}")
+sim_file=$(find_file "isaac" "${sim_file_search[0]}" "${sim_file_search[1]}")
+sim_gitdeps_file=$(find_file "isaac" "${sim_gitdeps_file_search[0]}" "${sim_gitdeps_file_search[1]}")
 
-# Install any required dependencies
-# TODO
-# docker
-# nvidia driver here???
-# nvidia-docker (instructions here: https://github.com/NVIDIA/nvidia-docker)
+[ $(eval_found "$sdk_file") -lt 1 ]
+sdk_file_valid=$?
+[ $(eval_found "$sim_file") -lt 1 ]
+sim_file_valid=$?
+[ $(eval_found "$sim_gitdeps_file") -lt 1 ]
+sim_gitdeps_file_valid=$?
 
-# Ensure Isaac SDK is available (offer to do it for them if it hasn't been)
-# TODO
+# Print out what we found & what we thought
+print_version() {
+  cs=($colour_green $colour_yellow $colour_red)
+  printf '%-25s' "$1"; printf "${cs[$(eval_version $2 $3 $4)]}%-15s" "$2";
+  printf "($3+ required, $4 recommended)${colour_nc}\n"
+}
 
-# Ensure Isaac Sim is available (offer to do it for them if it hasn't been)
-# TODO
-# TODO include version number in the tgz somewhere
-# git clone --depth 1 --single-branch --branch IsaacSim_1.2 https://github.com/NvPhysX/UnrealEngine IsaacSim
-# pushd IsaacSim && git archive --format=tar.gz -o ../IsaacSim.tgz HEAD && popd
-# rm -rf IsaacSim
+print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]}
+print_version "Cuda runtime version:" "$cudart_version" ${cudart_version_reqs[*]}
+print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]}
+printf "\n"
+
+print_locate() {
+  cs=($colour_green $colour_red)
+  eval_val=$(eval_found "$2")
+  printf '%-25s' "$1"; printf "${cs[$eval_val]}%-15s${colour_nc}\n" "$([ $eval_val = 0 ] && echo "$2" || echo "$not_found_text")";
+}
+
+print_locate "Isaac SDK:" "$sdk_file" "${sdk_file_search[*]}"
+print_locate "Isaac Sim:" "$sim_file" "${sim_file_search[*]}"
+print_locate "Isaac Sim (gitdeps):" "$sim_gitdeps_file" "${sim_gitdeps_file_search[*]}"
+printf "\n\n"
+
+# Either proceed or let them know why we won't be
+err_string=""
+if [ ! $nvidia_driver_valid ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
+if [ ! $cudart_valid ]; then err_string+="ERROR:$cudart_err\n\n"; fi
+if [ ! $docker_valid ]; then err_string+="ERROR:$docker_err\n\n"; fi
+if [ ! $sdk_file_valid ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
+if [ ! $sim_file_valid ]; then err_string+="ERROR:$sim_file_err\n\n"; fi
+if [ ! $sim_gitdeps_file_valid ]; then err_string+="ERROR:$sim_gitdeps_file_err\n\n"; fi
+
+if [ -z "$err_string" ]; then
+  echo -e "${colour_green}All requirements & dependencies fulfilled; proceeding with install...${colour_nc}"
+else
+  echo -e "${colour_red}Installation will not proceed due to the following unmet requirements / dependencies:\n"
+  echo -e "${err_string}"
+  echo -e "Please address each of the above issues before installing BenchBot.${colour_nc}"
+fi
+
+echo ""
+echo "TODO: nvidia-docker (instructions here: https://github.com/NVIDIA/nvidia-docker)"
+echo "TODO: Should we be enforcing 18.04?"
 
 # PART 2: Build the docker image (non-interactive)
 header_block "PART 2: BUILDING THE DOCKER IMAGE" $colour_blue
