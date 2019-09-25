@@ -11,7 +11,7 @@ not_found_text="${colour_red}NOT FOUND${colour_nc}"
 
 # Requirements (array of required, recommended)
 nvidia_driver_version_reqs=("4.18" "4.30")
-cudart_version_reqs=("10.0" "10.1")
+cuda_version_reqs=("10.0" "10.1")
 docker_version_reqs=("19.03" "19.03.2")
 
 # File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
@@ -36,10 +36,10 @@ nvidia_driver_err="\
 
       sudo apt install nvidia-driver-430
 "
-cudart_err="\
+cuda_err="\
   Cuda Runtime version did not meet the minimum requirements:
 
-    At least version ${cudart_version_reqs[0]} is required to run BenchBot;
+    At least version ${cuda_version_reqs[0]} is required to run BenchBot;
     please install a suitable version on your host system. The recommended
     method for installing is the following commands:
 
@@ -48,7 +48,7 @@ cudart_err="\
       sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
       sudo add-apt-repository \"deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /\"
       sudo apt-get update
-      sudo apt-get install cuda-cudart-10-1
+      sudo apt-get install cuda-10-1
 "
 docker_err="\
   Docker version did not meet the minimum requirements:
@@ -118,15 +118,16 @@ header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 # Get all of your stats, & whether they are valid for proceeding with the install
 nvidia_driver_version=$(cat /proc/driver/nvidia/version 2>/dev/null | sed '/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/')
 if [ -z ${nvidia_driver_version} ]; then nvidia_driver_version="$not_found_text"; fi
-cudart_version=$(apt list --installed 2>/dev/null | sed '/cuda-cudart-[0-9]*-[0-9]*/!d' | awk '{print $2}')
-if [ -z ${cudart_version} ]; then cudart_version="$not_found_text"; fi
+cuda_version=$(apt list --installed 2>/dev/null | sed '/cuda-[0-9]*-[0-9]*/!d' | awk '{print $2}')
+if [ -z ${cuda_version} ]; then cuda_version="$not_found_text"; fi
+cuda_version_short=$(echo "$cuda_version" | grep -o '^[0-9]*\.[0-9]*' | tr . -)
 docker_version=$(docker --version 2>/dev/null | sed 's/Docker version \([^ ,]*\).*/\1/')
 if [ -z ${docker_version} ]; then docker_version="$not_found"; fi
 
 [ $(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]}) -lt 2 ]
 nvidia_driver_valid=$?
-[ $(eval_version $cudart_version ${cudart_version_reqs[*]}) -lt 2 ]
-cudart_valid=$?
+[ $(eval_version $cuda_version ${cuda_version_reqs[*]}) -lt 2 ]
+cuda_valid=$?
 [ $(eval_version $docker_version ${docker_version_reqs[*]}) -lt 2 ]
 docker_valid=$?
 
@@ -149,7 +150,7 @@ print_version() {
 }
 
 print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]}
-print_version "Cuda runtime version:" "$cudart_version" ${cudart_version_reqs[*]}
+print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]}
 print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]}
 printf "\n"
 
@@ -167,7 +168,7 @@ printf "\n\n"
 # Either proceed or let them know why we won't be
 err_string=""
 if [ ! $nvidia_driver_valid ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
-if [ ! $cudart_valid ]; then err_string+="ERROR:$cudart_err\n\n"; fi
+if [ ! $cuda_valid ]; then err_string+="ERROR:$cuda_err\n\n"; fi
 if [ ! $docker_valid ]; then err_string+="ERROR:$docker_err\n\n"; fi
 if [ ! $sdk_file_valid ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
 if [ ! $sim_file_valid ]; then err_string+="ERROR:$sim_file_err\n\n"; fi
@@ -183,6 +184,7 @@ fi
 
 echo ""
 echo "TODO: nvidia-docker (instructions here: https://github.com/NVIDIA/nvidia-docker)"
+echo "TODO: storage space on boot drive (provide instructions for moving docker too...)"
 echo "TODO: Should we be enforcing 18.04?"
 
 # PART 2: Build the docker image (non-interactive)
@@ -192,7 +194,8 @@ old_image_id=$(docker images -q -f "reference=$image_reference")
 docker build -t "${image_reference}" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
-  --build-arg CUDART_VERSION="${cudart_version}" \
+  --build-arg CUDA_VERSION="${cuda_version}" \
+  --build-arg CUDA_VERSION_SHORT="${cuda_version_short}" \
   --build-arg ISAAC_SDK_TGZ="./isaac/isaac-sdk-2019.2-30e21124.tar.xz" \
   --build-arg ISAAC_SIM_TGZ="./isaac/IsaacSim.tgz" \
   --build-arg ISAAC_SIM_GITDEPS_TGZ="./isaac/IsaacSimProject_1.2.1238533.gitdeps.tar.gz" .
