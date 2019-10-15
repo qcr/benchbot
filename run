@@ -1,4 +1,26 @@
 #!/bin/bash
 
-# Run the docker image
-# TODO
+# Settings
+image_reference="benchbot/simulator:devel"
+
+# Start in root of benchbot_devel & ensure helpers exist
+pushd $(dirname $0) >/dev/null
+# TODO guarantee helpers submodule is initialised ...
+source .helpers/bash
+
+################################################################################
+################## Running containers necessary for BenchBot ###################
+################################################################################
+
+# TODO need to figure out a possible solution for the window forwarding...
+docker run --gpus all -it --rm --env="DISPLAY" --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" benchbot/simulator:devel /bin/bash -c \
+  'cd isaac_sim && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject Hospital vulkan \
+                          -isaac_sim_config_json="/home/ben/opt/isaac_sdk/apps/carter/carter_sim/bridge_config/carter_full.json" \
+                          -game -windowed -ResX=1024 -RexY=720'
+
+################################################################################
+####################### Messages suggesting how to view  #######################
+################################################################################
+
+
+# docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $INSTANCE_ID

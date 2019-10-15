@@ -183,6 +183,7 @@ else
 fi
 
 echo ""
+echo "TODO: docker-compose"
 echo "TODO: nvidia-docker (instructions here: https://github.com/NVIDIA/nvidia-docker)"
 echo "TODO: storage space on boot drive (provide instructions for moving docker too...)"
 echo "TODO: Should we be enforcing 18.04?"
@@ -214,8 +215,14 @@ fi
 
 # PART 3: Run post build actions (i.e. everything stuck behind the annoying
 # interactive IsaacSim license prompt...)
-# TODO somehow ensure we don't run this again unless we need to...
 header_block "PART 3: BUILDING & INSTALLING ISAAC SIM (UE4)" $colour_blue
+
+echo -e "${colour_red}We are currently hacking around the manual license accept prompt"
+echo -e "due to it SIGNIFICANTLY slowing development (every single DockerFile change"
+echo -e "would require a complete rebuild of Unreal...)"
+echo -e "\nThis software CANNOT BE RELEASED WITH THIS HACK STILL IN!!!${colour_nc}"
+
+exit 0
 
 # Only run this if UE4 Isaac Sim is NOT already built in the docker image
 if docker run --rm -it $image_reference /bin/bash -c "[ -f \"/home/benchbot/isaac_sim/Engine/Binaries/Linux/UE4Editor\" ]"; then
