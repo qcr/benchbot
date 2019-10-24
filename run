@@ -17,40 +17,51 @@ source .helpers/bash
 ################################################################################
 
 # Clean up before we start, & create the network
-# TODO think about what happens if things haven't all been killed cleanly previously...
 echo "Cleaning up any Docker containers still lying around ..."
 if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
   docker stop $(docker ps -a -q)
 fi
 docker system prune -f
-echo "Cleaned!"
+echo -e "Cleaned!\n"
 docker network create "$NETWORK_NAME"
-echo "Created $NETWORK_NAME."
+echo -e "Created $NETWORK_NAME.\n"
 
 # Create reusable parts to ensure our containers run with consistent settings
 ros_master_host="roscore"
-docker_run="docker run -t --rm --gpus all -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name --network $NETWORK_NAME --name=\$name --hostname=\$name"
+docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
+            -e DISPLAY \
+            -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
+            --network $NETWORK_NAME --name=\$name --hostname=\$name"
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 name="$ros_master_host"
-${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c "$cmd_prefix"'roscore'
-name="benchbot_simulator"
-${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c "$cmd_prefix"'cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator'
-name="isaac_simulator"
-${docker_run//'$name'/$name} benchbot/simulator:devel /bin/bash -c "$cmd_prefix"'cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject /Game/AIUE_V01_003_day/Maps/AIUE_V01_003 -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" -game -windowed -ResX=1024 -RexY=720 -vulkan'
+${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c \
+  "$cmd_prefix"'roscore'
+
+name="simulator"
+${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c \
+  "$cmd_prefix"'cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
+  cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
+  /Game/AIUE_V01_003_day/Maps/AIUE_V01_003 \
+  -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
+  -game -windowed -ResX=1024 -RexY=720 -vulkan' # NOTE: these have been collapsed into the one 
+                                                # container as Isaac seems to have no useful
+                                                # tools for linking between separate hosts except
+                                                # for manually creating a *.json for every TcpPublisher
+                                                # in your system to change the target (not sure how
+                                                # this would even work if I had a topic with listeners
+                                                # on both computers A & B...). Combine that with no 
+                                                # useful tools for listing what topics currently exist 
+                                                # (e.g. 'rostopic list'), and the task of manually 
+                                                # going through 1 by 1 & specifying what should point
+                                                # where... is a no from me.
+
 name="debug"
-# ${docker_run//'$name'/$name} -i benchbot/simulator:devel
-
-
-# docker run --gpus all -it --rm --env="DISPLAY" --hostname benchbot_isaac --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" benchbot/simulator:devel /bin/bash -c \
-#   'cd isaac_sim && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject Hospital -vulkan \
-#                           -isaac_sim_config_json="/home/ben/opt/isaac_sdk/apps/carter/carter_sim/bridge_config/carter_full.json" \
-#                           -game -windowed -ResX=1024 -RexY=720'
+${docker_run//'$name'/$name} -i benchbot/simulator:devel
 
 ################################################################################
 ####################### Messages suggesting how to view  #######################
 ################################################################################
 
-
-# docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $INSTANCE_ID
+# TODO
