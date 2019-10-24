@@ -1,7 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Settings
-image_reference="benchbot/simulator:devel"
+################################################################################
+########################## Settings & Pre-run Actions ##########################
+################################################################################
+
+IMAGE_REFERENCE="benchbot/simulator:devel"
+NETWORK_NAME="benchbot_network"
 
 # Start in root of benchbot_devel & ensure helpers exist
 pushd $(dirname $0) >/dev/null
@@ -12,11 +16,37 @@ source .helpers/bash
 ################## Running containers necessary for BenchBot ###################
 ################################################################################
 
-# TODO need to figure out a possible solution for the window forwarding...
-docker run --gpus all -it --rm --env="DISPLAY" --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" benchbot/simulator:devel /bin/bash -c \
-  'cd isaac_sim && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject Hospital vulkan \
-                          -isaac_sim_config_json="/home/ben/opt/isaac_sdk/apps/carter/carter_sim/bridge_config/carter_full.json" \
-                          -game -windowed -ResX=1024 -RexY=720'
+# Clean up before we start, & create the network
+# TODO think about what happens if things haven't all been killed cleanly previously...
+echo "Cleaning up any Docker containers still lying around ..."
+if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
+  docker stop $(docker ps -a -q)
+fi
+docker system prune -f
+echo "Cleaned!"
+docker network create "$NETWORK_NAME"
+echo "Created $NETWORK_NAME."
+
+# Create reusable parts to ensure our containers run with consistent settings
+ros_master_host="roscore"
+docker_run="docker run -t --rm --gpus all -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name --network $NETWORK_NAME --name=\$name --hostname=\$name"
+cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
+
+# Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
+name="$ros_master_host"
+${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c "$cmd_prefix"'roscore'
+name="benchbot_simulator"
+${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c "$cmd_prefix"'cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator'
+name="isaac_simulator"
+${docker_run//'$name'/$name} benchbot/simulator:devel /bin/bash -c "$cmd_prefix"'cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject /Game/AIUE_V01_003_day/Maps/AIUE_V01_003 -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" -game -windowed -ResX=1024 -RexY=720 -vulkan'
+name="debug"
+# ${docker_run//'$name'/$name} -i benchbot/simulator:devel
+
+
+# docker run --gpus all -it --rm --env="DISPLAY" --hostname benchbot_isaac --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" benchbot/simulator:devel /bin/bash -c \
+#   'cd isaac_sim && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject Hospital -vulkan \
+#                           -isaac_sim_config_json="/home/ben/opt/isaac_sdk/apps/carter/carter_sim/bridge_config/carter_full.json" \
+#                           -game -windowed -ResX=1024 -RexY=720'
 
 ################################################################################
 ####################### Messages suggesting how to view  #######################

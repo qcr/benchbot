@@ -33,20 +33,24 @@ RUN echo "$TZ" > /etc/timezone && \
     apt update && apt -y install tzdata && rm -rf /var/apt/lists/*
 
 # Install ROS Melodic
+ENV ROS_WS_PATH /home/benchbot/ros_ws
 RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros-latest.list && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
     apt update && apt install -y ros-melodic-desktop-full && rm -rf /var/apt/lists/*
 
 # Install Isaac (using local copies of licensed libraries)
 ENV ISAAC_SDK_PATH /home/benchbot/isaac_sdk
-ADD ${ISAAC_SDK_TGZ} isaac_sdk
+ADD ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 
 # Install the Nvidia driver & Vulkan
 # TODO what about people who have installed a driver not in the default Ubuntu repositories... hmmm...
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,display,graphics,utility
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add - && \
     wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
-    apt update && DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk \
+    apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
     "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" && \
+    DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk && \
     rm -rf /var/apt/lists/*
 
 # Install CUDA
@@ -61,12 +65,9 @@ RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/
 
 # Install Unreal Engine (& Isaac Unreal Engine Sim)
 # TODO make IsaacSimProject <build_number> configurable...
-ADD ${ISAAC_SIM_TGZ} isaac_sim
+ENV ISAAC_SIM_PATH /home/benchbot/isaac_sim
+ADD ${ISAAC_SIM_TGZ} ${ISAAC_SIM_PATH}
 ADD ${ISAAC_SIM_GITDEPS_TGZ} isaac_sim/Engine/Build
-
-# TODO move these up maybe?...
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,graphics
 
 # Install any remaining software
 RUN apt update && apt install -y git python-catkin-tools python-pip \
@@ -94,15 +95,18 @@ RUN cd isaac_sim && \
 
 # Install our benchbot software
 # TODO DO THIS PROPERLY WITHOUT MY SSH KEY!!!!
+ENV BENCHBOT_SIMULATOR_PATH /home/benchbot/benchbot_simulator
+ENV BENCHBOT_ENVS_PATH /home/benchbot/benchbot_envs
 ADD --chown=benchbot:benchbot id_rsa .ssh/id_rsa
 RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts && \
-    git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator && \
-    pushd benchbot_simulator && git checkout be27953 && popd && rm -rf .ssh && \
-    pushd benchbot_simulator && ./.isaac_patches/apply_patches && \
-    source ../ros_ws/devel/setup.bash && ./build build //apps/benchbot_simulator && popd
+    git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
+    git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
+    pushd $BENCHBOT_ENVS_PATH && git checkout f24b9ba && ./install && popd && \
+    pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1b65f45 && source $ROS_WS_PATH/devel/setup.bash && \
+    .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator && popd && \
+    rm -rf .ssh 
 
 # TODO when we get to environments we have to build all the shaders somehow & cache them...
 # Command below appears to build everything then segfaults & fails... need to figure out how
-# to only build for the requested environment
-# ./Engine/Binaries/Linux/UE4Editor IsaacSimProject Hospital -run=DerivedDataCache -fill 
-
+# to only build for selected environments
+RUN cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill 
