@@ -94,19 +94,28 @@ RUN cd isaac_sim && \
     make && make IsaacSimProjectEditor
 
 # Install our benchbot software
-# TODO DO THIS PROPERLY WITHOUT MY SSH KEY!!!!
+# TODO we CANNOT RELEASE THIS we way it is below. It takes my private SSH key
+# and adds it into the Docker image layers, exposing it to other areas of your
+# computer. While not disastrous, it is bad from a security standpoint to
+# do this with your private key. This problem will "go away" as we get to 
+# release & things move to public repos (i.e. no key needed) but for now we
+# should probably create a dummy bitbucket account with a shared private key
+# in the "benchbot_devel" (to keep install "just working" for anyone using the
+# repo)
 ENV BENCHBOT_SIMULATOR_PATH /home/benchbot/benchbot_simulator
 ENV BENCHBOT_ENVS_PATH /home/benchbot/benchbot_envs
 ADD --chown=benchbot:benchbot id_rsa .ssh/id_rsa
-RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts && \
-    git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
-    git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
-    pushd $BENCHBOT_ENVS_PATH && git checkout f24b9ba && ./install && popd && \
-    pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1b65f45 && source $ROS_WS_PATH/devel/setup.bash && \
-    .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator && popd && \
-    rm -rf .ssh 
+RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts 
 
-# TODO when we get to environments we have to build all the shaders somehow & cache them...
-# Command below appears to build everything then segfaults & fails... need to figure out how
-# to only build for selected environments
-RUN cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill 
+# Ordered by how expensive installation is ...
+RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
+    pushd $BENCHBOT_ENVS_PATH && git checkout fbbcf8a && ./install && \
+    cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill 
+RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
+    pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1b65f45 && source $ROS_WS_PATH/devel/setup.bash && \
+    .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator
+
+# TODO benchbot_supervisor
+
+RUN rm -rf .ssh 
+
