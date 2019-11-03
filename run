@@ -59,6 +59,21 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+opt_list_envs() {
+  echo "Listing environments.."
+}
+
+opt_list_tasks() {
+  echo "Listing tasks.."
+}
+
+opt_select_env() {
+  echo "Selecting environment... $1"
+}
+
+opt_select_task() {
+  echo "Selecting task.. $1"
+}
 
 
 ################################################################################
@@ -73,18 +88,23 @@ eval set -- "$parse_out"
 while true; do
   case "$1" in
     -h|--help)
-      echo "$usage_text" ; shift ; break ;;
+      echo "$usage_text" ; shift ; exit 0 ;;
     --list-envs)
-      echo "Listing envs" ; shift ; break ;;
+      opt_list_envs ; shift ; exit 0 ;;
     --list-tasks)
-      echo "Listing tasks" ; shift ; break ;;
+      opt_list_tasks ; shift ; exit 0 ;;
+    -e|--env)
+      opt_select_env "$2"; shift 2 ;;
+    -t|--task)
+      opt_select_task "$2"; shift 2 ;;
     --)
-      echo "DONE" ; shift ; break ;;
+      shift ; break ;;
     *)
       echo "run: option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
 
+echo "Running..."
 exit 0
 
 ################################################################################
