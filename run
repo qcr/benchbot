@@ -1,6 +1,93 @@
 #!/usr/bin/env bash
 
 ################################################################################
+######################## Helper functions for commands #########################
+################################################################################
+
+usage_text="$(basename "$0") -- Run script for the BenchBot backend & simulator
+
+USAGE:
+
+    Get info about the program / available options:
+        $(basename "$0") [-h|--help|--list-tasks|--list-envs]
+
+    Run a simulator with a specifc task setup:
+        $(basename "$0") --env ENV_NAME --task TASK_NAME
+        $(basename "$0") -e ENV_NAME -t TASK_NAME
+
+OPTION DETAILS:
+
+    -h,--help             
+            Show this help menu.
+
+    --list-envs
+            Search for & list all installed environments. The listed
+            environment names are in the format needed for the --env option.
+
+    --list-tasks   
+            Lists all supported task combinations. The listed tasks are printed
+            in the formant needed for the --task option.
+
+    -e, --env             
+            Select an environment to launch in the simulator (this must be
+            called with the --task option). Environments are identified via
+            \"ENVIRONMENT_NAME:VARIATION_NUMBER\" where ENVIRONMENT_NAME is the
+            name of simulated environment & VARIATION_NUMBER environment
+            variation to use. For example, the third variation of the office
+            environment would be: 
+
+                    office:3
+
+            (Use --list-envs to see a list of available environments)
+
+    -t, --task             
+            Configure BenchBot for a specific task style (this must be called
+            with the --env option). A task is specified through the format
+            \"TYPE:CONTROL_MODE:LOCALISATION_MODE\" where TYPE is the type of
+            task, CONTROL_MODE is the control options available on the robot, &
+            LOCALISATION_MODE is the accuracy of localisation feedback
+            received. For example, a robot with passive control & ground truth
+            localisation completing semantic SLAM would be:
+
+                    semantic_slam:passive:ground_truth
+
+            (Use --list-tasks to see a list of supported task options)
+
+FURTHER DETAILS:
+    
+    Please contact the authors of BenchBot for support or to report bugs:
+        b.talbot@qut.edu.au
+    "
+
+
+
+################################################################################
+#################### Parse & handle command line arguments #####################
+################################################################################
+
+parse_out=$(getopt -o he:t: --long help,env:,task:,list-envs,list-tasks \
+  -n 'run' -- "$@")
+if [ $? != 0 ]; then exit 1; fi
+
+eval set -- "$parse_out"
+while true; do
+  case "$1" in
+    -h|--help)
+      echo "$usage_text" ; shift ; break ;;
+    --list-envs)
+      echo "Listing envs" ; shift ; break ;;
+    --list-tasks)
+      echo "Listing tasks" ; shift ; break ;;
+    --)
+      echo "DONE" ; shift ; break ;;
+    *)
+      echo "run: option '$1' is unknown"; shift ; exit 1 ;;
+  esac
+done
+
+exit 0
+
+################################################################################
 ########################## Settings & Pre-run Actions ##########################
 ################################################################################
 
