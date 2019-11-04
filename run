@@ -83,26 +83,59 @@ _task_list=("semantic_slam:passive:ground_truth"
   "scd:active:dead_reckoning"
 )
 
+_env_data_cached=
+
 _env_data() {
   # This is a little gross... sorry.
-  docker run -t $IMAGE_REFERENCE /bin/bash -c \
+  if [ -z "$_env_data_cached" ]; then
+  _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
     'find $ISAAC_SIM_PATH/IsaacSimProject/Content -name "'"$ENV_FILENAME"'"\
-    | while read env; do echo "$(dirname $env)"; cat $env; done'
+    | while read env; do echo "$(dirname $env)"; cat $env; done')
+  fi
+  echo "$_env_data_cached"
+}
+
+_env_list() {
+  echo "$(_env_data)" | grep "environment_name:" | \
+    sed 's/.*: "\?\([0-9A-Za-z]*\)_\([0-9]*\)"\?/\1:\2/' | sort
+}
+
+_env_location() {
+  last_location=
+  while read -r line; do
+    if echo -e "$line" | grep -q "/home/.*"; then
+      last_location="$line"
+    elif echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
+      echo "$last_location"
+      return 0
+    fi
+  done <<< "$(_env_data)"
+  return 1
+}
+
+_env_pose() {
+  found=
+  while read -r line; do
+    if [ -z "$found" ] && echo -e "$line" | \
+      grep -q "environment_name:.*${1/:/_}"; then
+          found=true
+    elif [ ! -z "$found" ] && echo -e "$line" | \
+      grep -q "start_pose_local:.*\[.*\]" ; then
+          echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\)/\1/'
+          return 0
+    fi
+  done <<< "$(_env_data)"
+  return 1
 }
 
 opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
 
-  # Get the environment data, & pull out useful information
-  env_data=$(_env_data)
-  envs=$(echo "$env_data" | grep "environment_name:" | \
-    sed 's/.*: "\?\([0-9A-Za-z]*\)_\([0-9]*\)"\?/\1:\2/' | sort)
-
   # Print the list with details
   echo "The following environments are installed in your BenchBot Docker image:
   "
-  for e in $envs; do
+  for e in $(_env_list); do
     echo "        $e"
   done
   echo "
@@ -146,11 +179,27 @@ LOCALISATION_MODE DETAILS:
 }
 
 opt_select_env() {
-  echo "Selecting environment... $1"
+  # Only update the SELECTED_ENV variable if it is in the list of envs
+  for e in $(_env_list); do
+    if [ "$(echo "$e" | tr -d '[:space:]')" == "$1" ]; then
+      SELECTED_ENV="$(echo "$e" | tr -d '[:space:]')"
+      return 0
+    fi
+  done
+  echo "Environment '$1' is not a supported environment. Please check --list-envs."
+  return 1
 }
 
 opt_select_task() {
-  echo "Selecting task.. $1"
+  # Only update the SELECTED_TASK variable if it is in the list of tasks
+  for t in ${_task_list[@]}; do
+    if [ "$t" == "$1" ]; then
+      SELECTED_TASK="$t"
+      return 0
+    fi
+  done
+  echo "Task '$1' is not a supported task specification. Please check --list-tasks."
+  return 1
 }
 
 
@@ -184,20 +233,38 @@ done
 
 # Bail if we are running & they didn't give us both an environment & task
 if [ -z "$SELECTED_ENV" ]; then 
-  echo "ERROR: No valid environment selected (selected_env="$SELECTED_ENV")"
+  echo "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
   exit 1
 fi
 if [ -z "$SELECTED_TASK" ]; then 
-  echo "ERROR: No valid task selected (selected_task="$SELECTED_TASK")"
+  echo "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
   exit 1
 fi
 
-echo "Running..."
-exit 0
+# We are going to run; last thing we need to do is pull out the pose string
+selected_pose=$(_env_pose "$SELECTED_ENV")
+selected_env_location=$(_env_location "$SELECTED_ENV")
+selected_env_name=$(echo "$selected_env_location" | \
+  sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
+selected_map_name="$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')"
+selected_map_path="/Game/${selected_env_name}/Maps/${selected_map_name}"
 
 ################################################################################
 ##################### Run the simulator & BenchBot backend #####################
 ################################################################################
+
+# Print some configuration information
+echo "Running the BenchBot system with the following settings:
+
+    Selected environment: $SELECTED_ENV
+    Selected task:        $SELECTED_TASK
+    Environment location: $selected_env_location
+    Environment name:     $selected_env_name
+    Map name:             $selected_map_name
+    Map path:             $selected_map_path
+    Map start pose:       $selected_pose
+
+"
 
 # Clean up before we start, & create the network
 echo "Cleaning up any Docker containers still lying around ..."
@@ -223,10 +290,12 @@ ${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 name="simulator"
-${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c \
-  "$cmd_prefix"'cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
+${docker_run//'$name'/$name}  -d benchbot/simulator:devel /bin/bash -c \
+  "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
+  $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
+  cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
   cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
-  /Game/AIUE_V01_003_day/Maps/AIUE_V01_003 \
+  '"$selected_map_path"' \
   -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
   -game -windowed -ResX=1024 -RexY=720 -vulkan' # NOTE: these have been collapsed into the one 
                                                 # container as Isaac seems to have no useful
