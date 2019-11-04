@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 
 ################################################################################
+########################## Settings & Pre-run Actions ##########################
+################################################################################
+
+IMAGE_REFERENCE="benchbot/simulator:devel"
+NETWORK_NAME="benchbot_network"
+ENV_FILENAME=".benchbot_data.yaml"
+
+# Start in root of benchbot_devel & ensure helpers exist
+pushd $(dirname $0) >/dev/null
+# TODO guarantee helpers submodule is initialised ...
+source .helpers/bash
+
+################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
 
@@ -59,12 +72,77 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+SELECTED_ENV=
+SELECTED_TASK=
+
+_task_list=("semantic_slam:passive:ground_truth"
+  "semantic_slam:active:ground_truth"
+  "semantic_slam:active:dead_reckoning"
+  "scd:passive:ground_truth"
+  "scd:active:ground_truth"
+  "scd:active:dead_reckoning"
+)
+
+_env_data() {
+  # This is a little gross... sorry.
+  docker run -t $IMAGE_REFERENCE /bin/bash -c \
+    'find $ISAAC_SIM_PATH/IsaacSimProject/Content -name "'"$ENV_FILENAME"'"\
+    | while read env; do echo "$(dirname $env)"; cat $env; done'
+}
+
 opt_list_envs() {
-  echo "Listing environments.."
+  # TODO check if installed (docker image exists); provide a message if not
+  # telling them how to fix the issue
+
+  # Get the environment data, & pull out useful information
+  env_data=$(_env_data)
+  envs=$(echo "$env_data" | grep "environment_name:" | \
+    sed 's/.*: "\?\([0-9A-Za-z]*\)_\([0-9]*\)"\?/\1:\2/' | sort)
+
+  # Print the list with details
+  echo "The following environments are installed in your BenchBot Docker image:
+  "
+  for e in $envs; do
+    echo "        $e"
+  done
+  echo "
+The string is of the format ENV_NAME:VARIATION_NUMBER. Note when running the
+semantic change detection tasks you will have to specifiy a second variation
+using the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
+  "
 }
 
 opt_list_tasks() {
-  echo "Listing tasks.."
+  # TODO this is hard coded for now... maybe should be done differently...
+  echo "The following tasks are supported by BenchBot: 
+  "
+  for t in "${_task_list[@]}"; do
+    echo "        $t"
+  done
+  echo "
+The string is of the format TYPE:CONTROL_MODE:LOCALISATION_MODE.
+
+TYPE DETAILS:
+        semantic_slam:
+            TODO 
+
+        scd:
+            TODO (semantic change detection)
+
+CONTROL_MODE DETAILS:
+        passive_mode:
+            TODO
+
+        active_mode:
+            TODO
+      
+LOCALISATION_MODE DETAILS:
+        ground_truth:
+            TODO
+
+        dead_reckoning:
+            TODO
+  "
 }
 
 opt_select_env() {
@@ -80,10 +158,10 @@ opt_select_task() {
 #################### Parse & handle command line arguments #####################
 ################################################################################
 
+# Safely parse options input
 parse_out=$(getopt -o he:t: --long help,env:,task:,list-envs,list-tasks \
   -n 'run' -- "$@")
 if [ $? != 0 ]; then exit 1; fi
-
 eval set -- "$parse_out"
 while true; do
   case "$1" in
@@ -104,23 +182,21 @@ while true; do
   esac
 done
 
+# Bail if we are running & they didn't give us both an environment & task
+if [ -z "$SELECTED_ENV" ]; then 
+  echo "ERROR: No valid environment selected (selected_env="$SELECTED_ENV")"
+  exit 1
+fi
+if [ -z "$SELECTED_TASK" ]; then 
+  echo "ERROR: No valid task selected (selected_task="$SELECTED_TASK")"
+  exit 1
+fi
+
 echo "Running..."
 exit 0
 
 ################################################################################
-########################## Settings & Pre-run Actions ##########################
-################################################################################
-
-IMAGE_REFERENCE="benchbot/simulator:devel"
-NETWORK_NAME="benchbot_network"
-
-# Start in root of benchbot_devel & ensure helpers exist
-pushd $(dirname $0) >/dev/null
-# TODO guarantee helpers submodule is initialised ...
-source .helpers/bash
-
-################################################################################
-################## Running containers necessary for BenchBot ###################
+##################### Run the simulator & BenchBot backend #####################
 ################################################################################
 
 # Clean up before we start, & create the network
