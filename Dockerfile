@@ -112,7 +112,7 @@ RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCH
     pushd $BENCHBOT_ENVS_PATH && git checkout fbbcf8a && ./install && \
     cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill 
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
-    pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1b65f45 && source $ROS_WS_PATH/devel/setup.bash && \
+    pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1cb3372 && source $ROS_WS_PATH/devel/setup.bash && \
     .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator
 
 # TODO benchbot_supervisor

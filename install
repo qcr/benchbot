@@ -215,12 +215,14 @@ fi
 
 # PART 3: Run post build actions (i.e. everything stuck behind the annoying
 # interactive IsaacSim license prompt...)
-header_block "PART 3: BUILDING & INSTALLING ISAAC SIM (UE4)" $colour_blue
+# header_block "PART 3: BUILDING & INSTALLING ISAAC SIM (UE4)" $colour_blue
 
-echo -e "${colour_red}We are currently hacking around the manual license accept prompt"
-echo -e "due to it SIGNIFICANTLY slowing development (every single DockerFile change"
-echo -e "would require a complete rebuild of Unreal...)"
-echo -e "\nThis software CANNOT BE RELEASED WITH THIS HACK STILL IN!!!${colour_nc}"
+# echo -e "${colour_red}We are currently hacking around the manual license accept prompt"
+# echo -e "due to it SIGNIFICANTLY slowing development (every single DockerFile change"
+# echo -e "would require a complete rebuild of Unreal...)"
+# echo -e "\nThis software CANNOT BE RELEASED WITH THIS HACK STILL IN!!!${colour_nc}"
+
+header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
 
 exit 0
 
