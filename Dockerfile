@@ -104,8 +104,12 @@ RUN cd isaac_sim && \
 # repo)
 ENV BENCHBOT_SIMULATOR_PATH /home/benchbot/benchbot_simulator
 ENV BENCHBOT_ENVS_PATH /home/benchbot/benchbot_envs
+ENV BENCHBOT_SUPERVISOR_PATH /home/benchbot/benchbot_supervisor
 ADD --chown=benchbot:benchbot id_rsa .ssh/id_rsa
 RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts 
+
+# TODO remove Ben's debugging toolset!
+RUN sudo apt update && sudo apt install -y vim ipython tmux
 
 # Ordered by how expensive installation is ...
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
@@ -114,8 +118,11 @@ RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCH
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1cb3372 && source $ROS_WS_PATH/devel/setup.bash && \
     .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator
-
-# TODO benchbot_supervisor
+RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_supervisor $BENCHBOT_SUPERVISOR_PATH && \
+    pushd $BENCHBOT_SUPERVISOR_PATH && git checkout 4791cfb && \
+    pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
+    pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
+    ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
 
 RUN rm -rf .ssh 
 

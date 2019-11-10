@@ -163,10 +163,10 @@ TYPE DETAILS:
             TODO (semantic change detection)
 
 CONTROL_MODE DETAILS:
-        passive_mode:
+        passive:
             TODO
 
-        active_mode:
+        active:
             TODO
       
 LOCALISATION_MODE DETAILS:
@@ -241,14 +241,16 @@ if [ -z "$SELECTED_TASK" ]; then
   exit 1
 fi
 
-# We are going to run; last thing we need to do is pull out the pose string
-# selected_pose=$(_env_pose "$SELECTED_ENV")
-selected_pose="[1, 0, 0, 0.8, -3.2, 0.5, 0.7]"
+# We are going to run; last thing we need to do is pull out all useful data 
+# from the selected settings
+selected_pose=$(_env_pose "$SELECTED_ENV")
 selected_env_location=$(_env_location "$SELECTED_ENV")
 selected_env_name=$(echo "$selected_env_location" | \
   sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
-selected_map_name="$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')"
+selected_map_name=$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')
 selected_map_path="/Game/${selected_env_name}/Maps/${selected_map_name}"
+selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
+selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
 ################################################################################
 ##################### Run the simulator & BenchBot backend #####################
@@ -264,7 +266,8 @@ echo "Running the BenchBot system with the following settings:
     Map name:             $selected_map_name
     Map path:             $selected_map_path
     Map start pose:       $selected_pose 
-
+    Actions set:          $selected_actions
+    Observations set:     $selected_observations
 "
 
 # Clean up before we start, & create the network
@@ -288,11 +291,11 @@ cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 name="$ros_master_host"
-${docker_run//'$name'/$name} -d benchbot/simulator:devel /bin/bash -c \
+${docker_run//'$name'/$name} -d $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 name="simulator"
-${docker_run//'$name'/$name}  -d benchbot/simulator:devel /bin/bash -c \
+${docker_run//'$name'/$name}  -d $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
   cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
@@ -311,8 +314,15 @@ ${docker_run//'$name'/$name}  -d benchbot/simulator:devel /bin/bash -c \
                                                 # going through 1 by 1 & specifying what should point
                                                 # where... is a no from me.
 
+name="supervisor"
+${docker_run//'$name'/$name} $IMAGE_REFERENCE /bin/bash -c \
+  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
+  '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
+  '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
+
 name="debug"
-${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i benchbot/simulator:recording
+# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $IMAGE_REFERENCE
+# ${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
 xhost -local:root
 
 ################################################################################
