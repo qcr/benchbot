@@ -225,6 +225,7 @@ echo -e "\nThis software CANNOT BE RELEASED WITH THIS HACK STILL IN!!!${colour_n
 header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
 
 # TODO automatically setup hosts so that supervisor contact works natively!!!
+echo -e "${colour_red}Offer to automatically add hosts so BenchBot API works automatically!${colour_nc}"
 
 exit 0
 

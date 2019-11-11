@@ -171,18 +171,31 @@ echo "Submitting to the BenchBot system with the following settings:
     Submission mode:             $SELECTED_MODE"
 if [ -n "$selected_command" ]; then
   echo \
-"    Command to execute:           $selected_command"
+"    Command to execute:          $selected_command"
 fi
 if [ -n "$selected_code_dir" ]; then
   echo \
-"    Directory of solution:        $selected_code_dir"
+"    Directory of solution:       $selected_code_dir"
 fi
 if [ -n "$selected_out_location" ]; then
   echo \
-"    Bundling output filename:     $selected_out_location"
+"    Bundling output filename:    $selected_out_location"
 fi
 echo ""
 
-# Submit
-# TODO
+# Actually perform the submission
+if [ -n "$selected_command" ]; then
+  # This is native submission mode
+  echo -e "Running submission natively:\n'$selected_command' ..."
+  eval "$selected_command"
+elif [ -n "$selected_out_location" ]; then
+  # This is bundling up submission mode
+  echo "Bundling up submission from '$selected_code_dir' ..."
+  # TODO
+  echo "Saved to: $selected_out_location"
+else
+  # This is a containerised submission
+  echo "Running submission from '$selected_code_dir' with containerisation ..."
+  # TODO
+fi
 exit 0

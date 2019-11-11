@@ -323,14 +323,14 @@ ${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/
                                                 # where... is a no from me.
 
 name="benchbot_supervisor"
-${docker_run//'$name'/$name} --ip "$SUPERVISOR_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$SUPERVISOR_ADDRESS"  $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
   '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
   '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
 
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $IMAGE_REFERENCE
-${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
+# ${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
 xhost -local:root
 
 ################################################################################
