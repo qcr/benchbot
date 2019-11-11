@@ -109,6 +109,7 @@ ADD --chown=benchbot:benchbot id_rsa .ssh/id_rsa
 RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts 
 
 # TODO remove Ben's debugging toolset!
+# TODO add iputils-ping
 RUN sudo apt update && sudo apt install -y vim ipython tmux
 
 # Ordered by how expensive installation is ...
@@ -119,10 +120,11 @@ RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHB
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1cb3372 && source $ROS_WS_PATH/devel/setup.bash && \
     .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_supervisor $BENCHBOT_SUPERVISOR_PATH && \
-    pushd $BENCHBOT_SUPERVISOR_PATH && git checkout 4791cfb && \
+    pushd $BENCHBOT_SUPERVISOR_PATH && git checkout e1b05a8 && \
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
 
-RUN rm -rf .ssh 
+# RUN rm -rf .ssh 
+RUN echo "done"
 

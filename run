@@ -8,6 +8,13 @@ IMAGE_REFERENCE="benchbot/simulator:devel"
 NETWORK_NAME="benchbot_network"
 ENV_FILENAME=".benchbot_data.yaml"
 
+SUBNET="172.20.0.0/24"
+IP_RANGE="172.20.0.0/24"
+GATEWAY="172.20.0.254"
+ROS_ADDRESS="172.20.0.100"
+SIMULATOR_ADDRESS="172.20.0.101"
+SUPERVISOR_ADDRESS="172.20.0.102"
+
 # Start in root of benchbot_devel & ensure helpers exist
 pushd $(dirname $0) >/dev/null
 # TODO guarantee helpers submodule is initialised ...
@@ -277,12 +284,13 @@ if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
 fi
 docker system prune -f
 echo -e "Cleaned!\n"
-docker network create "$NETWORK_NAME"
+docker network create "$NETWORK_NAME" --subnet="$SUBNET" \
+  --ip-range="$IP_RANGE" --gateway="$GATEWAY"
 echo -e "Created $NETWORK_NAME.\n"
 
 # Create reusable parts to ensure our containers run with consistent settings
 xhost +local:root
-ros_master_host="roscore"
+ros_master_host="benchbot_roscore"
 docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
             -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
@@ -291,11 +299,11 @@ cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 name="$ros_master_host"
-${docker_run//'$name'/$name} -d $IMAGE_REFERENCE /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$ROS_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-name="simulator"
-${docker_run//'$name'/$name}  -d $IMAGE_REFERENCE /bin/bash -c \
+name="benchbot_simulator"
+${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
   cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
@@ -314,15 +322,15 @@ ${docker_run//'$name'/$name}  -d $IMAGE_REFERENCE /bin/bash -c \
                                                 # going through 1 by 1 & specifying what should point
                                                 # where... is a no from me.
 
-name="supervisor"
-${docker_run//'$name'/$name} $IMAGE_REFERENCE /bin/bash -c \
+name="benchbot_supervisor"
+${docker_run//'$name'/$name} --ip "$SUPERVISOR_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
   '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
   '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
 
-name="debug"
+name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $IMAGE_REFERENCE
-# ${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
+${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
 xhost -local:root
 
 ################################################################################
