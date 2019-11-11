@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+
+################################################################################
+########################## Settings & Pre-run Actions ##########################
+################################################################################
+
+# TODO
+
+################################################################################
+######################## Helper functions for commands #########################
+################################################################################
+
+usage_text="$(basename "$0") -- Submission script for running your solution to the Scene
+Understanding Challenge against a running simulator. It supports 3 different
+modes of submission:
+
+    1. native: 
+       Run your code in your host system without any containerisation (useful
+       for when you are developing and testing things). This assumes that the
+       simulator is already running.
+
+    2. containerised: 
+       Bundles up your code & executes it using Docker & the Dockerfile
+       provided with your code (useful for testing a competition submission
+       locally before submitting). The created Docker image talks to a running
+       simulator.
+
+    3. submission: 
+       Bundles up your code and saves a *.tgz ready for submission to the Scene
+       Understanding Challenge.
+
+USAGE:
+
+    Get information about the submission options:
+        $(basename "$0") [-h|--help]
+
+    Submit & run natively on your system:
+        $(basename "$0") [-n|--native] COMMAND_TO_RUN
+
+    Submit, compile into a containerised environment, & run the container on
+    your machine:
+        $(basename "$0") [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+        
+    Bundle up your solution into a *.tgz ready for submssion to the challenge:
+        $(basename "$0") [-s|--submission] DIRECTORY_FOR_SUBMISSION
+
+OPTION DETAILS:
+
+    -h,--help             
+            Show this help menu.
+
+    -n, --native
+            Runs your solution directly on your system without applying any 
+            containerisation (useful when you are developing & testing your 
+            solution). Everything after this flag is treated as the command used
+            to run your solution (required). For example, if your solution is a
+            Python script called 'solution.py':
+
+                    $(basename "$0") -n python solution.py
+
+    -c, --containerised
+            Uses the Dockerfile provided with your solution to start a Docker
+            container running your solution. Dockerfiles are the means in which
+            you concisely communicate WHAT system configuration is needed to
+            run your solution (i.e. do you need Python3, cuda, ROS, etc). This
+            mode requires an extra parameter specifying the directory where
+            your solution resides. For example, if your solution is in the 
+            current directory:
+
+                    $(basename "$0") -c .
+
+    -s, --submission
+            Bundles up your solution into a *.tgz ready for submission. The 
+            directory where your solution exists is a required extra parameter.
+            Optionally, another parameter can be provided to specify a name
+            (and / or what directory) to put the *.tgz. For example, to bundle
+            up your soluition in the current directory on your desktop:
+
+                    $(basename "$0") -s . \$HOME/Desktop
+
+FURTHER DETAILS:
+
+    See the 'benchbot_examples' repository for example solutions to test with
+    the submission system & simulator to get started.
+    
+    Please contact the authors of BenchBot for support or to report bugs:
+        b.talbot@qut.edu.au
+    "
+
+SELECTED_MODE=
+SELECTED_OPTIONS=
+
+opt_select_mode() {
+  if [ ! -z $SELECTED_MODE ]; then
+    return 0
+  fi
+  SELECTED_MODE="$1"; shift
+  SELECTED_OPTIONS=( $(echo "$@" | sed 's/ --//') )
+}
+
+################################################################################
+#################### Parse & handle command line arguments #####################
+################################################################################
+
+# Safely parse options input
+parse_out=$(getopt -o hn:,c:,s: --long help,native:,containerised:,submission: \
+  -n "$(basename "$0")" -- "$@")
+if [ $? != 0 ]; then exit 1; fi
+eval set -- "$parse_out"
+while true; do
+  case "$1" in
+    -h|--help)
+      echo "$usage_text" ; shift ; exit 0 ;;
+    -n|--native|-c|--containerised|-s|--submission)
+      opt_select_mode "$@"; break ;;
+    --)
+      shift ; break ;;
+    *)
+      echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
+  esac
+done
+if [ -z $SELECTED_MODE ]; then
+  echo "$usage_text"; exit 0
+fi
+
+# Bail if we have received mode options we can't do anything with
+case "$SELECTED_MODE" in
+  -c|--containerised|-s|--submission)
+    if [ ! -d "${SELECTED_OPTIONS[0]}" ]; then
+      echo "$(basename "$0"): directory '$SELECTED_OPTIONS[0]' provided with "\
+        "mode '$SELECTED_MODE' does not exist. Exiting..."
+      exit 1
+    fi ;;
+esac
+
+# We are going to submit; pull all useful data from selected settings out
+# before beginning
+selected_command=
+selected_code_dir=
+selected_out_location=
+case "$SELECTED_MODE" in
+  -n|--native)
+    selected_command="${SELECTED_OPTIONS[@]}" ;;
+  -c|--containerised|-s|--submission)
+    selected_code_dir=$(realpath "${SELECTED_OPTIONS[0]}") ;&
+  -s|--submission)
+    if [ ${#SELECTED_OPTIONS[@]} -gt 1 ]; then
+      selected_out_location=$(realpath "${SELECTED_OPTIONS[1]}")
+    fi
+    abs_path=$(realpath "$selected_code_dir")
+    if [ -z "$selected_out_location" ]; then
+      selected_out_location="$abs_path"
+    fi
+    if [ -d "$selected_out_location" ]; then
+      selected_out_location="$selected_out_location/$(basename "$abs_path")"
+    fi
+    if [[ ! "$selected_out_location" =~ "." ]]; then
+      selected_out_location+=".tgz"
+    fi ;;
+esac
+
+
+################################################################################
+################## Submit your BenchBot solution as requested ##################
+################################################################################
+
+# Print some configuration information
+echo "Submitting to the BenchBot system with the following settings:
+
+    BenchBot supervisor address: TODO
+    Submission mode:             $SELECTED_MODE"
+if [ -n "$selected_command" ]; then
+  echo \
+"    Command to execute:           $selected_command"
+fi
+if [ -n "$selected_code_dir" ]; then
+  echo \
+"    Directory of solution:        $selected_code_dir"
+fi
+if [ -n "$selected_out_location" ]; then
+  echo \
+"    Bundling output filename:     $selected_out_location"
+fi
+echo ""
+
+# Submit
+# TODO
+exit 0

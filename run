@@ -209,7 +209,7 @@ opt_select_task() {
 
 # Safely parse options input
 parse_out=$(getopt -o he:t: --long help,env:,task:,list-envs,list-tasks \
-  -n 'run' -- "$@")
+  -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 while true; do
@@ -227,7 +227,7 @@ while true; do
     --)
       shift ; break ;;
     *)
-      echo "run: option '$1' is unknown"; shift ; exit 1 ;;
+      echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
 
