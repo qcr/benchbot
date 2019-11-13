@@ -15,25 +15,27 @@ ROS_ADDRESS="172.20.0.100"
 SIMULATOR_ADDRESS="172.20.0.101"
 SUPERVISOR_ADDRESS="172.20.0.102"
 
-# Start in root of benchbot_devel & ensure helpers exist
-pushd $(dirname $0) >/dev/null
+# Start in bin of benchbot_devel & ensure helpers exist
+abs_path=$(readlink -f $0)
+pushd $(dirname $abs_path) >/dev/null
 # TODO guarantee helpers submodule is initialised ...
-source .helpers/bash
+source ../.helpers/bash
+
 
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
 
-usage_text="$(basename "$0") -- Run script for the BenchBot backend & simulator
+usage_text="$(basename "$abs_path") -- Run script for the BenchBot backend & simulator
 
 USAGE:
 
     Get info about the program / available options:
-        $(basename "$0") [-h|--help|--list-tasks|--list-envs]
+        $(basename "$abs_path") [-h|--help|--list-tasks|--list-envs]
 
     Run a simulator with a specifc task setup:
-        $(basename "$0") --env ENV_NAME --task TASK_NAME
-        $(basename "$0") -e ENV_NAME -t TASK_NAME
+        $(basename "$abs_path") --env ENV_NAME --task TASK_NAME
+        $(basename "$abs_path") -e ENV_NAME -t TASK_NAME
 
 OPTION DETAILS:
 
@@ -216,7 +218,7 @@ opt_select_task() {
 
 # Safely parse options input
 parse_out=$(getopt -o he:t: --long help,env:,task:,list-envs,list-tasks \
-  -n "$(basename "$0")" -- "$@")
+  -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 while true; do
@@ -234,7 +236,7 @@ while true; do
     --)
       shift ; break ;;
     *)
-      echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
+      echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
 
