@@ -23,13 +23,20 @@ sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
 sim_file_search=("5b8b704b75050f513d52758a44e87e3a" "grep 'Sim' | grep -v 'gitdeps'")
 sim_gitdeps_file_search=("448ec1f592ebe74fdf507b10e01cccc1" "grep 'Sim' | grep 'gitdeps'")
 
+# Hostnames
+hostnames_header="# BENCHBOT SPECIFIC HOSTNAMES"
+hostnames_list=\
+"172.20.0.100 benchbot_roscore
+172.20.0.101 benchbot_simulator
+172.20.0.102 benchbot_supervisor"
+
 # Start in root of benchbot_devel & ensure helpers exist
 pushd $(dirname $0) >/dev/null
 # TODO guarantee helpers submodule is initialised ...
 source .helpers/bash
 
 ################################################################################
-############################## Error Definitions ###############################
+########################### Definitions for messages ###########################
 ################################################################################
 cuda_err="\
   Cuda Runtime version did not meet the minimum requirements:
@@ -70,7 +77,14 @@ free_space_warn="\
       sudo mv /var/lib/docker /<location_on_secondary_drive>
       sudo ln -sv /<location_on_secondary_drive> /var/lib/docker
       sudo systemctl start docker
-  "
+"
+hosts_prompt="\
+Your hosts file does not appear to have the required hostnames added. To run
+BenchBot solutions natively on your machine (as opposed to containerised), 
+your host system needs to know about some Docker specific hostnames:
+
+$hostnames_list
+"
 nvidia_driver_err="\
   Nvidia Graphics Driver version did not meet minimum requirements:
 
@@ -276,32 +290,44 @@ fi
 
 # PART 3: Run post build actions (i.e. everything stuck behind the annoying
 # interactive IsaacSim license prompt...)
-header_block "PART 3: BUILDING & INSTALLING ISAAC SIM (UE4)" $colour_blue
+header_block "PART 3: RUNNING POST-INSTALL ACTIONS" $colour_blue
+
+# Adding Docker specific hostnames to /etc/hosts
+if ! grep -xq "$hostnames_header" /etc/hosts; then
+  # TODO this detection should probably be done by 'getent hosts <name>'... 
+  echo -e "${colour_yellow}$hosts_prompt${colour_nc}"
+  read -p "Add the above hosts to '/etc/hosts' (sudo required) (y/n)? " prompt
+  if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+    echo -e "$hostnames_header\n$hostnames_list" | sudo tee -a /etc/hosts > /dev/null
+    echo "Done."
+  else
+    echo "Skipped."
+  fi
+fi
+
+header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
 
 echo -e "${colour_red}We are currently hacking around the manual license accept prompt"
 echo -e "due to it SIGNIFICANTLY slowing development (every single DockerFile change"
 echo -e "would require a complete rebuild of Unreal...)"
 echo -e "\nThis software CANNOT BE RELEASED WITH THIS HACK STILL IN!!!${colour_nc}"
 
-header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
-
-# TODO automatically setup hosts so that supervisor contact works natively!!!
-echo -e "${colour_red}Offer to automatically add hosts so BenchBot API works automatically!${colour_nc}"
-
 exit 0
 
+# THIS CODE IS FOR MANUALLY INSTALLING ISAAC_SIM BECAUSE OF LICENSE. WE REALLY
+# REALLY REALLY REALLY REALLY DO NOT WANT TO HAVE TO DO THIS...
 # Only run this if UE4 Isaac Sim is NOT already built in the docker image
-if docker run --rm -it $image_reference /bin/bash -c "[ -f \"/home/benchbot/isaac_sim/Engine/Binaries/Linux/UE4Editor\" ]"; then
-  echo "Found 'UE4Editor' in \"${image_reference}\". Skipping rebuilding."
-else
-  docker run --name "${tmp_name}" --gpus all -it "${image_reference}" \
-    /bin/bash -c "sudo -H -u benchbot -- /bin/bash -c \"cd isaac_sim && \
-    ./Setup.sh &&  ./GenerateProjectFiles.sh && ./GenerateTestRobotPaths.sh && \
-    make && make IsaacSimProjectEditor\""
+# if docker run --rm -it $image_reference /bin/bash -c "[ -f \"/home/benchbot/isaac_sim/Engine/Binaries/Linux/UE4Editor\" ]"; then
+#   echo "Found 'UE4Editor' in \"${image_reference}\". Skipping rebuilding."
+# else
+#   docker run --name "${tmp_name}" --gpus all -it "${image_reference}" \
+#     /bin/bash -c "sudo -H -u benchbot -- /bin/bash -c \"cd isaac_sim && \
+#     ./Setup.sh &&  ./GenerateProjectFiles.sh && ./GenerateTestRobotPaths.sh && \
+#     make && make IsaacSimProjectEditor\""
 
-  docker commit --change='CMD ["/bin/bash", "-c"]' "${tmp_name}" "${image_reference}"
-  docker rm "${tmp_name}"
-fi
+#   docker commit --change='CMD ["/bin/bash", "-c"]' "${tmp_name}" "${image_reference}"
+#   docker rm "${tmp_name}"
+# fi
 
 # We are finally done...
 echo -e "\nFinished!"
