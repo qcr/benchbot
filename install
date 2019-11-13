@@ -13,6 +13,10 @@ not_found_text="${colour_red}NOT FOUND${colour_nc}"
 nvidia_driver_version_reqs=("4.18" "4.30")
 cuda_version_reqs=("10.0" "10.1")
 docker_version_reqs=("19.03" "19.03.2")
+nvidia_container_reqs=("1.0" "1.0.5")
+
+# Free space recommendations
+free_space_recs=("256G", 256000000)
 
 # File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
 sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
@@ -27,15 +31,6 @@ source .helpers/bash
 ################################################################################
 ############################## Error Definitions ###############################
 ################################################################################
-nvidia_driver_err="\
-  Nvidia Graphics Driver version did not meet minimum requirements:
-
-    At least version ${nvidia_driver_version_reqs[0]} is required to run 
-    BenchBot; please install a suitable version on your host system. The 
-    recommended method for installing is the following command:
-
-      sudo apt install nvidia-driver-430
-"
 cuda_err="\
   Cuda Runtime version did not meet the minimum requirements:
 
@@ -63,6 +58,42 @@ docker_err="\
       sudo apt-get update
       sudo apt-get install docker-ce
 "
+free_space_warn="\
+  You appear not to have enough free space on your root partition (mounted at '/'):
+
+    If the install process runs out of space, it will fail unexpectedly. If space
+    is limited in your root partition, it is recommended that you change where
+    Docker stores its images to a partition with enough space. To change where
+    Docker stores images:
+
+      sudo systemctl stop docker
+      sudo mv /var/lib/docker /<location_on_secondary_drive>
+      sudo ln -sv /<location_on_secondary_drive> /var/lib/docker
+      sudo systemctl start docker
+  "
+nvidia_driver_err="\
+  Nvidia Graphics Driver version did not meet minimum requirements:
+
+    At least version ${nvidia_driver_version_reqs[0]} is required to run 
+    BenchBot; please install a suitable version on your host system. The 
+    recommended method for installing is the following command:
+
+      sudo apt install nvidia-driver-430
+"
+nvidia_container_err="\
+  Could not find a valid version of the Nvidia Container toolkit:
+
+    At least version ${nvidia_container_reqs[0]} is required to run Benchbot
+    with GPU support; please install following the instructions on the project
+    GitHub page: https://github.com/NVIDIA/nvidia-docker. In short:
+
+      curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+      curl -s -L https://nvidia.github.io/nvidia-docker/$(. /etc/os-release;echo $ID$VERSION_ID)/nvidia-docker.list \\
+        | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+      sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+      sudo systemctl restart docker
+  "
 sdk_file_err="\
   Isaac SDK was not found in the './isaac/' directory:
 
@@ -122,7 +153,9 @@ cuda_version=$(apt list --installed 2>/dev/null | sed '/cuda-[0-9]*-[0-9]*/!d' |
 if [ -z ${cuda_version} ]; then cuda_version="$not_found_text"; fi
 cuda_version_short=$(echo "$cuda_version" | grep -o '^[0-9]*\.[0-9]*' | tr . -)
 docker_version=$(docker --version 2>/dev/null | sed 's/Docker version \([^ ,]*\).*/\1/')
-if [ -z ${docker_version} ]; then docker_version="$not_found"; fi
+if [ -z ${docker_version} ]; then docker_version="$not_found_text"; fi
+nvidia_container_version=$(apt list --installed 2>/dev/null | grep 'nvidia-container-toolkit' | awk '{print $2}')
+if [ -z ${nvidia_container_version} ]; then nvidia_container_version="$not_found_text"; fi
 
 [ $(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]}) -lt 2 ]
 nvidia_driver_valid=$?
@@ -130,6 +163,15 @@ nvidia_driver_valid=$?
 cuda_valid=$?
 [ $(eval_version $docker_version ${docker_version_reqs[*]}) -lt 2 ]
 docker_valid=$?
+[ $(eval_version $nvidia_container_version ${nvidia_container_reqs[*]}) -lt 2 ]
+nvidia_container_valid=$?
+
+free_space_drive=$(df | grep '% /$' | awk '{print $1}')
+free_space_human=$(df -H | grep '% /$' | awk '{print $4}')
+free_space_blocks=$(df | grep '% /$' | awk '{print $4}')
+
+[ $free_space_blocks -gt ${free_space_recs[1]} ]
+free_space_valid=$?
 
 sdk_file=$(find_file "isaac" "${sdk_file_search[0]}" "${sdk_file_search[1]}")
 sim_file=$(find_file "isaac" "${sim_file_search[0]}" "${sim_file_search[1]}")
@@ -152,6 +194,15 @@ print_version() {
 print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]}
 print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]}
 print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]}
+print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]}
+printf "\n"
+
+print_free_space() {
+  cs=($colour_green $colour_yellow)
+  printf '%-25s' "$1"; printf "${cs[$4]}%-15s" "$2"; printf "($3 recommended)${colour_nc}\n"
+}
+
+print_free_space "Free space on '/':" "$free_space_human" ${free_space_recs[0]} $free_space_valid
 printf "\n"
 
 print_locate() {
@@ -167,15 +218,29 @@ printf "\n\n"
 
 # Either proceed or let them know why we won't be
 err_string=""
-if [ ! $nvidia_driver_valid ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
-if [ ! $cuda_valid ]; then err_string+="ERROR:$cuda_err\n\n"; fi
-if [ ! $docker_valid ]; then err_string+="ERROR:$docker_err\n\n"; fi
-if [ ! $sdk_file_valid ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
-if [ ! $sim_file_valid ]; then err_string+="ERROR:$sim_file_err\n\n"; fi
-if [ ! $sim_gitdeps_file_valid ]; then err_string+="ERROR:$sim_gitdeps_file_err\n\n"; fi
+if [ $nvidia_driver_valid -gt 0 ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
+if [ $cuda_valid -gt 0 ]; then err_string+="ERROR:$cuda_err\n\n"; fi
+if [ $docker_valid -gt 0 ]; then err_string+="ERROR:$docker_err\n\n"; fi
+if [ $nvidia_container_valid -gt 0 ]; then err_string+="ERROR:$nvidia_container_err\n\n"; fi
+if [ $sdk_file_valid -gt 0 ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
+if [ $sim_file_valid -gt 0 ]; then err_string+="ERROR:$sim_file_err\n\n"; fi
+if [ $sim_gitdeps_file_valid -gt 0 ]; then err_string+="ERROR:$sim_gitdeps_file_err\n\n"; fi
+
+warn_string=""
+if [ $free_space_valid -gt 0 ]; then warn_string+="WARN:$free_space_warn\n\n"; fi
+
+if [ -n "$warn_string" ]; then
+  echo -e "${colour_yellow}$warn_string${colour_nc}"
+fi
 
 if [ -z "$err_string" ]; then
-  echo -e "${colour_green}All requirements & dependencies fulfilled; proceeding with install...${colour_nc}"
+  read -p "All requirements & dependencies fulfilled; proceed with install (y/n)? " prompt
+      if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+        echo "Proceeding with install ..."
+      else
+        echo "Install aborted."
+        exit 1
+      fi
 else
   echo -e "${colour_red}Installation will not proceed due to the following unmet requirements / dependencies:\n"
   echo -e "${err_string}"
@@ -183,9 +248,6 @@ else
 fi
 
 echo ""
-echo "TODO: docker-compose"
-echo "TODO: nvidia-docker (instructions here: https://github.com/NVIDIA/nvidia-docker)"
-echo "TODO: storage space on boot drive (provide instructions for moving docker too...)"
 echo "TODO: Should we be enforcing 18.04?"
 
 # PART 2: Build the docker image (non-interactive)

@@ -338,3 +338,5 @@ xhost -local:root
 ################################################################################
 
 # TODO
+
+# TODO killing the script should stop all of the containers!!! (capture SIGINT)
