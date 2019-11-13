@@ -187,14 +187,14 @@ sim_gitdeps_file_valid=$?
 # Print out what we found & what we thought
 print_version() {
   cs=($colour_green $colour_yellow $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$(eval_version $2 $3 $4)]}%-15s" "$2";
+  printf '%-25s' "$1"; printf "${cs[$5]}%-15s" "$2";
   printf "($3+ required, $4 recommended)${colour_nc}\n"
 }
 
-print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]}
-print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]}
-print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]}
-print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]}
+print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]} $nvidia_driver_valid
+print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]} $cuda_valid
+print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]} $docker_valid
+print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]} $nvidia_container_valid
 printf "\n"
 
 print_free_space() {
@@ -207,13 +207,12 @@ printf "\n"
 
 print_locate() {
   cs=($colour_green $colour_red)
-  eval_val=$(eval_found "$2")
-  printf '%-25s' "$1"; printf "${cs[$eval_val]}%-15s${colour_nc}\n" "$([ $eval_val = 0 ] && echo "$2" || echo "$not_found_text")";
+  printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 ] && echo "$2" || echo "$not_found_text")";
 }
 
-print_locate "Isaac SDK:" "$sdk_file" "${sdk_file_search[*]}"
-print_locate "Isaac Sim:" "$sim_file" "${sim_file_search[*]}"
-print_locate "Isaac Sim (gitdeps):" "$sim_gitdeps_file" "${sim_gitdeps_file_search[*]}"
+print_locate "Isaac SDK:" "$sdk_file" $sdk_file_valid
+print_locate "Isaac Sim:" "$sim_file" $sim_file_valid
+print_locate "Isaac Sim (gitdeps):" "$sim_gitdeps_file" $sim_gitdeps_file_valid
 printf "\n\n"
 
 # Either proceed or let them know why we won't be
