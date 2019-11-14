@@ -84,6 +84,11 @@ docker_err="\
       sudo usermod -aG docker $USER
 "
 free_space_warn="\
+
+  NOTE: this warning can be safely ignored if you have moved Docker to a different
+  partition (as outlined below), or believe that you will be able to fit the
+  container on the '/' partition.
+
   You appear not to have enough free space on your root partition (mounted at '/'):
 
     If the install process runs out of space, it will fail unexpectedly. If space
