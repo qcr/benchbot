@@ -36,19 +36,19 @@ Getting a solution up & running with BenchBot is as simple as 1,2,3:
 
 1. Install containerised BenchBot Development Software Stack via the install script (the script will examine your system, & provide you with suggestions for how to install / download / fix any missing components):
 
-    ```bash
+    ```
     ./install
     ```
 
 2. Run the BenchBot Development stack by selecting a valid environment & task definition. For example (also see `--help`, `--list-tasks`, & `--list-envs` for more details of options):
 
-    ```bash
+    ```
     benchbot_run --env office:1 --task semantic_slam:active:ground_truth
     ```
 
 3. Develop a solution to the BenchBot task, & run into against the software stack. See [benchbot_examples](https://bitbucket.org/acrv/benchbot_examples/src/master/) for some basic 'hello_world' style solutions. To run your solution (also see `--help` for more details of options):
 
-    ```bash
+    ```
     benchbot_submit --native python <PATH_TO_YOUR_SOLUTION_PYTHON_SCRIPT>
     ```
 

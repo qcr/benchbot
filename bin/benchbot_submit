@@ -5,20 +5,20 @@
 ################################################################################
 
 # Start in bin/ of benchbot_devel & ensure helpers exist
-abs_path=$(readlink -f $0)
-pushd $(dirname $abs_path) >/dev/null
+pushd $(dirname $(readlink -f $0)) >/dev/null
 if [ ! -f ../.helpers/bash ]; then
   pushd .. >/dev/null
   git submodule update --init --recursive
   popd >/dev/null
 fi
-source .helpers/bash
+source ../.helpers/bash
+popd >/dev/null
 
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
 
-usage_text="$(basename "$abs_path") -- Submission script for running your solution to the Scene
+usage_text="$(basename "$0") -- Submission script for running your solution to the Scene
 Understanding Challenge against a running simulator. It supports 3 different
 modes of submission:
 
@@ -40,17 +40,17 @@ modes of submission:
 USAGE:
 
     Get information about the submission options:
-        $(basename "$abs_path") [-h|--help]
+        $(basename "$0") [-h|--help]
 
     Submit & run natively on your system:
-        $(basename "$abs_path") [-n|--native] COMMAND_TO_RUN
+        $(basename "$0") [-n|--native] COMMAND_TO_RUN
 
     Submit, compile into a containerised environment, & run the container on
     your machine:
-        $(basename "$abs_path") [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+        $(basename "$0") [-c|--containerised] DIRECTORY_FOR_SUBMISSION
         
     Bundle up your solution into a *.tgz ready for submssion to the challenge:
-        $(basename "$abs_path") [-s|--submission] DIRECTORY_FOR_SUBMISSION
+        $(basename "$0") [-s|--submission] DIRECTORY_FOR_SUBMISSION
 
 OPTION DETAILS:
 
@@ -64,7 +64,7 @@ OPTION DETAILS:
             to run your solution (required). For example, if your solution is a
             Python script called 'solution.py':
 
-                    $(basename "$abs_path") -n python solution.py
+                    $(basename "$0") -n python solution.py
 
     -c, --containerised
             Uses the Dockerfile provided with your solution to start a Docker
@@ -75,7 +75,7 @@ OPTION DETAILS:
             your solution resides. For example, if your solution is in the 
             current directory:
 
-                    $(basename "$abs_path") -c .
+                    $(basename "$0") -c .
 
     -s, --submission
             Bundles up your solution into a *.tgz ready for submission. The 
@@ -84,7 +84,7 @@ OPTION DETAILS:
             (and / or what directory) to put the *.tgz. For example, to bundle
             up your soluition in the current directory on your desktop:
 
-                    $(basename "$abs_path") -s . \$HOME/Desktop
+                    $(basename "$0") -s . \$HOME/Desktop
 
 FURTHER DETAILS:
 
@@ -112,7 +112,7 @@ opt_select_mode() {
 
 # Safely parse options input
 parse_out=$(getopt -o hn:,c:,s: --long help,native:,containerised:,submission: \
-  -n "$(basename "$abs_path")" -- "$@")
+  -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 while true; do
@@ -124,7 +124,7 @@ while true; do
     --)
       shift ; break ;;
     *)
-      echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
+      echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
 if [ -z $SELECTED_MODE ]; then
@@ -135,7 +135,7 @@ fi
 case "$SELECTED_MODE" in
   -c|--containerised|-s|--submission)
     if [ ! -d "${SELECTED_OPTIONS[0]}" ]; then
-      echo "$(basename "$abs_path"): directory '$SELECTED_OPTIONS[0]' provided with "\
+      echo "$(basename "$0"): directory '${SELECTED_OPTIONS[0]}' provided with "\
         "mode '$SELECTED_MODE' does not exist. Exiting..."
       exit 1
     fi ;;
@@ -198,12 +198,13 @@ if [ -n "$selected_command" ]; then
   eval "$selected_command"
 elif [ -n "$selected_out_location" ]; then
   # This is bundling up submission mode
-  echo "Bundling up submission from '$selected_code_dir' ..."
-  # TODO
-  echo "Saved to: $selected_out_location"
+  echo -e "Bundling up submission from '$selected_code_dir' ...\n"
+  pushd "$selected_code_dir" >/dev/null
+  tar -czvf "$selected_out_location" *
+  popd >/dev/null
+  echo -e "\nSaved to: $selected_out_location"
 else
   # This is a containerised submission
   echo "Running submission from '$selected_code_dir' with containerisation ..."
-  # TODO
 fi
 exit 0
