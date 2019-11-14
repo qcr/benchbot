@@ -10,7 +10,7 @@ image_reference="benchbot/simulator:devel"
 not_found_text="${colour_red}NOT FOUND${colour_nc}"
 
 # Requirements (array of required, recommended)
-nvidia_driver_version_reqs=("4.18" "4.30")
+nvidia_driver_version_reqs=("418" "430")
 cuda_version_reqs=("10.0" "10.1")
 docker_version_reqs=("19.03" "19.03.2")
 nvidia_container_reqs=("1.0" "1.0.5")
@@ -185,14 +185,12 @@ if [ -z ${docker_version} ]; then docker_version="$not_found_text"; fi
 nvidia_container_version=$(apt list --installed 2>/dev/null | grep 'nvidia-container-toolkit' | awk '{print $2}')
 if [ -z ${nvidia_container_version} ]; then nvidia_container_version="$not_found_text"; fi
 
-[ $(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]}) -lt 2 ]
-nvidia_driver_valid=$?
-[ $(eval_version $cuda_version ${cuda_version_reqs[*]}) -lt 2 ]
-cuda_valid=$?
-[ $(eval_version $docker_version ${docker_version_reqs[*]}) -lt 2 ]
-docker_valid=$?
-[ $(eval_version $nvidia_container_version ${nvidia_container_reqs[*]}) -lt 2 ]
-nvidia_container_valid=$?
+nvidia_driver_valid=$(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]})
+echo "$nvidia_driver_valid"
+cuda_valid=$(eval_version $cuda_version ${cuda_version_reqs[*]})
+echo "$cuda_valid"
+docker_valid=$(eval_version $docker_version ${docker_version_reqs[*]})
+nvidia_container_valid=$(eval_version $nvidia_container_version ${nvidia_container_reqs[*]})
 
 free_space_drive=$(df | grep '% /$' | awk '{print $1}')
 free_space_human=$(df -H | grep '% /$' | awk '{print $4}')
@@ -244,6 +242,7 @@ print_locate "Isaac Sim (gitdeps):" "$sim_gitdeps_file" $sim_gitdeps_file_valid
 printf "\n\n"
 
 # Either proceed or let them know why we won't be
+# (note ordering here is important!)
 err_string=""
 if [ $nvidia_driver_valid -gt 0 ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
 if [ $cuda_valid -gt 0 ]; then err_string+="ERROR:$cuda_err\n\n"; fi
@@ -256,10 +255,15 @@ if [ $sim_gitdeps_file_valid -gt 0 ]; then err_string+="ERROR:$sim_gitdeps_file_
 warn_string=""
 if [ $free_space_valid -gt 0 ]; then warn_string+="WARN:$free_space_warn\n\n"; fi
 
+if [ -n "$err_string" ]; then
+  echo -e "${colour_red}Installation will not proceed due to the following unmet requirements / dependencies:\n"
+  echo -e "${err_string}"
+  echo -e "Please address each of the above issues before installing BenchBot.${colour_nc}"
+  exit 1
+fi
 if [ -n "$warn_string" ]; then
   echo -e "${colour_yellow}$warn_string${colour_nc}"
 fi
-
 if [ -z "$err_string" ]; then
   read -p "All requirements & dependencies fulfilled; proceed with install (y/n)? " prompt
       if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -268,11 +272,6 @@ if [ -z "$err_string" ]; then
         echo "Install aborted."
         exit 1
       fi
-else
-  echo -e "${colour_red}Installation will not proceed due to the following unmet requirements / dependencies:\n"
-  echo -e "${err_string}"
-  echo -e "Please address each of the above issues before installing BenchBot.${colour_nc}"
-  exit 1
 fi
 
 echo ""
