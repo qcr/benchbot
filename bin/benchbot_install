@@ -39,7 +39,7 @@ source ../.helpers/bash
 
 # Symlinks
 symlink_path="/usr/local/bin"
-symlink_cmd='sudo ln -svf '"$(realpath $abs_path)"'/* '"$symlink_path"
+symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$symlink_path"
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -281,6 +281,13 @@ echo "TODO: Should we be enforcing 18.04?"
 # PART 2: Build the docker image (non-interactive)
 header_block "PART 2: BUILDING THE DOCKER IMAGE" $colour_blue
 
+# Get the latest commit hashes for each of our git repos
+# TODO for now we will use the develop branch but in the future this will be
+# looking at the master branch
+benchbot_envs_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_envs_devel develop | awk '{print $1}')
+benchbot_simulator_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_simulator develop | awk '{print $1}')
+benchbot_supervisor_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_supervisor develop | awk '{print $1}')
+
 old_image_id=$(docker images -q -f "reference=$image_reference")
 pushd ..
 docker build -t "${image_reference}" \
@@ -290,7 +297,10 @@ docker build -t "${image_reference}" \
   --build-arg CUDA_VERSION_SHORT="${cuda_version_short}" \
   --build-arg ISAAC_SDK_TGZ="./isaac/isaac-sdk-2019.2-30e21124.tar.xz" \
   --build-arg ISAAC_SIM_TGZ="./isaac/IsaacSim.tgz" \
-  --build-arg ISAAC_SIM_GITDEPS_TGZ="./isaac/IsaacSimProject_1.2.1238533.gitdeps.tar.gz" .
+  --build-arg ISAAC_SIM_GITDEPS_TGZ="./isaac/IsaacSimProject_1.2.1238533.gitdeps.tar.gz" \
+  --build-arg BENCHBOT_ENVS_HASH="${benchbot_envs_hash}" \
+  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
+  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" .
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   echo "Docker build returned a non-zero error code: $build_ret"

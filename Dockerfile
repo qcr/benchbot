@@ -114,17 +114,16 @@ RUN sudo apt update && sudo apt install -y vim ipython tmux
 
 # Ordered by how expensive installation is ...
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
-    pushd $BENCHBOT_ENVS_PATH && git checkout fbbcf8a && ./install && \
-    cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill 
+    pushd $BENCHBOT_ENVS_PATH && git checkout $BENCHBOT_ENVS_HASH && ./install && cd $ISAAC_SIM_PATH && \
+    (./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill || true)
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
-    pushd $BENCHBOT_SIMULATOR_PATH && git checkout 1cb3372 && source $ROS_WS_PATH/devel/setup.bash && \
-    .isaac_patches/apply_patches && ./bazelros build //apps/benchbot_simulator
+    pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
+    source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
+    ./bazelros build //apps/benchbot_simulator
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_supervisor $BENCHBOT_SUPERVISOR_PATH && \
-    pushd $BENCHBOT_SUPERVISOR_PATH && git checkout 947b428 && \
+    pushd $BENCHBOT_SUPERVISOR_PATH && git checkout $BENCHBOT_SUPERVISOR_HASH && \
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
 
 # RUN rm -rf .ssh 
-RUN echo "done"
-

@@ -1,8 +1,0 @@
-cuda-cudart-dev is important (i.e. dev version not normal):
-  the dev version as libcudart_static.a which is used in the IsaacSim make process!
-
-"cuda" symlink in /usr/local to "cuda-VERSION" needs to be manually done
-  everyone has the symlink & seem to think they remember having to do it manually?
-
-had to install cuda-10-1 (which installs both 4.18 & 4.30 drivers) for seg fault to go away
-  seems weird & excessive.... but eh
