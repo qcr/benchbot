@@ -34,7 +34,11 @@ hostnames_list=\
 # Start in bin of benchbot_devel & ensure helpers exist
 abs_path=$(readlink -f $0)
 pushd $(dirname $abs_path) >/dev/null
-# TODO guarantee helpers submodule is initialised ...
+if [ ! -f ../.helpers/bash ]; then
+  pushd .. >/dev/null
+  git submodule update --init --recursive
+  popd >/dev/null
+fi
 source ../.helpers/bash
 
 # Symlinks
@@ -186,9 +190,7 @@ nvidia_container_version=$(apt list --installed 2>/dev/null | grep 'nvidia-conta
 if [ -z ${nvidia_container_version} ]; then nvidia_container_version="$not_found_text"; fi
 
 nvidia_driver_valid=$(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]})
-echo "$nvidia_driver_valid"
 cuda_valid=$(eval_version $cuda_version ${cuda_version_reqs[*]})
-echo "$cuda_valid"
 docker_valid=$(eval_version $docker_version ${docker_version_reqs[*]})
 nvidia_container_valid=$(eval_version $nvidia_container_version ${nvidia_container_reqs[*]})
 
