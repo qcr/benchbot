@@ -74,6 +74,14 @@ docker_err="\
       sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"
       sudo apt-get update
       sudo apt-get install docker-ce
+
+    When you are done, ensure that you can run Docker WITHOUT root (running Docker
+    with root is a massive security issue & this install script deliberately does
+    not do that). Add your username to the Docker group to enable running
+    without root (will require re-login after):
+
+      sudo groupadd docker
+      sudo usermod -aG docker $USER
 "
 free_space_warn="\
   You appear not to have enough free space on your root partition (mounted at '/'):
@@ -305,6 +313,10 @@ docker build -t "${image_reference}" \
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   echo "Docker build returned a non-zero error code: $build_ret"
+  echo -e "\nEnsure that Docker has been installed correctly AND that you can run"\
+    " Docker WITHOUT root access (there is no need to ever run Docker with root)."\
+    " See https://docs.docker.com/install/linux/linux-postinstall/ for details"\
+    " on how to fix this."
   exit 1
 fi
 popd
