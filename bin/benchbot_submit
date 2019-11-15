@@ -4,6 +4,10 @@
 ########################## Settings & Pre-run Actions ##########################
 ################################################################################
 
+# Settings for containerisation
+NETWORK_NAME="benchbot_network"
+
+
 # Start in bin/ of benchbot_devel & ensure helpers exist
 pushd $(dirname $(readlink -f $0)) >/dev/null
 if [ ! -f ../.helpers/bash ]; then
@@ -150,7 +154,7 @@ case "$SELECTED_MODE" in
   -n|--native)
     selected_command="${SELECTED_OPTIONS[@]}" ;;
   -c|--containerised|-s|--submission)
-    selected_code_dir=$(realpath "${SELECTED_OPTIONS[0]}") ;&
+    selected_code_dir=$(realpath "${SELECTED_OPTIONS[0]}") ;;&
   -s|--submission)
     if [ ${#SELECTED_OPTIONS[@]} -gt 1 ]; then
       selected_out_location=$(realpath "${SELECTED_OPTIONS[1]}")
@@ -206,5 +210,18 @@ elif [ -n "$selected_out_location" ]; then
 else
   # This is a containerised submission
   echo "Running submission from '$selected_code_dir' with containerisation ..."
+  pushd "$selected_code_dir" >/dev/null
+  submission_tag="benchbot/submission:"$(echo "$(pwd)" | sha256sum | cut -c1-10)
+  docker build -t "$submission_tag" .
+  build_ret=$?
+  if [ $build_ret -ne 0 ]; then
+    echo "Docker build returned a non-zero error code: $build_ret"
+  else
+    name="submission"
+    docker run --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
+            --network "$NETWORK_NAME" --name="$name" --hostname="$name" \
+            -i -t "$submission_tag"
+  fi
+  popd >/dev/null
 fi
 exit 0

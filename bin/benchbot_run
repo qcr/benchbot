@@ -134,7 +134,7 @@ _env_pose() {
           found=true
     elif [ ! -z "$found" ] && echo -e "$line" | \
       grep -q "start_pose_local:.*\[.*\]" ; then
-          echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\)/\1/'
+          echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\).*/\1/'
           return 0
     fi
   done <<< "$(_env_data)"
