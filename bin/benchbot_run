@@ -1,0 +1,348 @@
+#!/usr/bin/env bash
+
+################################################################################
+########################## Settings & Pre-run Actions ##########################
+################################################################################
+
+IMAGE_REFERENCE="benchbot/simulator:devel"
+NETWORK_NAME="benchbot_network"
+ENV_FILENAME=".benchbot_data.yaml"
+
+SUBNET="172.20.0.0/24"
+IP_RANGE="172.20.0.0/24"
+GATEWAY="172.20.0.254"
+ROS_ADDRESS="172.20.0.100"
+SIMULATOR_ADDRESS="172.20.0.101"
+SUPERVISOR_ADDRESS="172.20.0.102"
+
+# Start in bin of benchbot_devel & ensure helpers exist
+abs_path=$(readlink -f $0)
+pushd $(dirname $abs_path) >/dev/null
+if [ ! -f ../.helpers/bash ]; then
+  pushd .. >/dev/null
+  git submodule update --init --recursive
+  popd >/dev/null
+fi
+source ../.helpers/bash
+
+
+################################################################################
+######################## Helper functions for commands #########################
+################################################################################
+
+usage_text="$(basename "$abs_path") -- Run script for the BenchBot backend & simulator
+
+USAGE:
+
+    Get info about the program / available options:
+        $(basename "$abs_path") [-h|--help|--list-tasks|--list-envs]
+
+    Run a simulator with a specifc task setup:
+        $(basename "$abs_path") --env ENV_NAME --task TASK_NAME
+        $(basename "$abs_path") -e ENV_NAME -t TASK_NAME
+
+OPTION DETAILS:
+
+    -h,--help             
+            Show this help menu.
+
+    --list-envs
+            Search for & list all installed environments. The listed
+            environment names are in the format needed for the --env option.
+
+    --list-tasks   
+            Lists all supported task combinations. The listed tasks are printed
+            in the formant needed for the --task option.
+
+    -e, --env             
+            Select an environment to launch in the simulator (this must be
+            called with the --task option). Environments are identified via
+            \"ENVIRONMENT_NAME:VARIATION_NUMBER\" where ENVIRONMENT_NAME is the
+            name of simulated environment & VARIATION_NUMBER environment
+            variation to use. For example, the third variation of the office
+            environment would be: 
+
+                    office:3
+
+            (Use --list-envs to see a list of available environments)
+
+    -t, --task             
+            Configure BenchBot for a specific task style (this must be called
+            with the --env option). A task is specified through the format
+            \"TYPE:CONTROL_MODE:LOCALISATION_MODE\" where TYPE is the type of
+            task, CONTROL_MODE is the control options available on the robot, &
+            LOCALISATION_MODE is the accuracy of localisation feedback
+            received. For example, a robot with passive control & ground truth
+            localisation completing semantic SLAM would be:
+
+                    semantic_slam:passive:ground_truth
+
+            (Use --list-tasks to see a list of supported task options)
+
+FURTHER DETAILS:
+    
+    Please contact the authors of BenchBot for support or to report bugs:
+        b.talbot@qut.edu.au
+    "
+
+SELECTED_ENV=
+SELECTED_TASK=
+
+_task_list=("semantic_slam:passive:ground_truth"
+  "semantic_slam:active:ground_truth"
+  "semantic_slam:active:dead_reckoning"
+  "scd:passive:ground_truth"
+  "scd:active:ground_truth"
+  "scd:active:dead_reckoning"
+)
+
+_env_data_cached=
+
+_env_data() {
+  # This is a little gross... sorry.
+  if [ -z "$_env_data_cached" ]; then
+  _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
+    'find $ISAAC_SIM_PATH/IsaacSimProject/Content -name "'"$ENV_FILENAME"'"\
+    | while read env; do echo "$(dirname $env)"; cat $env; done')
+  fi
+  echo "$_env_data_cached"
+}
+
+_env_list() {
+  echo "$(_env_data)" | grep "environment_name:" | \
+    sed 's/.*: "\?\([0-9A-Za-z]*\)_\([0-9]*\)"\?/\1:\2/' | sort
+}
+
+_env_location() {
+  last_location=
+  while read -r line; do
+    if echo -e "$line" | grep -q "/home/.*"; then
+      last_location="$line"
+    elif echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
+      echo "$last_location"
+      return 0
+    fi
+  done <<< "$(_env_data)"
+  return 1
+}
+
+_env_pose() {
+  found=
+  while read -r line; do
+    if [ -z "$found" ] && echo -e "$line" | \
+      grep -q "environment_name:.*${1/:/_}"; then
+          found=true
+    elif [ ! -z "$found" ] && echo -e "$line" | \
+      grep -q "start_pose_local:.*\[.*\]" ; then
+          echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\).*/\1/'
+          return 0
+    fi
+  done <<< "$(_env_data)"
+  return 1
+}
+
+opt_list_envs() {
+  # TODO check if installed (docker image exists); provide a message if not
+  # telling them how to fix the issue
+
+  # Print the list with details
+  echo "The following environments are installed in your BenchBot Docker image:
+  "
+  for e in $(_env_list); do
+    echo "        $e"
+  done
+  echo "
+The string is of the format ENV_NAME:VARIATION_NUMBER. Note when running the
+semantic change detection tasks you will have to specifiy a second variation
+using the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
+  "
+}
+
+opt_list_tasks() {
+  # TODO this is hard coded for now... maybe should be done differently...
+  echo "The following tasks are supported by BenchBot: 
+  "
+  for t in "${_task_list[@]}"; do
+    echo "        $t"
+  done
+  echo "
+The string is of the format TYPE:CONTROL_MODE:LOCALISATION_MODE.
+
+TYPE DETAILS:
+        semantic_slam:
+            TODO 
+
+        scd:
+            TODO (semantic change detection)
+
+CONTROL_MODE DETAILS:
+        passive:
+            TODO
+
+        active:
+            TODO
+      
+LOCALISATION_MODE DETAILS:
+        ground_truth:
+            TODO
+
+        dead_reckoning:
+            TODO
+  "
+}
+
+opt_select_env() {
+  # Only update the SELECTED_ENV variable if it is in the list of envs
+  for e in $(_env_list); do
+    if [ "$(echo "$e" | tr -d '[:space:]')" == "$1" ]; then
+      SELECTED_ENV="$(echo "$e" | tr -d '[:space:]')"
+      return 0
+    fi
+  done
+  echo "Environment '$1' is not a supported environment. Please check --list-envs."
+  return 1
+}
+
+opt_select_task() {
+  # Only update the SELECTED_TASK variable if it is in the list of tasks
+  for t in ${_task_list[@]}; do
+    if [ "$t" == "$1" ]; then
+      SELECTED_TASK="$t"
+      return 0
+    fi
+  done
+  echo "Task '$1' is not a supported task specification. Please check --list-tasks."
+  return 1
+}
+
+
+################################################################################
+#################### Parse & handle command line arguments #####################
+################################################################################
+
+# Safely parse options input
+parse_out=$(getopt -o he:t: --long help,env:,task:,list-envs,list-tasks \
+  -n "$(basename "$abs_path")" -- "$@")
+if [ $? != 0 ]; then exit 1; fi
+eval set -- "$parse_out"
+while true; do
+  case "$1" in
+    -h|--help)
+      echo "$usage_text" ; shift ; exit 0 ;;
+    --list-envs)
+      opt_list_envs ; shift ; exit 0 ;;
+    --list-tasks)
+      opt_list_tasks ; shift ; exit 0 ;;
+    -e|--env)
+      opt_select_env "$2"; shift 2 ;;
+    -t|--task)
+      opt_select_task "$2"; shift 2 ;;
+    --)
+      shift ; break ;;
+    *)
+      echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
+  esac
+done
+
+# Bail if we are running & they didn't give us both an environment & task
+if [ -z "$SELECTED_ENV" ]; then 
+  echo "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
+  exit 1
+fi
+if [ -z "$SELECTED_TASK" ]; then 
+  echo "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
+  exit 1
+fi
+
+# We are going to run; last thing we need to do is pull out all useful data 
+# from the selected settings
+selected_pose=$(_env_pose "$SELECTED_ENV")
+selected_env_location=$(_env_location "$SELECTED_ENV")
+selected_env_name=$(echo "$selected_env_location" | \
+  sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
+selected_map_name=$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')
+selected_map_path="/Game/${selected_env_name}/Maps/${selected_map_name}"
+selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
+selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
+
+################################################################################
+##################### Run the simulator & BenchBot backend #####################
+################################################################################
+
+# Print some configuration information
+echo "Running the BenchBot system with the following settings:
+
+    Selected environment: $SELECTED_ENV
+    Selected task:        $SELECTED_TASK
+    Environment location: $selected_env_location
+    Environment name:     $selected_env_name
+    Map name:             $selected_map_name
+    Map path:             $selected_map_path
+    Map start pose:       $selected_pose 
+    Actions set:          $selected_actions
+    Observations set:     $selected_observations
+"
+
+# Clean up before we start, & create the network
+echo "Cleaning up any Docker containers still lying around ..."
+if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
+  docker stop $(docker ps -a -q)
+fi
+docker system prune -f
+echo -e "Cleaned!\n"
+docker network create "$NETWORK_NAME" --subnet="$SUBNET" \
+  --ip-range="$IP_RANGE" --gateway="$GATEWAY"
+echo -e "Created $NETWORK_NAME.\n"
+
+# Create reusable parts to ensure our containers run with consistent settings
+xhost +local:root
+ros_master_host="benchbot_roscore"
+docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
+            -e DISPLAY \
+            -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
+            --network $NETWORK_NAME --name=\$name --hostname=\$name"
+cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
+
+# Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
+name="$ros_master_host"
+${docker_run//'$name'/$name} --ip "$ROS_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
+  "$cmd_prefix"'roscore'
+
+name="benchbot_simulator"
+${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
+  "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
+  $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
+  cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
+  cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
+  '"$selected_map_path"' \
+  -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
+  -game -windowed -ResX=1024 -ResY=720 -vulkan' # NOTE: these have been collapsed into the one 
+                                                # container as Isaac seems to have no useful
+                                                # tools for linking between separate hosts except
+                                                # for manually creating a *.json for every TcpPublisher
+                                                # in your system to change the target (not sure how
+                                                # this would even work if I had a topic with listeners
+                                                # on both computers A & B...). Combine that with no 
+                                                # useful tools for listing what topics currently exist 
+                                                # (e.g. 'rostopic list'), and the task of manually 
+                                                # going through 1 by 1 & specifying what should point
+                                                # where... is a no from me.
+
+name="benchbot_supervisor"
+${docker_run//'$name'/$name} --ip "$SUPERVISOR_ADDRESS"  $IMAGE_REFERENCE /bin/bash -c \
+  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
+  '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
+  '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
+
+name="benchbot_debug"
+# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $IMAGE_REFERENCE
+# ${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
+xhost -local:root
+
+################################################################################
+####################### Messages suggesting how to view  #######################
+################################################################################
+
+# TODO
+
+# TODO killing the script should stop all of the containers!!! (capture SIGINT)
