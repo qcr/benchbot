@@ -141,6 +141,16 @@ _env_pose() {
   return 1
 }
 
+#Function for getting the map name using the docker environment to real .umap filename
+_env_mapname() {
+  _env_mapname=
+  # this is strange and gross to me
+  _env_mapname=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
+  'echo $(find '"${selected_env_location}"'/Maps/ -name *.umap | sed "'"s/.*\/\([^\/]*\).umap/\1/"'")')
+  echo ${_env_mapname}
+    
+}
+
 opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
@@ -256,11 +266,22 @@ fi
 
 # We are going to run; last thing we need to do is pull out all useful data 
 # from the selected settings
+# TEMP HARD CODE
 selected_pose=$(_env_pose "$SELECTED_ENV")
-selected_env_location=$(_env_location "$SELECTED_ENV")
+#selected_pose="[1, 0, 0, 0.8, -1.8, -2.5, 0.4]"
+# Remember to remove the \r from the _env_location output
+selected_env_location=$(_env_location "$SELECTED_ENV" | sed 's/\r//')
+# selected_env_location=$(_env_location "$SELECTED_ENV")
 selected_env_name=$(echo "$selected_env_location" | \
   sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
-selected_map_name=$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')
+# Find file in maps folder that ends with .umap then extract the map name
+# NOTE assumes only one .umap file
+#echo ${selected_env_location}
+#ls "/home/benchbot/isaac_sim/"
+#ls "${selected_env_location}"
+#selected_map_name=$(ls "${selected_env_location}/${selected_env_name}/Maps/*.umap" | sed 's/\(.*\).umap/\1/')
+selected_map_name=$(_env_mapname)
+#selected_map_name=$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')
 selected_map_path="/Game/${selected_env_name}/Maps/${selected_map_name}"
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
