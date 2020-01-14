@@ -10,12 +10,12 @@ ARG NVIDIA_DRIVER_VERSION
 ARG CUDA_VERSION
 ARG CUDA_VERSION_SHORT
 ARG ISAAC_SDK_TGZ
-ARG ISAAC_SIM_TGZ
-ARG ISAAC_SIM_GITDEPS_TGZ
+# ARG ISAAC_SIM_TGZ
+# ARG ISAAC_SIM_GITDEPS_TGZ
 RUN echo "Enforcing that all required arguments are provided..." && \
     test -n "$TZ" && test -n "$NVIDIA_DRIVER_VERSION" && test -n "$CUDA_VERSION" && \
-    test -n "$CUDA_VERSION_SHORT" && test -n "$ISAAC_SDK_TGZ" && \
-    test -n "$ISAAC_SIM_TGZ" && test -n "$ISAAC_SIM_GITDEPS_TGZ"
+    test -n "$CUDA_VERSION_SHORT" && test -n "$ISAAC_SDK_TGZ" 
+    # test -n "$ISAAC_SIM_TGZ" && test -n "$ISAAC_SIM_GITDEPS_TGZ"
 
 # Setup a user (as Unreal for whatever wacko reason does not allow us to build
 # as a root user... thanks for that...), working directory, & use bash as the
@@ -65,9 +65,9 @@ RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/
 
 # Install Unreal Engine (& Isaac Unreal Engine Sim)
 # TODO make IsaacSimProject <build_number> configurable...
-ENV ISAAC_SIM_PATH /home/benchbot/isaac_sim
-ADD ${ISAAC_SIM_TGZ} ${ISAAC_SIM_PATH}
-ADD ${ISAAC_SIM_GITDEPS_TGZ} isaac_sim/Engine/Build
+# ENV ISAAC_SIM_PATH /home/benchbot/isaac_sim
+# ADD ${ISAAC_SIM_TGZ} ${ISAAC_SIM_PATH}
+# ADD ${ISAAC_SIM_GITDEPS_TGZ} isaac_sim/Engine/Build
 
 # Install any remaining software
 RUN apt update && apt install -y git python-catkin-tools python-pip \
@@ -80,18 +80,18 @@ RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd && \
     pushd "$ISAAC_SDK_PATH" && \
     engine/build/scripts/install_dependencies.sh && bazel build ... && \
-    rm -rf /var/apt/lists/* && popd && \
-    rm isaac_sim/Engine/Build/IsaacSimProject_1.2_Core.gitdeps.xml
+    rm -rf /var/apt/lists/* && popd
+    # rm isaac_sim/Engine/Build/IsaacSimProject_1.2_Core.gitdeps.xml
 
 # TODO we CANNOT UNDER ANY CIRCUMSTANCES release this software with this line in
 # it (it manually ignores a licence). I have added this line here because I was
 # stuck in a situation where every time I added stuff to the DockerFile, the 
 # annoying manual license accept prompt meant the entire Isaac UnrealEngine SIM
 # had to rebuilt from scratch.... It was hindering development way too much...
-RUN cd isaac_sim && \
-    sed -i 's/\[ -f.*1\.2\.gitdeps\.xml \];/\[ 1 == 2 \] \&\& \0/' Setup.sh && \
-    ./Setup.sh &&  ./GenerateProjectFiles.sh && ./GenerateTestRobotPaths.sh && \
-    make && make IsaacSimProjectEditor
+# RUN cd isaac_sim && \
+#     sed -i 's/\[ -f.*1\.2\.gitdeps\.xml \];/\[ 1 == 2 \] \&\& \0/' Setup.sh && \
+#     ./Setup.sh &&  ./GenerateProjectFiles.sh && ./GenerateTestRobotPaths.sh && \
+#     make && make IsaacSimProjectEditor
 
 # Install our benchbot software
 # TODO we CANNOT RELEASE THIS we way it is below. It takes my private SSH key
@@ -113,9 +113,9 @@ RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts
 RUN sudo apt update && sudo apt install -y vim ipython tmux
 
 # Ordered by how expensive installation is ...
-RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
-    pushd $BENCHBOT_ENVS_PATH && git checkout $BENCHBOT_ENVS_HASH && ./install && cd $ISAAC_SIM_PATH && \
-    (./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill || true)
+# RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
+#     pushd $BENCHBOT_ENVS_PATH && git checkout $BENCHBOT_ENVS_HASH && ./install && cd $ISAAC_SIM_PATH && \
+#     (./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill || true)
 RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
     source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
@@ -125,5 +125,10 @@ RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_supervisor $BENCH
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
+
+# Install new pre-compiled binaries
+RUN mkdir -p $BENCHBOT_ENVS_PATH && cd $BENCHBOT_ENVS_PATH && \
+    wget https://cloudstor.aarnet.edu.au/plus/s/Z2XkQrbdN2I3RJ0/download -O dev_pkg.zip && \
+    unzip -q dev_pkg.zip && rm -v dev_pkg.zip && mv LinuxNoEditor dev_pkg
 
 # RUN rm -rf .ssh 

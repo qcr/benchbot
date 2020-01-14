@@ -15,6 +15,9 @@ ROS_ADDRESS="172.20.0.100"
 SIMULATOR_ADDRESS="172.20.0.101"
 SUPERVISOR_ADDRESS="172.20.0.102"
 
+# TEMP VARIABLE FOR TESTING PURPOSES ONLY
+PAK_PATH='~/pak_files/LinuxNoEditor/'
+
 # Start in bin of benchbot_devel & ensure helpers exist
 abs_path=$(readlink -f $0)
 pushd $(dirname $abs_path) >/dev/null
@@ -78,6 +81,9 @@ OPTION DETAILS:
                     semantic_slam:passive:ground_truth
 
             (Use --list-tasks to see a list of supported task options)
+    -p, --pkg
+            FOR ADMIN DEBUG ONLY! Choose which package you wish to use (test or dev).
+            This is to be used in association with --list-envs and --env. Default option will be dev.
 
 FURTHER DETAILS:
     
@@ -102,29 +108,75 @@ _env_data() {
   # This is a little gross... sorry.
   if [ -z "$_env_data_cached" ]; then
   _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
-    'find $ISAAC_SIM_PATH/IsaacSimProject/Content -name "'"$ENV_FILENAME"'"\
+    'find $BENCHBOT_ENVS_PATH/dev_pkg/.benchbot_data_files -name "*.yaml"\
     | while read env; do echo "$(dirname $env)"; cat $env; done')
   fi
   echo "$_env_data_cached"
 }
+
+# _env_data() {
+#   # This is a little gross... sorry.
+#   if [ -z "$_env_data_cached" ]; then
+#   _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
+#     'find $ISAAC_SIM_PATH/IsaacSimProject/Content -name "'"$ENV_FILENAME"'"\
+#     | while read env; do echo "$(dirname $env)"; cat $env; done')
+#   fi
+#   echo "$_env_data_cached"
+# }
 
 _env_list() {
   echo "$(_env_data)" | grep "environment_name:" | \
     sed 's/.*: "\?\([0-9A-Za-z]*\)_\([0-9]*\)"\?/\1:\2/' | sort
 }
 
-_env_location() {
-  last_location=
+# Note this is not efficient or particularly clean
+# Makes a lot of assumptions about file naming convention (should already be sorted by ls)
+#_env_list() {
+#  echo "$(docker run -t $IMAGE_REFERENCE /bin/bash -c 'env_list=$(ls "${BENCHBOT_ENVS_PATH}/dev_pkg/.benchbot_data_files/") && \
+#        env_list=${env_list//_/:} && env_list=${env_list//".yaml"} && echo $env_list')"
+#}
+
+#_env_location() {
+#  last_location=
+#  while read -r line; do
+#    if echo -e "$line" | grep -q "/home/.*"; then
+#      last_location="$line"
+#    elif echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
+#      echo "$last_location"
+#      return 0
+#    fi
+#  done <<< "$(_env_data)"
+#  return 1
+#}
+
+_env_map_path() {
+  found=
   while read -r line; do
-    if echo -e "$line" | grep -q "/home/.*"; then
-      last_location="$line"
-    elif echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
-      echo "$last_location"
+    if [ -z "$found" ] && echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
+      found=true
+    elif [ ! -z "$found" ] && echo -e "$line" | grep -q "map_path:.*"; then
+      echo "${line#"map_path: "}"
       return 0
     fi
   done <<< "$(_env_data)"
   return 1
 }
+
+#_env_location() {
+#	file_name="${BENCHBOT_ENVS_PATH}/dev_pkg/.benchbot_data_files/${1//:/_}.yaml"
+#	echo "$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
+#	'while read -r line; do if echo -e "$line" | grep -q "/home/.*"; then echo "$line" fi done < "'$file_name'"')"
+#}
+
+#_env_pose() {
+#  file_name="${BENCHBOT_ENVS_PATH}/dev_pkg/.benchbot_data_files/${1//:/_}.yaml"
+#  echo "$(docker run -t $IMAGE_REFERENCE /bin/bash -c \ 
+#    'while read -r line; do \
+#      if  echo -e "$line" | grep -q "start_pose_local:.*\[.*\]" ; \
+#     	then echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\).*/\1/' \
+#	  fi \
+#	done < "'$file_name'"')"
+#}
 
 _env_pose() {
   found=
@@ -268,21 +320,23 @@ fi
 # from the selected settings
 # TEMP HARD CODE
 selected_pose=$(_env_pose "$SELECTED_ENV")
+echo "SELECTED POSE!! ${selected_pose}"
 #selected_pose="[1, 0, 0, 0.8, -1.8, -2.5, 0.4]"
 # Remember to remove the \r from the _env_location output
-selected_env_location=$(_env_location "$SELECTED_ENV" | sed 's/\r//')
+#selected_env_location=$(_env_location "$SELECTED_ENV" | sed 's/\r//')
 # selected_env_location=$(_env_location "$SELECTED_ENV")
-selected_env_name=$(echo "$selected_env_location" | \
-  sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
+#selected_env_name=$(echo "$selected_env_location" | \
+#  sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
 # Find file in maps folder that ends with .umap then extract the map name
 # NOTE assumes only one .umap file
 #echo ${selected_env_location}
 #ls "/home/benchbot/isaac_sim/"
 #ls "${selected_env_location}"
 #selected_map_name=$(ls "${selected_env_location}/${selected_env_name}/Maps/*.umap" | sed 's/\(.*\).umap/\1/')
-selected_map_name=$(_env_mapname)
+#selected_map_name=$(_env_mapname)
 #selected_map_name=$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')
-selected_map_path="/Game/${selected_env_name}/Maps/${selected_map_name}"
+selected_map_path=$(_env_map_path "$SELECTED_ENV")
+#"/Game/${selected_env_name}/Maps/${selected_map_name}"
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
@@ -295,9 +349,6 @@ echo "Running the BenchBot system with the following settings:
 
     Selected environment: $SELECTED_ENV
     Selected task:        $SELECTED_TASK
-    Environment location: $selected_env_location
-    Environment name:     $selected_env_name
-    Map name:             $selected_map_name
     Map path:             $selected_map_path
     Map start pose:       $selected_pose 
     Actions set:          $selected_actions
@@ -330,14 +381,17 @@ ${docker_run//'$name'/$name} --ip "$ROS_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -
   "$cmd_prefix"'roscore'
 
 name="benchbot_simulator"
+# BACKUP REPLACEMENT LINE 342 (run environment)
+#cd '"$PAK_PATH"' && ./IsaacSimProject.sh \
+#cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
 ${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
   cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
-  cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
+  cd $BENCHBOT_ENVS_PATH/dev_pkg && ./IsaacSimProject.sh \
   '"$selected_map_path"' \
   -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
-  -game -windowed -ResX=1024 -ResY=720 -vulkan' # NOTE: these have been collapsed into the one 
+  -windowed -ResX=1024 -ResY=720 -vulkan -game' # NOTE: these have been collapsed into the one 
                                                 # container as Isaac seems to have no useful
                                                 # tools for linking between separate hosts except
                                                 # for manually creating a *.json for every TcpPublisher
@@ -348,6 +402,7 @@ ${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/
                                                 # (e.g. 'rostopic list'), and the task of manually 
                                                 # going through 1 by 1 & specifying what should point
                                                 # where... is a no from me.
+                                                # Note removed -game flag
 
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$SUPERVISOR_ADDRESS"  $IMAGE_REFERENCE /bin/bash -c \
