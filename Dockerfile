@@ -1,7 +1,4 @@
-#TODO:
-# Change COPY directives to ADD (does extracting in same step)
-
-# Use an official Python runtime as a parent image
+# Use an official Ubuntu runtime as a parent image
 FROM ubuntu:bionic
 
 # Declare any expected ARGS from the host system
@@ -9,34 +6,38 @@ ARG TZ
 ARG NVIDIA_DRIVER_VERSION
 ARG CUDA_VERSION
 ARG CUDA_VERSION_SHORT
+
 ARG ISAAC_SDK_TGZ
-# ARG ISAAC_SIM_TGZ
-# ARG ISAAC_SIM_GITDEPS_TGZ
+
+ARG BENCHBOT_SIMULATOR_HASH
+ARG BENCHBOT_SUPERVISOR_HASH
+
+ARG BENCHBOT_ENVS_MD5SUM
+ARG BENCHBOT_ENVS_URL
+
 RUN echo "Enforcing that all required arguments are provided..." && \
     test -n "$TZ" && test -n "$NVIDIA_DRIVER_VERSION" && test -n "$CUDA_VERSION" && \
-    test -n "$CUDA_VERSION_SHORT" && test -n "$ISAAC_SDK_TGZ" 
-    # test -n "$ISAAC_SIM_TGZ" && test -n "$ISAAC_SIM_GITDEPS_TGZ"
+    test -n "$CUDA_VERSION_SHORT" && test -n "$ISAAC_SDK_TGZ" && \
+    test -n "$BENCHBOT_SIMULATOR_HASH" && test -n "$BENCHBOT_SUPERVISOR_HASH" && \
+    test -n "$BENCHBOT_ENVS_MD5SUM" && test -n "$BENCHBOT_ENVS_URL"
 
-# Setup a user (as Unreal for whatever wacko reason does not allow us to build
-# as a root user... thanks for that...), working directory, & use bash as the
-# shell
+# Setup some useful default configs & a user (not sure this is necessary now 
+# we've ditched installing Unreal...)
 SHELL ["/bin/bash", "-c"]
-RUN apt update && apt -yq install sudo wget gnupg2 software-properties-common && \
-    rm -rf /var/apt/lists/*
+RUN apt update && apt -yq install sudo wget gnupg2 software-properties-common
 RUN useradd --create-home --password "" benchbot && passwd -d benchbot && \
     usermod -aG sudo benchbot
 WORKDIR /home/benchbot
 
 # Configure some basics to get us up & running
-RUN echo "$TZ" > /etc/timezone && \
-    ln -s /usr/share/zoneinfo/"$TZ" /etc/localtime && \
-    apt update && apt -y install tzdata && rm -rf /var/apt/lists/*
+RUN echo "$TZ" > /etc/timezone && ln -s /usr/share/zoneinfo/"$TZ" /etc/localtime && \
+    apt update && apt -y install tzdata
 
 # Install ROS Melodic
 ENV ROS_WS_PATH /home/benchbot/ros_ws
 RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros-latest.list && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
-    apt update && apt install -y ros-melodic-desktop-full && rm -rf /var/apt/lists/*
+    apt update && apt install -y ros-melodic-desktop-full
 
 # Install Isaac (using local copies of licensed libraries)
 ENV ISAAC_SDK_PATH /home/benchbot/isaac_sdk
@@ -50,8 +51,7 @@ RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key a
     wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
     apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
     "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" && \
-    DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk && \
-    rm -rf /var/apt/lists/*
+    DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk
 
 # Install CUDA
 # TODO full CUDA install seems excessive, can this be trimmed down?
@@ -59,39 +59,21 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86
     mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
     add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /" && \
-    apt update && apt install -y "cuda-${CUDA_VERSION_SHORT}=${CUDA_VERSION}" && rm -rf /var/apt/lists/* && \
+    apt update && apt install -y "cuda-${CUDA_VERSION_SHORT}=${CUDA_VERSION}" && \
     ln -sv lib /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux/lib64 && \
     ln -sv /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux /usr/local/cuda
 
-# Install Unreal Engine (& Isaac Unreal Engine Sim)
-# TODO make IsaacSimProject <build_number> configurable...
-# ENV ISAAC_SIM_PATH /home/benchbot/isaac_sim
-# ADD ${ISAAC_SIM_TGZ} ${ISAAC_SIM_PATH}
-# ADD ${ISAAC_SIM_GITDEPS_TGZ} isaac_sim/Engine/Build
-
-# Install any remaining software
+# Install any remaining extra software
 RUN apt update && apt install -y git python-catkin-tools python-pip \
     python-rosinstall-generator python-wstool
 
-# Perform all user setup steps
+# Perform setup steps for the "benchbot" user
 RUN chown -R benchbot:benchbot *
 USER benchbot
 RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd && \
     pushd "$ISAAC_SDK_PATH" && \
-    engine/build/scripts/install_dependencies.sh && bazel build ... && \
-    rm -rf /var/apt/lists/* && popd
-    # rm isaac_sim/Engine/Build/IsaacSimProject_1.2_Core.gitdeps.xml
-
-# TODO we CANNOT UNDER ANY CIRCUMSTANCES release this software with this line in
-# it (it manually ignores a licence). I have added this line here because I was
-# stuck in a situation where every time I added stuff to the DockerFile, the 
-# annoying manual license accept prompt meant the entire Isaac UnrealEngine SIM
-# had to rebuilt from scratch.... It was hindering development way too much...
-# RUN cd isaac_sim && \
-#     sed -i 's/\[ -f.*1\.2\.gitdeps\.xml \];/\[ 1 == 2 \] \&\& \0/' Setup.sh && \
-#     ./Setup.sh &&  ./GenerateProjectFiles.sh && ./GenerateTestRobotPaths.sh && \
-#     make && make IsaacSimProjectEditor
+    engine/build/scripts/install_dependencies.sh && bazel build ...
 
 # Install our benchbot software
 # TODO we CANNOT RELEASE THIS we way it is below. It takes my private SSH key
@@ -102,6 +84,7 @@ RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
 # should probably create a dummy bitbucket account with a shared private key
 # in the "benchbot_devel" (to keep install "just working" for anyone using the
 # repo)
+# TODO maybe just give the repos public access & be done with it???
 ENV BENCHBOT_SIMULATOR_PATH /home/benchbot/benchbot_simulator
 ENV BENCHBOT_ENVS_PATH /home/benchbot/benchbot_envs
 ENV BENCHBOT_SUPERVISOR_PATH /home/benchbot/benchbot_supervisor
@@ -109,10 +92,11 @@ ADD --chown=benchbot:benchbot id_rsa .ssh/id_rsa
 RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts 
 
 # TODO remove Ben's debugging toolset!
-# TODO add iputils-ping
-RUN sudo apt update && sudo apt install -y vim ipython tmux
+RUN sudo apt update && sudo apt install -y vim ipython tmux iputils-ping
 
 # Ordered by how expensive installation is ...
+# TODO this is brittle in that branch is hard coded here, but we got the *_HASH values from a branch
+# which is hard coded separately in the install script (if they don't match... BOOM... bad things...)
 # RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_envs_devel $BENCHBOT_ENVS_PATH && \
 #     pushd $BENCHBOT_ENVS_PATH && git checkout $BENCHBOT_ENVS_HASH && ./install && cd $ISAAC_SIM_PATH && \
 #     (./Engine/Binaries/Linux/UE4Editor IsaacSimProject -run=DerivedDataCache -fill || true)
@@ -126,9 +110,9 @@ RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_supervisor $BENCH
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
 
-# Install new pre-compiled binaries
-RUN mkdir -p $BENCHBOT_ENVS_PATH && cd $BENCHBOT_ENVS_PATH && \
-    wget https://cloudstor.aarnet.edu.au/plus/s/Z2XkQrbdN2I3RJ0/download -O dev_pkg.zip && \
-    unzip -q dev_pkg.zip && rm -v dev_pkg.zip && mv LinuxNoEditor dev_pkg
+# Install environments from a *.zip containing pre-compiled binaries
+RUN wget $BENCHBOT_ENVS_URL -O benchbot_envs.zip && unzip -q benchbot_envs.zip && \
+    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
 
-# RUN rm -rf .ssh 
+# TODO Remove this SSH stuff...
+RUN rm -rf .ssh 

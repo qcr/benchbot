@@ -6,7 +6,7 @@
 
 IMAGE_REFERENCE="benchbot/simulator:devel"
 NETWORK_NAME="benchbot_network"
-ENV_FILENAME=".benchbot_data.yaml"
+ENV_METADATA_LOCATION=".benchbot_data_files"
 
 SUBNET="172.20.0.0/24"
 IP_RANGE="172.20.0.0/24"
@@ -14,9 +14,6 @@ GATEWAY="172.20.0.254"
 ROS_ADDRESS="172.20.0.100"
 SIMULATOR_ADDRESS="172.20.0.101"
 SUPERVISOR_ADDRESS="172.20.0.102"
-
-# TEMP VARIABLE FOR TESTING PURPOSES ONLY
-PAK_PATH='~/pak_files/LinuxNoEditor/'
 
 # Start in bin of benchbot_devel & ensure helpers exist
 abs_path=$(readlink -f $0)
@@ -27,7 +24,6 @@ if [ ! -f ../.helpers/bash ]; then
   popd >/dev/null
 fi
 source ../.helpers/bash
-
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -104,52 +100,22 @@ _task_list=("semantic_slam:passive:ground_truth"
 
 _env_data_cached=
 
-_env_data() {
+function _env_data() {
   # This is a little gross... sorry.
   if [ -z "$_env_data_cached" ]; then
   _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
-    'find $BENCHBOT_ENVS_PATH/dev_pkg/.benchbot_data_files -name "*.yaml"\
-    | while read env; do echo "$(dirname $env)"; cat $env; done')
+    'find $BENCHBOT_ENVS_PATH/$ENV_METADATA_LOCATION -name "*.yaml"\
+    | while read env; do echo "$(basename $env)"; cat $env; done')
   fi
   echo "$_env_data_cached"
 }
 
-# _env_data() {
-#   # This is a little gross... sorry.
-#   if [ -z "$_env_data_cached" ]; then
-#   _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
-#     'find $ISAAC_SIM_PATH/IsaacSimProject/Content -name "'"$ENV_FILENAME"'"\
-#     | while read env; do echo "$(dirname $env)"; cat $env; done')
-#   fi
-#   echo "$_env_data_cached"
-# }
-
-_env_list() {
+function _env_list() {
   echo "$(_env_data)" | grep "environment_name:" | \
-    sed 's/.*: "\?\([0-9A-Za-z]*\)_\([0-9]*\)"\?/\1:\2/' | sort
+    sed 's/.*: "\([^_]*\)_\([^"]*\).*/\1:\2/' | sort
 }
 
-# Note this is not efficient or particularly clean
-# Makes a lot of assumptions about file naming convention (should already be sorted by ls)
-#_env_list() {
-#  echo "$(docker run -t $IMAGE_REFERENCE /bin/bash -c 'env_list=$(ls "${BENCHBOT_ENVS_PATH}/dev_pkg/.benchbot_data_files/") && \
-#        env_list=${env_list//_/:} && env_list=${env_list//".yaml"} && echo $env_list')"
-#}
-
-#_env_location() {
-#  last_location=
-#  while read -r line; do
-#    if echo -e "$line" | grep -q "/home/.*"; then
-#      last_location="$line"
-#    elif echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
-#      echo "$last_location"
-#      return 0
-#    fi
-#  done <<< "$(_env_data)"
-#  return 1
-#}
-
-_env_map_path() {
+function _env_map_path() {
   found=
   while read -r line; do
     if [ -z "$found" ] && echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
@@ -162,23 +128,7 @@ _env_map_path() {
   return 1
 }
 
-#_env_location() {
-#	file_name="${BENCHBOT_ENVS_PATH}/dev_pkg/.benchbot_data_files/${1//:/_}.yaml"
-#	echo "$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
-#	'while read -r line; do if echo -e "$line" | grep -q "/home/.*"; then echo "$line" fi done < "'$file_name'"')"
-#}
-
-#_env_pose() {
-#  file_name="${BENCHBOT_ENVS_PATH}/dev_pkg/.benchbot_data_files/${1//:/_}.yaml"
-#  echo "$(docker run -t $IMAGE_REFERENCE /bin/bash -c \ 
-#    'while read -r line; do \
-#      if  echo -e "$line" | grep -q "start_pose_local:.*\[.*\]" ; \
-#     	then echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\).*/\1/' \
-#	  fi \
-#	done < "'$file_name'"')"
-#}
-
-_env_pose() {
+function _env_pose() {
   found=
   while read -r line; do
     if [ -z "$found" ] && echo -e "$line" | \
@@ -193,17 +143,7 @@ _env_pose() {
   return 1
 }
 
-#Function for getting the map name using the docker environment to real .umap filename
-_env_mapname() {
-  _env_mapname=
-  # this is strange and gross to me
-  _env_mapname=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
-  'echo $(find '"${selected_env_location}"'/Maps/ -name *.umap | sed "'"s/.*\/\([^\/]*\).umap/\1/"'")')
-  echo ${_env_mapname}
-    
-}
-
-opt_list_envs() {
+function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
 
@@ -220,7 +160,7 @@ using the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
   "
 }
 
-opt_list_tasks() {
+function opt_list_tasks() {
   # TODO this is hard coded for now... maybe should be done differently...
   echo "The following tasks are supported by BenchBot: 
   "
@@ -253,7 +193,7 @@ LOCALISATION_MODE DETAILS:
   "
 }
 
-opt_select_env() {
+function opt_select_env() {
   # Only update the SELECTED_ENV variable if it is in the list of envs
   for e in $(_env_list); do
     if [ "$(echo "$e" | tr -d '[:space:]')" == "$1" ]; then
@@ -265,7 +205,7 @@ opt_select_env() {
   return 1
 }
 
-opt_select_task() {
+function opt_select_task() {
   # Only update the SELECTED_TASK variable if it is in the list of tasks
   for t in ${_task_list[@]}; do
     if [ "$t" == "$1" ]; then
@@ -316,27 +256,13 @@ if [ -z "$SELECTED_TASK" ]; then
   exit 1
 fi
 
+# Politely bail if there is an update available
+# TODO
+
 # We are going to run; last thing we need to do is pull out all useful data 
 # from the selected settings
-# TEMP HARD CODE
 selected_pose=$(_env_pose "$SELECTED_ENV")
-echo "SELECTED POSE!! ${selected_pose}"
-#selected_pose="[1, 0, 0, 0.8, -1.8, -2.5, 0.4]"
-# Remember to remove the \r from the _env_location output
-#selected_env_location=$(_env_location "$SELECTED_ENV" | sed 's/\r//')
-# selected_env_location=$(_env_location "$SELECTED_ENV")
-#selected_env_name=$(echo "$selected_env_location" | \
-#  sed 's/.*\/\([^\/]*\)$/\1/' | tr -d '[:space:]')
-# Find file in maps folder that ends with .umap then extract the map name
-# NOTE assumes only one .umap file
-#echo ${selected_env_location}
-#ls "/home/benchbot/isaac_sim/"
-#ls "${selected_env_location}"
-#selected_map_name=$(ls "${selected_env_location}/${selected_env_name}/Maps/*.umap" | sed 's/\(.*\).umap/\1/')
-#selected_map_name=$(_env_mapname)
-#selected_map_name=$(echo "$selected_env_name" | sed 's/\(.*\)_.*/\1/')
 selected_map_path=$(_env_map_path "$SELECTED_ENV")
-#"/Game/${selected_env_name}/Maps/${selected_map_name}"
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
@@ -388,8 +314,7 @@ ${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
   cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
-  cd $BENCHBOT_ENVS_PATH/dev_pkg && ./IsaacSimProject.sh \
-  '"$selected_map_path"' \
+  cd $BENCHBOT_ENVS_PATH && ./IsaacSimProject.sh '"$selected_map_path"' \
   -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
   -windowed -ResX=1024 -ResY=720 -vulkan -game' # NOTE: these have been collapsed into the one 
                                                 # container as Isaac seems to have no useful
