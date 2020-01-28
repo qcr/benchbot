@@ -43,25 +43,24 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources
 ENV ISAAC_SDK_PATH /home/benchbot/isaac_sdk
 ADD ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 
-# Install the Nvidia driver & Vulkan
-# TODO what about people who have installed a driver not in the default Ubuntu repositories... hmmm...
+# Install Nvidia software (Cuda & drivers)
+# TODO handle driver versions from graphics drivers PPA
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,display,graphics,utility
-RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add - && \
-    wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
-    apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
-    "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" && \
-    DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk
-
-# Install CUDA
-# TODO full CUDA install seems excessive, can this be trimmed down?
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
-    mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
+    mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
     add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /" && \
-    apt update && apt install -y "cuda-${CUDA_VERSION_SHORT}=${CUDA_VERSION}" && \
+    apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
+    "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" \
+    "cuda-${CUDA_VERSION_SHORT}=${CUDA_VERSION}" && \
     ln -sv lib /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux/lib64 && \
     ln -sv /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux /usr/local/cuda
+
+# Install Vulkan
+RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add - && \
+    wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
+    apt update && DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk
 
 # Install any remaining extra software
 RUN apt update && apt install -y git python-catkin-tools python-pip \

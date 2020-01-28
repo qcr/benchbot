@@ -64,9 +64,9 @@ build_err="\
 cuda_err="\
   Cuda Runtime version did not meet the minimum requirements:
 
-    At least version ${cuda_version_reqs[0]} is required to run BenchBot;
-    please install a suitable version on your host system. The recommended
-    method for installing is the following commands:
+    At least version ${cuda_version_reqs[0]} is required to run BenchBot; please install 
+    a suitable version on your host system. The recommended method for installing is the 
+    following commands:
 
       wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
       sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
