@@ -1,24 +1,20 @@
 #!/usr/bin/env bash
 
 ################################################################################
-########################## Settings & Pre-run Actions ##########################
+################### Load Helpers & Global BenchBot Settings ####################
 ################################################################################
 
-# Settings
-image_reference="benchbot/simulator:devel"
+abs_path=$(readlink -f $0)
+pushd $(dirname $abs_path) > /dev/null
+source .helpers
+
+################################################################################
+########################### Script Specific Settings ###########################
+################################################################################
+
 not_found_text="${colour_red}NOT FOUND${colour_nc}"
 
-# Default settings for getting the environments
-# NOTE: link should end with */download (default CloudStor link returns a web 
-# page...)
-# NOTE: this URL should point to a single-line text file describing the latest
-# version of the environments. Description is 3 whitespace separated fields:
-# - md5sum of latest env_*.zip
-# - URL for latest env_*.zip -
-# - timestamp of latest (field is optional / not used)
-default_envs_url="https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download"
-
-# Requirements (array of required, recommended)
+# Requirements as an array of (required, recommended)
 nvidia_driver_version_reqs=("418" "430")
 cuda_version_reqs=("10.0" "10.1")
 docker_version_reqs=("19.03" "19.03.2")
@@ -34,18 +30,12 @@ sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
 # Hostnames
 hostnames_header="# BENCHBOT SPECIFIC HOSTNAMES"
 hostnames_list=\
-"172.20.0.100 benchbot_roscore
-172.20.0.101 benchbot_simulator
-172.20.0.102 benchbot_supervisor"
+"$URL_ROS $HOSTNAME_ROS
+$URL_SIMULATOR $HOSTNAME_SIMULATOR
+$URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
-# Start in bin of benchbot_devel & ensure helpers exist
-abs_path=$(readlink -f $0)
-pushd $(dirname $abs_path) >/dev/null
-source .helpers
-
-# Symlinks
-symlink_path="/usr/local/bin"
-symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$symlink_path"
+# Command for install symlinks
+symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$LOCATION_SYMLINKS"
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -159,7 +149,7 @@ sdk_file_err="\
         https://developer.nvidia.com/isaac/downloads
 "
 symlink_prompt="\
-Symlinks in '$symlink_path' could not be found for the 3 programs (benchbot_install,
+Symlinks in '$LOCATION_SYMLINKS' could not be found for the 3 programs (benchbot_install,
 benchbot_run, & benchbot_submit). Adding these programs to your path makes running
 BenchBot solutions significantly easier to work with. They can be added via the 
 command:
@@ -194,7 +184,7 @@ function print_locate() {
 
 # Safely parse options input
 # TODO envs_url override & password protection
-envs_url=$default_envs_url
+envs_url=$URL_ENVS_DEFAULT
 
 # PART 1: Report the current state of the system
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
@@ -278,14 +268,14 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 # TODO for now we will use the develop branch but in the future this will be
 # looking at the master branch
 echo -ne "\nFetching latest hash for Benchbot Simulator ... "
-benchbot_simulator_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_simulator develop | awk '{print $1}')
+benchbot_simulator_hash=$(git ls-remote "$GIT_SIMULATOR" develop | awk '{print $1}')
 echo "$benchbot_simulator_hash."
 echo -ne "Fetching latest hash for Benchbot Supervisor ... "
-benchbot_supervisor_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_supervisor develop | awk '{print $1}')
+benchbot_supervisor_hash=$(git ls-remote "$GIT_SUPERVISOR" develop | awk '{print $1}')
 echo "$benchbot_supervisor_hash."
 
 # Get md5sum of the latest from the provided envs_url
-echo -ne "\eFetching md5sum & URL for latest version of environments ... "
+echo -ne "\nFetching md5sum & URL for latest version of environments ... "
 _envs_latest_data=$(wget -qO- "$envs_url")
 benchbot_envs_md5sum=$(echo "$_envs_latest_data" | cut -d' ' -f1)
 benchbot_envs_url=$(echo "$_envs_latest_data" | cut -d' ' -f2)
@@ -305,9 +295,9 @@ echo "Done."
 # PART 3: Build the docker image (non-interactive)
 header_block "PART 3: BUILDING THE DOCKER IMAGE" $colour_blue
 
-old_image_id=$(docker images -q -f "reference=$image_reference")
+old_image_id=$(docker images -q -f "reference=$DOCKER_TAG")
 pushd ..
-docker build -t "${image_reference}" \
+docker build -t "${DOCKER_TAG}" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" \
@@ -315,7 +305,9 @@ docker build -t "${image_reference}" \
   --build-arg ISAAC_SDK_TGZ="./isaac/isaac-sdk-2019.2-30e21124.tar.xz" \
   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
+  --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
+  --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" .
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
@@ -326,10 +318,10 @@ fi
 popd
 
 if [ ! -z "$old_image_id" ] && $(docker history -q ${old_image_id} | sed '1d' | \
-    grep -q $(docker images -q -f="reference=$image_reference")); then
-  docker tag ${old_image_id} ${image_reference}
+    grep -q $(docker images -q -f="reference=$DOCKER_TAG")); then
+  docker tag ${old_image_id} ${DOCKER_TAG}
   echo "${old_image_id}"
-  echo "Existing docker for \"$image_reference\" was a parent; tag has been re-attached to existing image"
+  echo "Existing docker for \"$DOCKER_TAG\" was a parent; tag has been re-attached to existing image"
 fi
 
 # PART 4: Run post build actions
@@ -349,8 +341,9 @@ if ! grep -xq "$hostnames_header" /etc/hosts; then
 fi
 
 # Install symlinks if they aren't found
-if [ ! -e "$symlink_path/benchbot_install" ] || [ ! -e "$symlink_path/benchbot_run" ] \
-    || [ ! -e "$symlink_path/benchbot_submit" ]; then
+if [ ! -e "$LOCATION_SYMLINKS/benchbot_install" ] || \
+    [ ! -e "$LOCATION_SYMLINKS/benchbot_run" ] || \
+    [ ! -e "$LOCATION_SYMLINKS/benchbot_submit" ]; then
   echo -e "${colour_yellow}$symlink_prompt${colour_nc}"
   read -p "Add the symlinks by running the above command (sudo required) (y/n)? " prompt
   if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then

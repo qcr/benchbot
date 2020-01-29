@@ -1,4 +1,40 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+################################################################################
+########################### Global BenchBot Settings ###########################
+################################################################################
+
+BRANCH_DEFAULT="develop"
+
+DOCKER_TAG="benchbot/simulator:devel"
+DOCKER_NETWORK="benchbot_network"
+
+FILENAME_ENV_METADATA=".benchbot_data_files"
+
+GIT_BENCHBOT="git@bitbucket.org:acrv/benchbot"
+GIT_SIMULATOR="git@bitbucket.org:acrv/benchbot_simulator"
+GIT_SUPERVISOR="git@bitbucket.org:acrv/benchbot_supervisor"
+
+HOSTNAME_ROS="benchbot_ros"
+HOSTNAME_SIMULATOR="benchbot_simulator"
+HOSTNAME_SUPERVISOR="benchbot_supervisor"
+
+LOCATION_SYMLINKS="/usr/local/bin"
+
+URL_DOCKER_SUBNET="172.20.0.0/24"
+URL_DOCKER_GATEWAY="172.20.0.254"
+URL_ROS="172.20.0.100"
+URL_SIMULATOR="172.20.0.101"
+URL_SUPERVISOR="172.20.0.102"
+
+# NOTE: link should end with */download (default CloudStor link returns a web 
+# page...)
+# NOTE: this URL should point to a single-line text file describing the latest
+# version of the environments. Description is 3 whitespace separated fields:
+# - md5sum of latest env_*.zip
+# - URL for latest env_*.zip -
+# - timestamp of latest (field is optional / not used)
+URL_ENVS_DEFAULT="https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download"
 
 ################################################################################
 ################## Coloured terminal output & heading blocks ###################
@@ -10,7 +46,7 @@ colour_yellow='\033[0;33m'
 colour_blue='\033[0;34m'
 colour_nc='\033[0m'
 
-header_block() {
+function header_block() {
   header_text=${1:-"Header Block"}
   colour=${2:-${colour_red}}  # Red
   header_char=${3:-"#"}
@@ -30,7 +66,7 @@ header_block() {
 ################################################################################
 
 
-eval_found() {
+function eval_found() {
   # $1 file: echos 0 if found, 1 if not found
   # NOTE: this is a real frail check if the file is valid at the moment...
   if [ -z "$1" ] || [ 1 != $(echo "$1" | wc -l) ]; then
@@ -40,7 +76,7 @@ eval_found() {
   fi
 }
 
-eval_version() {
+function eval_version() {
   # $1 = version, $2 = required, $3=recommended: echos 0 if >= recommended, 1 if >= required, 2 if below
   if [ "$1" = "" ] || [[ ! "$1" == [0-9]* ]]; then
     echo 2
@@ -53,7 +89,7 @@ eval_version() {
   fi
 }
 
-find_file() {
+function find_file() {
   # $1 = directory, $2 = md5sum, $3 = file regex command: echos matching filename
   md5_list=$(find "$1" -type f | xargs md5sum)
   file_match=$(echo "$md5_list" | awk '{print $2}' | eval ${3})
@@ -64,3 +100,43 @@ find_file() {
     echo "$md5_match"
   fi
 }
+
+################################################################################
+############### Checking if updates are available for components ###############
+################################################################################
+
+_BENCHBOT_BRANCH="$BRANCH_DEFAULT"
+function is_latest_benchbot() {
+  # Makes a poor assumption that we are in the repo...
+  current_hash=$(git rev-parse HEAD)
+  latest_hash=$(git ls-remote "git@bitbucket.org:acrv/benchbot" \
+    "$_BENCHBOT_BRANCH" | awk '{print $1}')
+  echo "Current: $current_hash"
+  echo "Latest: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
+  return
+}
+
+_BENCHBOT_SIMULATOR_BRANCH="$BRANCH_DEFAULT"
+function is_latest_benchbot_simulator() {
+  current_hash=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
+    docker run -t "$DOCKER_TAG" /bin/bash -c \
+    'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
+  latest_hash=$(git ls-remote "git@bitbucket.org:acrv/benchbot_simulator" \
+    "$_BENCHBOT_BRANCH" | awk '{print $1}')
+  echo "Current: $current_hash"
+  echo "Latest: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
+  return
+}
+
+# benchbot_simulator
+# benchbot_supervisor
+
+# envs_latest
+
+# benchbot_api
+# benchbot_examples
+
+# benchbot_eval
+

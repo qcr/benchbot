@@ -76,8 +76,7 @@ RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
 # do this with your private key. This problem will "go away" as we get to 
 # release & things move to public repos (i.e. no key needed) but for now we
 # should probably create a dummy bitbucket account with a shared private key
-# in the "benchbot_devel" (to keep install "just working" for anyone using the
-# repo)
+# in the "benchbot" (to keep install "just working" for anyone using the repo)
 # TODO maybe just give the repos public access & be done with it???
 ENV BENCHBOT_SIMULATOR_PATH /home/benchbot/benchbot_simulator
 ENV BENCHBOT_ENVS_PATH /home/benchbot/benchbot_envs
@@ -88,16 +87,16 @@ RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts
 # TODO remove Ben's debugging toolset!
 RUN sudo apt update && sudo apt install -y vim ipython tmux iputils-ping
 
-# Ordered by how expensive installation is ...
-# TODO this is brittle in that branch is hard coded here, but we got the *_HASH values from a branch
-# which is hard coded separately in the install script (if they don't match... BOOM... bad things...)
+# Install benchbot components, ordered by how expensive installation is
+ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH
-RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_simulator $BENCHBOT_SIMULATOR_PATH && \
+RUN git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
     source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
     ./bazelros build //apps/benchbot_simulator
+ARG BENCHBOT_SUPERVISOR_GIT
 ARG BENCHBOT_SUPERVISOR_HASH
-RUN git clone --branch develop git@bitbucket.org:acrv/benchbot_supervisor $BENCHBOT_SUPERVISOR_PATH && \
+RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     pushd $BENCHBOT_SUPERVISOR_PATH && git checkout $BENCHBOT_SUPERVISOR_HASH && \
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \

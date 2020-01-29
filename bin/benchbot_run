@@ -1,24 +1,18 @@
 #!/usr/bin/env bash
 
 ################################################################################
-########################## Settings & Pre-run Actions ##########################
+################### Load Helpers & Global BenchBot Settings ####################
 ################################################################################
 
-IMAGE_REFERENCE="benchbot/simulator:devel"
-NETWORK_NAME="benchbot_network"
-ENV_METADATA_LOCATION=".benchbot_data_files"
-
-SUBNET="172.20.0.0/24"
-IP_RANGE="172.20.0.0/24"
-GATEWAY="172.20.0.254"
-ROS_ADDRESS="172.20.0.100"
-SIMULATOR_ADDRESS="172.20.0.101"
-SUPERVISOR_ADDRESS="172.20.0.102"
-
-# Start in bin of benchbot_devel & ensure helpers exist
 abs_path=$(readlink -f $0)
-pushd $(dirname $abs_path) >/dev/null
+pushd $(dirname $abs_path) > /dev/null
 source .helpers
+
+################################################################################
+########################### Script Specific Settings ###########################
+################################################################################
+
+# empty
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -98,8 +92,8 @@ _env_data_cached=
 function _env_data() {
   # This is a little gross... sorry.
   if [ -z "$_env_data_cached" ]; then
-  _env_data_cached=$(docker run -t $IMAGE_REFERENCE /bin/bash -c \
-    'find $BENCHBOT_ENVS_PATH/$ENV_METADATA_LOCATION -name "*.yaml"\
+  _env_data_cached=$(docker run -t $DOCKER_TAG /bin/bash -c \
+    'find $BENCHBOT_ENVS_PATH/$FILENAME_ENV_METADATA -name "*.yaml"\
     | while read env; do echo "$(basename $env)"; cat $env; done')
   fi
   echo "$_env_data_cached"
@@ -222,7 +216,7 @@ function opt_select_task() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o he:t: --long help,env:,task:,list-envs,list-tasks \
+parse_out=$(getopt -o he:t:fu --long help,env:,task:,list-envs,list-tasks,force-updateless,update-check \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -291,9 +285,9 @@ if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
 fi
 docker system prune -f
 echo -e "Cleaned!\n"
-docker network create "$NETWORK_NAME" --subnet="$SUBNET" \
-  --ip-range="$IP_RANGE" --gateway="$GATEWAY"
-echo -e "Created $NETWORK_NAME.\n"
+docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
+  --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
+echo -e "Created $DOCKER_NETWORK.\n"
 
 # Create reusable parts to ensure our containers run with consistent settings
 xhost +local:root
@@ -301,19 +295,19 @@ ros_master_host="benchbot_roscore"
 docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
             -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
-            --network $NETWORK_NAME --name=\$name --hostname=\$name"
+            --network $DOCKER_NETWORK --name=\$name --hostname=\$name"
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 name="$ros_master_host"
-${docker_run//'$name'/$name} --ip "$ROS_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 name="benchbot_simulator"
 # BACKUP REPLACEMENT LINE 342 (run environment)
 #cd '"$PAK_PATH"' && ./IsaacSimProject.sh \
 #cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
-${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG /bin/bash -c \
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
   cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
@@ -333,14 +327,14 @@ ${docker_run//'$name'/$name} --ip "$SIMULATOR_ADDRESS" -d $IMAGE_REFERENCE /bin/
                                                 # Note removed -game flag
 
 name="benchbot_supervisor"
-${docker_run//'$name'/$name} --ip "$SUPERVISOR_ADDRESS"  $IMAGE_REFERENCE /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR"  $DOCKER_TAG /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
   '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
   '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
 
 name="benchbot_debug"
-# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $IMAGE_REFERENCE
-# ${docker_run//'$name'/$name} -i $IMAGE_REFERENCE
+# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG
+# ${docker_run//'$name'/$name} -i $DOCKER_TAG
 xhost -local:root
 
 ################################################################################

@@ -1,4 +1,4 @@
-# BenchBot Development Software Stack
+# BenchBot Software Stack
 
 This repository contains the software stack needed to develop solutions for BenchBot challenges on your local machine. It builds a mammoth Docker image (~190GB) that contains all of the software components needed to perform benchmarking in realistic 3D simulation, with all of the interfacing & configuration done for you. 
 
