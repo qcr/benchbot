@@ -282,13 +282,15 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 # Get the latest commit hashes for each of our git repos
 # TODO for now we will use the develop branch but in the future this will be
 # looking at the master branch
-echo -ne "\nFetching latest hashes for Benchbot Simulator & Supervisor ... "
+echo -ne "\nFetching latest hash for Benchbot Simulator ... "
 benchbot_simulator_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_simulator develop | awk '{print $1}')
+echo "$benchbot_simulator_hash."
+echo -ne "Fetching latest hash for Benchbot Supervisor ... "
 benchbot_supervisor_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_supervisor develop | awk '{print $1}')
-echo "Done."
+echo "$benchbot_supervisor_hash."
 
 # Get md5sum of the latest from the provided envs_url
-echo -n "Fetching md5sum & URL for latest version of environments ... "
+echo -ne "\eFetching md5sum & URL for latest version of environments ... "
 _envs_latest_data=$(wget -qO- "$envs_url")
 benchbot_envs_md5sum=$(echo "$_envs_latest_data" | cut -d' ' -f1)
 benchbot_envs_url=$(echo "$_envs_latest_data" | cut -d' ' -f2)
@@ -310,7 +312,7 @@ header_block "PART 3: BUILDING THE DOCKER IMAGE" $colour_blue
 
 old_image_id=$(docker images -q -f "reference=$image_reference")
 pushd ..
-docker build --no-cache -t "${image_reference}" \
+docker build -t "${image_reference}" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" \
