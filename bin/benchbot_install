@@ -349,8 +349,8 @@ if ! grep -xq "$hostnames_header" /etc/hosts; then
 fi
 
 # Install symlinks if they aren't found
-if [ ! -L "$symlink_path/benchbot_install" ] || [ ! -L "$symlink_path/benchbot_run" ] \
-    || [ ! -L "$symlink_path/benchbot_submit" ]; then
+if [ ! -e "$symlink_path/benchbot_install" ] || [ ! -e "$symlink_path/benchbot_run" ] \
+    || [ ! -e "$symlink_path/benchbot_submit" ]; then
   echo -e "${colour_yellow}$symlink_prompt${colour_nc}"
   read -p "Add the symlinks by running the above command (sudo required) (y/n)? " prompt
   if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
