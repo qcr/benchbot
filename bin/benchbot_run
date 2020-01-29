@@ -18,12 +18,7 @@ SUPERVISOR_ADDRESS="172.20.0.102"
 # Start in bin of benchbot_devel & ensure helpers exist
 abs_path=$(readlink -f $0)
 pushd $(dirname $abs_path) >/dev/null
-if [ ! -f ../.helpers/bash ]; then
-  pushd .. >/dev/null
-  git submodule update --init --recursive
-  popd >/dev/null
-fi
-source ../.helpers/bash
+source .helpers
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -143,6 +138,10 @@ function _env_pose() {
   return 1
 }
 
+function check_updates() {
+  echo "TODO implement update check"
+}
+
 function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
@@ -230,15 +229,19 @@ eval set -- "$parse_out"
 while true; do
   case "$1" in
     -h|--help)
-      echo "$usage_text" ; shift ; exit 0 ;;
+      echo "$usage_text" ; exit 0 ;;
     --list-envs)
-      opt_list_envs ; shift ; exit 0 ;;
+      opt_list_envs ; exit 0 ;;
     --list-tasks)
-      opt_list_tasks ; shift ; exit 0 ;;
+      opt_list_tasks ; exit 0 ;;
     -e|--env)
       opt_select_env "$2"; shift 2 ;;
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
+    -f|--force-updateless)
+      echo "TODO: implement flag"; shift ;;
+    -u|--update-check)
+      check_updates ; exit 0 ;;
     --)
       shift ; break ;;
     *)
