@@ -66,9 +66,15 @@ OPTION DETAILS:
                     semantic_slam:passive:ground_truth
 
             (Use --list-tasks to see a list of supported task options)
-    -p, --pkg
-            FOR ADMIN DEBUG ONLY! Choose which package you wish to use (test or dev).
-            This is to be used in association with --list-envs and --env. Default option will be dev.
+    -f, --force-updateless
+            BenchBot will exit if it detects updates to the software stack. Set
+            this flag to continue using outdated software temporarily. Note that
+            limited support is available for outdated software stacks, and the
+            challenge will run on the latest software stack. You should only use
+            this flag when it is inconvenient to update immediately.
+    -u,--update-check
+            Check for available updates to the BenchBot software stack and exit
+            immediately.
 
 FURTHER DETAILS:
     
@@ -92,7 +98,7 @@ _env_data_cached=
 function _env_data() {
   # This is a little gross... sorry.
   if [ -z "$_env_data_cached" ]; then
-  _env_data_cached=$(docker run -t $DOCKER_TAG /bin/bash -c \
+  _env_data_cached=$(docker run --rm -t $DOCKER_TAG /bin/bash -c \
     'find $BENCHBOT_ENVS_PATH/$FILENAME_ENV_METADATA -name "*.yaml"\
     | while read env; do echo "$(basename $env)"; cat $env; done')
   fi
@@ -216,10 +222,12 @@ function opt_select_task() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o he:t:fu --long help,env:,task:,list-envs,list-tasks,force-updateless,update-check \
+parse_out=$(getopt -o he:t:fu --long help,env:,task:,list-envs,list-tasks,force-updateless,updates-check \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+updates_exit=
+updates_skip=
 while true; do
   case "$1" in
     -h|--help)
@@ -233,9 +241,9 @@ while true; do
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
     -f|--force-updateless)
-      echo "TODO: implement flag"; shift ;;
-    -u|--update-check)
-      check_updates ; exit 0 ;;
+      updates_skip=1 ; shift ;;
+    -u|--updates-check)
+      updates_exit=1 ; shift ;;
     --)
       shift ; break ;;
     *)
@@ -244,28 +252,49 @@ while true; do
 done
 
 # Bail if we are running & they didn't give us both an environment & task
-if [ -z "$SELECTED_ENV" ]; then 
+if [ -z "$updates_exit" ] && [ -z "$SELECTED_ENV" ]; then 
   echo "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
   exit 1
 fi
-if [ -z "$SELECTED_TASK" ]; then 
+if [ -z "$updates_exit" ] && [ -z "$SELECTED_TASK" ]; then 
   echo "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
   exit 1
 fi
 
-# Politely bail if there is an update available
-# TODO
+################################################################################
+##################### Run the simulator & BenchBot backend #####################
+################################################################################
 
-# We are going to run; last thing we need to do is pull out all useful data 
-# from the selected settings
+# Check for & handles updates to the BenchBot software stack
+header_block "CHECKING FOR BENCHBOT SOFTWARE STACK UPDATES" ${colour_blue}
+
+if [ ! -z "$updates_skip" ]; then 
+  echo -e "${colour_yellow}Skipping ...${colour_nc}"
+elif ! update_check; then 
+  exit 1; 
+fi
+if [ ! -z "$updates_exit" ]; then exit 0; fi
+
+# Clean up any BenchBot remnants
+# TODO make this quieter when I am confident it works as expected...
+header_block "CLEANING UP OLD BENCHBOT REMNANTS" ${colour_blue}
+
+if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
+  echo "Stopped the following containers:"
+  docker stop $(docker ps -a -q)
+fi
+echo -e "\nDeleted the following containers:"
+docker system prune -f
+echo -e "\nFinished cleaning!\n"
+
+# Run the BenchBot software stack
+header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
+
+# Pull out all useful data from the selected settings
 selected_pose=$(_env_pose "$SELECTED_ENV")
 selected_map_path=$(_env_map_path "$SELECTED_ENV")
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
-
-################################################################################
-##################### Run the simulator & BenchBot backend #####################
-################################################################################
 
 # Print some configuration information
 echo "Running the BenchBot system with the following settings:
@@ -278,18 +307,12 @@ echo "Running the BenchBot system with the following settings:
     Observations set:     $selected_observations
 "
 
-# Clean up before we start, & create the network
-echo "Cleaning up any Docker containers still lying around ..."
-if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
-  docker stop $(docker ps -a -q)
-fi
-docker system prune -f
-echo -e "Cleaned!\n"
+# Create the network for BenchBot software stack
 docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
 echo -e "Created $DOCKER_NETWORK.\n"
 
-# Create reusable parts to ensure our containers run with consistent settings
+# Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root
 ros_master_host="benchbot_roscore"
 docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
@@ -304,9 +327,6 @@ ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 name="benchbot_simulator"
-# BACKUP REPLACEMENT LINE 342 (run environment)
-#cd '"$PAK_PATH"' && ./IsaacSimProject.sh \
-#cd $ISAAC_SIM_PATH && ./Engine/Binaries/Linux/UE4Editor IsaacSimProject \
 ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG /bin/bash -c \
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
@@ -327,7 +347,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG /bin/bash -c \
                                                 # Note removed -game flag
 
 name="benchbot_supervisor"
-${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR"  $DOCKER_TAG /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
   '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
   '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
@@ -337,10 +357,8 @@ name="benchbot_debug"
 # ${docker_run//'$name'/$name} -i $DOCKER_TAG
 xhost -local:root
 
-################################################################################
-####################### Messages suggesting how to view  #######################
-################################################################################
+header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
-# TODO
+docker attach benchbot_supervisor
 
 # TODO killing the script should stop all of the containers!!! (capture SIGINT)

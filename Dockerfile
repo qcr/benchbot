@@ -104,7 +104,9 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
 
 # Install environments from a *.zip containing pre-compiled binaries
 ARG BENCHBOT_ENVS_MD5SUM
+ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
 ARG BENCHBOT_ENVS_URL
+ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
 RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
     test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
     echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
