@@ -4,7 +4,7 @@
 ########################### Global BenchBot Settings ###########################
 ################################################################################
 
-BRANCH_DEFAULT="develop"
+BRANCH_DEFAULT="master"
 
 DOCKER_TAG="benchbot/simulator:devel"
 DOCKER_NETWORK="benchbot_network"
