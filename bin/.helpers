@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+
+################################################################################
+########################### Global BenchBot Settings ###########################
+################################################################################
+
+BRANCH_DEFAULT="master"
+
+DOCKER_TAG="benchbot/simulator:devel"
+DOCKER_NETWORK="benchbot_network"
+
+FILENAME_ENV_METADATA=".benchbot_data_files"
+
+GIT_BENCHBOT="git@bitbucket.org:acrv/benchbot"
+GIT_SIMULATOR="git@bitbucket.org:acrv/benchbot_simulator"
+GIT_SUPERVISOR="git@bitbucket.org:acrv/benchbot_supervisor"
+
+HOSTNAME_ROS="benchbot_ros"
+HOSTNAME_SIMULATOR="benchbot_simulator"
+HOSTNAME_SUPERVISOR="benchbot_supervisor"
+
+LOCATION_SYMLINKS="/usr/local/bin"
+
+URL_DOCKER_SUBNET="172.20.0.0/24"
+URL_DOCKER_GATEWAY="172.20.0.254"
+URL_ROS="172.20.0.100"
+URL_SIMULATOR="172.20.0.101"
+URL_SUPERVISOR="172.20.0.102"
+
+# NOTE: link should end with */download (default CloudStor link returns a web 
+# page...)
+# NOTE: this URL should point to a single-line text file describing the latest
+# version of the environments. Description is 3 whitespace separated fields:
+# - md5sum of latest env_*.zip
+# - URL for latest env_*.zip -
+# - timestamp of latest (field is optional / not used)
+URL_ENVS_INFO_DEFAULT="https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download"
+
+################################################################################
+################## Coloured terminal output & heading blocks ###################
+################################################################################
+
+colour_red='\033[0;31m'
+colour_green='\033[0;32m'
+colour_yellow='\033[0;33m'
+colour_blue='\033[0;34m'
+colour_nc='\033[0m'
+
+function header_block() {
+  header_text=${1:-"Header Block"}
+  colour=${2:-${colour_red}}  # Red
+  header_char=${3:-"#"}
+
+  len=${#header_text}
+  let "len_left=(78 - $len)/2" "len_right=(79 - $len)/2"
+
+  echo -e "$colour"
+  printf "%.0s${header_char}" $(seq 1 80); printf '\n'
+  printf "%.0s${header_char}" $(seq 1 $len_left); printf " $header_text "; printf "%.0s${header_char}" $(seq $len_right); printf '\n'
+  printf "%.0s${header_char}" $(seq 1 80)
+  echo -e "$colour_nc\n"
+}
+
+################################################################################
+################### Checking if dependencies exist / are met ###################
+################################################################################
+
+
+function eval_found() {
+  # $1 file: echos 0 if found, 1 if not found
+  # NOTE: this is a real frail check if the file is valid at the moment...
+  if [ -z "$1" ] || [ 1 != $(echo "$1" | wc -l) ]; then
+    echo 1
+  else
+    echo 0
+  fi
+}
+
+function eval_version() {
+  # $1 = version, $2 = required, $3=recommended: echos 0 if >= recommended, 1 if >= required, 2 if below
+  if [ "$1" = "" ] || [[ ! "$1" == [0-9]* ]]; then
+    echo 2
+  elif [ "$1" = "$3" ] || [ "$3" = $(echo -e "$1\n$3" | sort -V | head -n 1) ]; then
+    echo 0
+  elif [ "$1" = "$2" ] || [ "$2" = $(echo -e "$1\n$2" | sort -V | head -n 1) ]; then
+    echo 1
+  else
+    echo 2
+  fi
+}
+
+function find_file() {
+  # $1 = directory, $2 = md5sum, $3 = file regex command: echos matching filename
+  md5_list=$(find "$1" -type f | xargs md5sum)
+  file_match=$(echo "$md5_list" | awk '{print $2}' | eval ${3})
+  md5_match=$([ -z "$2" ] && echo "" || echo "$md5_list" | grep "$2" | awk '{print $2}')
+  if [ ! -z "$file_match" ]; then
+    echo "$file_match"
+  elif [ ! -z "$md5_match" ]; then
+    echo "$md5_match"
+  fi
+}
+
+################################################################################
+############### Checking if updates are available for components ###############
+################################################################################
+
+_BENCHBOT_BRANCH="$BRANCH_DEFAULT"
+function is_latest_benchbot() {
+  # Makes a poor assumption that we are in the repo...
+  current_hash=$(git rev-parse HEAD)
+  latest_hash=$(git ls-remote "$GIT_BENCHBOT" \
+    "$_BENCHBOT_BRANCH" | awk '{print $1}')
+  echo "Current BenchBot: $current_hash"
+  echo "Latest BenchBot: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
+  return
+}
+
+_BENCHBOT_SIMULATOR_BRANCH="$BRANCH_DEFAULT"
+function is_latest_benchbot_simulator() {
+  current_hash=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG" /bin/bash -c \
+    'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
+  latest_hash=$(git ls-remote "$GIT_SIMULATOR" \
+    "$_BENCHBOT_SIMULATOR_BRANCH" | awk '{print $1}')
+  echo "Current BenchBot Simulator: $current_hash"
+  echo "Latest BenchBot Simulator: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
+  return
+}
+
+_BENCHBOT_SUPERVISOR_BRANCH="$BRANCH_DEFAULT"
+function is_latest_benchbot_supervisor() {
+  current_hash=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG" /bin/bash -c \
+    'cd $BENCHBOT_SUPERVISOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
+  latest_hash=$(git ls-remote "$GIT_SUPERVISOR" \
+    "$_BENCHBOT_SUPERVISOR_BRANCH" | awk '{print $1}')
+  echo "Current BenchBot Supervisor: $current_hash"
+  echo "Latest BenchBot Supervisor: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
+  return
+}
+
+function is_latest_benchbot_envs() {
+  url=${1:-$URL_ENVS_INFO_DEFAULT}
+  current=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG" /bin/bash -c \
+    'echo -n "$BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_URL"')
+  latest=$(wget -qO- "$url" | cut -d ' ' -f 1,2)
+  echo "Current BenchBot Environments: $current"
+  echo "Latest BenchBot Environments: $latest"
+  [ "$current" == "$latest" ]
+  return
+}
+
+function latest_version_info() {
+  # Expects the output of a is_latest_* call on stdin (use a pipe)
+  echo "$(</dev/stdin)" | grep "Latest" | sed 's/[^:]*:\s*\(.*\)/\1/' | \
+    sed 's/\s*$//'
+}
+
+# TODO:
+# benchbot_api
+# benchbot_examples
+# benchbot_eval
+
+function update_check() {
+  # TODO: function could be implemented much more concisely...
+  _valid_str="Up-to-date"
+  _invalid_str="Outdated"
+  _valid_text="BenchBot is up-to-date."
+  _invalid_text=\
+"WARNING: Please install the latest BenchBot software stack by re-running the 
+\"benchbot_install\" command."
+
+  echo -ne "Checking BenchBot version ...\t\t\t"
+  is_latest_benchbot > /dev/null
+  benchbot_valid=$?
+  [ $benchbot_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  echo -ne "Checking BenchBot Simulator version ...\t\t"
+  is_latest_benchbot_simulator > /dev/null
+  simulator_valid=$?
+  [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  echo -ne "Checking BenchBot Supervisor version ...\t"
+  is_latest_benchbot_supervisor > /dev/null
+  supervisor_valid=$?
+  [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  echo -ne "Checking BenchBot Environments version ...\t"
+  is_latest_benchbot_envs > /dev/null
+  environments_valid=$?
+  [ $environments_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+
+  [ $benchbot_valid -eq 0 ] && [ $simulator_valid -eq 0 ] && \
+    [ $supervisor_valid -eq 0 ] && [ $environments_valid -eq 0 ]
+  valid=$?
+  if [ $valid -eq 0 ]; then 
+    echo -e "\n$colour_green$_valid_text$colour_nc"
+  else
+    echo -e "\n$colour_yellow$_invalid_text$colour_nc"; 
+  fi
+  return $valid
+}

@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 
 ################################################################################
-########################## Settings & Pre-run Actions ##########################
+################### Load Helpers & Global BenchBot Settings ####################
 ################################################################################
 
-# Settings
-image_reference="benchbot/simulator:devel"
-# tmp_name="benchbot_manual"
+abs_path=$(readlink -f $0)
+pushd $(dirname $abs_path) > /dev/null
+source .helpers
+
+################################################################################
+########################### Script Specific Settings ###########################
+################################################################################
+
 not_found_text="${colour_red}NOT FOUND${colour_nc}"
 
-# Requirements (array of required, recommended)
+# Requirements as an array of (required, recommended)
 nvidia_driver_version_reqs=("418" "430")
 cuda_version_reqs=("10.0" "10.1")
 docker_version_reqs=("19.03" "19.03.2")
@@ -21,39 +26,32 @@ free_space_recs=("256G", 256000000)
 # File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
 isaac_srcs_path="../isaac"
 sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
-sim_file_search=("5b8b704b75050f513d52758a44e87e3a" "grep 'Sim' | grep -v 'gitdeps'")
-sim_gitdeps_file_search=("448ec1f592ebe74fdf507b10e01cccc1" "grep 'Sim' | grep 'gitdeps'")
 
 # Hostnames
 hostnames_header="# BENCHBOT SPECIFIC HOSTNAMES"
 hostnames_list=\
-"172.20.0.100 benchbot_roscore
-172.20.0.101 benchbot_simulator
-172.20.0.102 benchbot_supervisor"
+"$URL_ROS $HOSTNAME_ROS
+$URL_SIMULATOR $HOSTNAME_SIMULATOR
+$URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
-# Start in bin of benchbot_devel & ensure helpers exist
-abs_path=$(readlink -f $0)
-pushd $(dirname $abs_path) >/dev/null
-if [ ! -f ../.helpers/bash ]; then
-  pushd .. >/dev/null
-  git submodule update --init --recursive
-  popd >/dev/null
-fi
-source ../.helpers/bash
-
-# Symlinks
-symlink_path="/usr/local/bin"
-symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$symlink_path"
+# Command for install symlinks
+symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$LOCATION_SYMLINKS"
 
 ################################################################################
 ########################### Definitions for messages ###########################
 ################################################################################
+build_err="\
+  Ensure that Docker has been installed correctly AND that you can run Docker 
+  WITHOUT root access (there is no need to ever run Docker with root). See 
+  https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
+  fix this.
+"
 cuda_err="\
   Cuda Runtime version did not meet the minimum requirements:
 
-    At least version ${cuda_version_reqs[0]} is required to run BenchBot;
-    please install a suitable version on your host system. The recommended
-    method for installing is the following commands:
+    At least version ${cuda_version_reqs[0]} is required to run BenchBot; please install 
+    a suitable version on your host system. The recommended method for installing is the 
+    following commands:
 
       wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
       sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -82,6 +80,13 @@ docker_err="\
 
       sudo groupadd docker
       sudo usermod -aG docker $USER
+"
+envs_err="\
+  Ensure that URL: "'$envs_url'"
+  points to a single-line text file with whitespace-separated fields. The first 
+  field contains the md5sum of the latest envs_*.zip, second field is URL of 
+  envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
+  internet connection also helps!
 "
 free_space_warn="\
 
@@ -143,40 +148,8 @@ sdk_file_err="\
     (you will have to create an account, accept a license, & sign in first):
         https://developer.nvidia.com/isaac/downloads
 "
-sim_file_err="\
-  Isaac SIM was not found in the './isaac/' directory:
-
-    A *.tgz file was not found in the './isaac/' directory that matched the 
-    below MD5sum, or was a unique return for the below grep statement:
-        ${sim_gitdeps_file_search[0]}
-        ${sim_gitdeps_file_search[1]}
-
-    To get access to the UE4 based Isaac SIM you must go through a number of
-    registration steps. The steps are described in detail at
-    https://docs.nvidia.com/isaac/isaac_sim/setup.html#installing-isaac-sim.
-    
-    Once you have registered an account with Unreal Engine & linked your GitHub
-    account with Unreal, it is recommended to run the following commands to get
-    a local *.tgz of the Isaac SIM:
-
-      git clone --depth 1 --single-branch --branch IsaacSim_1.2 https://github.com/NvPhysX/UnrealEngine IsaacSim
-      pushd IsaacSim && git archive --format=tar.gz -o ../IsaacSim.tgz HEAD && popd
-      rm -rf IsaacSim
-"
-sim_gitdeps_file_err="\
-  Isaac SIM Gitdeps addon was not found in the './isaac/' directory:
-
-    A *.tgz file was not found in the './isaac/' directory that matched the 
-    below MD5sum, or was a unique return for the below grep statement:
-        ${sim_gitdeps_file_search[0]}
-        ${sim_gitdeps_file_search[1]}
-
-    Download the latest version of the corresponding file at the website below
-    (you will have to create an account, accept a license, & sign in first):
-        https://developer.nvidia.com/isaac/downloads
-"
 symlink_prompt="\
-Symlinks in '$symlink_path' could not be found for the 3 programs (benchbot_install,
+Symlinks in '$LOCATION_SYMLINKS' could not be found for the 3 programs (benchbot_install,
 benchbot_run, & benchbot_submit). Adding these programs to your path makes running
 BenchBot solutions significantly easier to work with. They can be added via the 
 command:
@@ -185,8 +158,80 @@ command:
 "
 
 ################################################################################
+######################## Helper functions for commands #########################
+################################################################################
+
+function print_version() {
+  cs=($colour_green $colour_yellow $colour_red)
+  printf '%-25s' "$1"; printf "${cs[$5]}%-15s" "$2";
+  printf "($3+ required, $4 recommended)${colour_nc}\n"
+}
+
+function print_free_space() {
+  cs=($colour_green $colour_yellow)
+  printf '%-25s' "$1"; printf "${cs[$4]}%-15s" "$2"; printf "($3 recommended)${colour_nc}\n"
+}
+
+function print_locate() {
+  cs=($colour_green $colour_red)
+  printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 -eq 0 ] && echo "$2" || echo "$not_found_text")";
+}
+
+
+################################################################################
 ############################# Installation process #############################
 ################################################################################
+
+# Safely parse options input
+input=$@
+parse_out=$(getopt -o he:fu --long help,envs-url:,force-clean,uninstall,no-update \
+  -n "$(basename "$abs_path")" -- "$@")
+if [ $? != 0 ]; then exit 1; fi
+eval set -- "$parse_out"
+updates_skip=
+envs_url=$URL_ENVS_INFO_DEFAULT
+while true; do
+  case "$1" in
+    -h|--help)
+      echo "$usage_text" ; exit 0 ;;
+    -e|--envs-url)
+      envs_url="$2"; echo "TODO envs_url untested & password unimplemented..."
+      shift 2 ;;
+    -f|--force-clean)
+      echo "TODO forcing clean install unimplemented..."; shift ;;
+    -u|--uninstall)
+      updates_skip=1
+      echo "TODO uninstalling unimplemented..."; shift ;;
+    --no-update)
+      updates_skip=1; shift ;;
+    --)
+      shift ; break ;;
+    *)
+      echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
+  esac
+done
+
+# Pre-install
+if [ -z "$updates_skip" ]; then
+  header_block "CHECKING BENCHBOT SCRIPTS VERSION" ${colour_blue}
+
+  echo -e "\nFetching latest hash for Benchbot scripts ... "
+  _benchbot_info=$(is_latest_benchbot)
+  is_latest=$?
+  benchbot_latest_hash=$(echo "$_benchbot_info" | latest_version_info | \
+    cut -d ' ' -f 1)
+  echo -e "\t\t$benchbot_latest_hash."
+
+  if [ $is_latest -eq 0 ]; then 
+    echo -e "\n${colour_green}BenchBot scripts are up-to-date.${colour_nc}"
+  else
+    echo -e "\n${colour_yellow}BenchBot scripts are outdated. Updating &"\
+      "restarting install script ...\n"
+    git fetch --all && git checkout "$benchbot_latest_hash"
+    echo -e "\nDone.${colour_nc}"
+    exec $0 $input --no-update
+  fi
+fi
 
 # PART 1: Report the current state of the system
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
@@ -215,45 +260,18 @@ free_space_blocks=$(df | grep '% /$' | awk '{print $4}')
 free_space_valid=$?
 
 sdk_file=$(find_file "$isaac_srcs_path" "${sdk_file_search[0]}" "${sdk_file_search[1]}")
-sim_file=$(find_file "$isaac_srcs_path" "${sim_file_search[0]}" "${sim_file_search[1]}")
-sim_gitdeps_file=$(find_file "$isaac_srcs_path" "${sim_gitdeps_file_search[0]}" "${sim_gitdeps_file_search[1]}")
-
 [ $(eval_found "$sdk_file") -lt 1 ]
 sdk_file_valid=$?
-[ $(eval_found "$sim_file") -lt 1 ]
-sim_file_valid=$?
-[ $(eval_found "$sim_gitdeps_file") -lt 1 ]
-sim_gitdeps_file_valid=$?
 
 # Print out what we found & what we thought
-print_version() {
-  cs=($colour_green $colour_yellow $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$5]}%-15s" "$2";
-  printf "($3+ required, $4 recommended)${colour_nc}\n"
-}
-
 print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]} $nvidia_driver_valid
 print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]} $cuda_valid
 print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]} $docker_valid
 print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]} $nvidia_container_valid
 printf "\n"
-
-print_free_space() {
-  cs=($colour_green $colour_yellow)
-  printf '%-25s' "$1"; printf "${cs[$4]}%-15s" "$2"; printf "($3 recommended)${colour_nc}\n"
-}
-
 print_free_space "Free space in '/':" "$free_space_human" ${free_space_recs[0]} $free_space_valid
 printf "\n"
-
-print_locate() {
-  cs=($colour_green $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 -eq 0 ] && echo "$2" || echo "$not_found_text")";
-}
-
 print_locate "Isaac SDK:" "$sdk_file" $sdk_file_valid
-print_locate "Isaac Sim:" "$sim_file" $sim_file_valid
-print_locate "Isaac Sim (gitdeps):" "$sim_gitdeps_file" $sim_gitdeps_file_valid
 printf "\n\n"
 
 # Either proceed or let them know why we won't be
@@ -264,8 +282,6 @@ if [ $cuda_valid -gt 0 ]; then err_string+="ERROR:$cuda_err\n\n"; fi
 if [ $docker_valid -gt 0 ]; then err_string+="ERROR:$docker_err\n\n"; fi
 if [ $nvidia_container_valid -gt 0 ]; then err_string+="ERROR:$nvidia_container_err\n\n"; fi
 if [ $sdk_file_valid -gt 0 ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
-if [ $sim_file_valid -gt 0 ]; then err_string+="ERROR:$sim_file_err\n\n"; fi
-if [ $sim_gitdeps_file_valid -gt 0 ]; then err_string+="ERROR:$sim_gitdeps_file_err\n\n"; fi
 
 warn_string=""
 if [ $free_space_valid -gt 0 ]; then warn_string+="WARN:$free_space_warn\n\n"; fi
@@ -292,53 +308,73 @@ fi
 echo ""
 echo "TODO: Should we be enforcing 18.04?"
 
-# PART 2: Build the docker image (non-interactive)
-header_block "PART 2: BUILDING THE DOCKER IMAGE" $colour_blue
+# PART 2: Fetching information about latest benchbot versions
+header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-# TODO for now we will use the develop branch but in the future this will be
-# looking at the master branch
-benchbot_envs_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_envs_devel develop | awk '{print $1}')
-benchbot_simulator_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_simulator develop | awk '{print $1}')
-benchbot_supervisor_hash=$(git ls-remote git@bitbucket.org:acrv/benchbot_supervisor develop | awk '{print $1}')
+echo -e "\nFetching latest hash for Benchbot Simulator ... "
+benchbot_simulator_hash=$(is_latest_benchbot_simulator | latest_version_info)
+echo -e "\t\t$benchbot_simulator_hash."
+echo "Fetching latest hash for Benchbot Supervisor ... "
+benchbot_supervisor_hash=$(is_latest_benchbot_supervisor | latest_version_info)
+echo -e "\t\t$benchbot_supervisor_hash."
 
-old_image_id=$(docker images -q -f "reference=$image_reference")
+# Get md5sum of the latest from the provided envs_url
+echo -e "\nFetching md5sum & URL for latest version of environments ... "
+_envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
+benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
+benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
+if [ -z "$benchbot_envs_md5sum" ] || \
+    [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
+  echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
+  echo "${envs_err/'$envs_url'/$envs_url}"
+  exit 1
+elif [ -z "$benchbot_envs_url" ] || \
+    [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
+  echo -e "\n\nERROR: Failed to fetch valid URL for environments"
+  echo "${envs_err/'$envs_url'/$envs_url}"
+  exit 1
+fi
+echo -e "\t\tDone."
+
+# PART 3: Build the docker image (non-interactive)
+header_block "PART 3: BUILDING THE DOCKER IMAGE" $colour_blue
+
+old_image_id=$(docker images -q -f "reference=$DOCKER_TAG")
 pushd ..
-docker build -t "${image_reference}" \
+docker build -t "${DOCKER_TAG}" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" \
   --build-arg CUDA_VERSION_SHORT="${cuda_version_short}" \
   --build-arg ISAAC_SDK_TGZ="./isaac/isaac-sdk-2019.2-30e21124.tar.xz" \
-  --build-arg ISAAC_SIM_TGZ="./isaac/IsaacSim.tgz" \
-  --build-arg ISAAC_SIM_GITDEPS_TGZ="./isaac/IsaacSimProject_1.2.1238533.gitdeps.tar.gz" \
-  --build-arg BENCHBOT_ENVS_HASH="${benchbot_envs_hash}" \
+  --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
+  --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
+  --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
+  --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" .
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo "Docker build returned a non-zero error code: $build_ret"
-  echo -e "\nEnsure that Docker has been installed correctly AND that you can run"\
-    " Docker WITHOUT root access (there is no need to ever run Docker with root)."\
-    " See https://docs.docker.com/install/linux/linux-postinstall/ for details"\
-    " on how to fix this."
+  echo "ERROR: Docker build returned a non-zero error code: $build_ret"
+  echo "$build_err"
   exit 1
 fi
 popd
 
-if $(docker history -q ${old_image_id} | sed '1d' | grep -q $(docker images -q -f="reference=$image_reference")); then
-  docker tag ${old_image_id} ${image_reference}
+if [ ! -z "$old_image_id" ] && $(docker history -q ${old_image_id} | sed '1d' | \
+    grep -q $(docker images -q -f="reference=$DOCKER_TAG")); then
+  docker tag ${old_image_id} ${DOCKER_TAG}
   echo "${old_image_id}"
-  echo "Existing docker for \"$image_reference\" was a parent; tag has been re-attached to existing image"
+  echo "Existing docker for \"$DOCKER_TAG\" was a parent; tag has been re-attached to existing image"
 fi
 
-# PART 3: Run post build actions (i.e. everything stuck behind the annoying
-# interactive IsaacSim license prompt...)
-header_block "PART 3: RUNNING POST-INSTALL ACTIONS" $colour_blue
+# PART 4: Run post build actions
+header_block "PART 4: RUNNING POST-INSTALL ACTIONS" $colour_blue
 
 # Adding Docker specific hostnames to /etc/hosts
+# TODO this detection should probably be done by 'getent hosts <name>'... 
 if ! grep -xq "$hostnames_header" /etc/hosts; then
-  # TODO this detection should probably be done by 'getent hosts <name>'... 
   echo -e "${colour_yellow}$hosts_prompt${colour_nc}"
   read -p "Add the above hosts to '/etc/hosts' (sudo required) (y/n)? " prompt
   if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -350,8 +386,9 @@ if ! grep -xq "$hostnames_header" /etc/hosts; then
 fi
 
 # Install symlinks if they aren't found
-if [ ! -L "$symlink_path/benchbot_install" ] || [ ! -L "$symlink_path/benchbot_run" ] \
-    || [ ! -L "$symlink_path/benchbot_submit" ]; then
+if [ ! -e "$LOCATION_SYMLINKS/benchbot_install" ] || \
+    [ ! -e "$LOCATION_SYMLINKS/benchbot_run" ] || \
+    [ ! -e "$LOCATION_SYMLINKS/benchbot_submit" ]; then
   echo -e "${colour_yellow}$symlink_prompt${colour_nc}"
   read -p "Add the symlinks by running the above command (sudo required) (y/n)? " prompt
   if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -365,28 +402,6 @@ fi
 echo -e "\nAll post-install actions are complete."
 
 header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
-
-echo -e "${colour_red}We are currently hacking around the manual license accept prompt"
-echo -e "due to it SIGNIFICANTLY slowing development (every single DockerFile change"
-echo -e "would require a complete rebuild of Unreal...)"
-echo -e "\nThis software CANNOT BE RELEASED WITH THIS HACK STILL IN!!!${colour_nc}"
-
-exit 0
-
-# THIS CODE IS FOR MANUALLY INSTALLING ISAAC_SIM BECAUSE OF LICENSE. WE REALLY
-# REALLY REALLY REALLY REALLY DO NOT WANT TO HAVE TO DO THIS...
-# Only run this if UE4 Isaac Sim is NOT already built in the docker image
-# if docker run --rm -it $image_reference /bin/bash -c "[ -f \"/home/benchbot/isaac_sim/Engine/Binaries/Linux/UE4Editor\" ]"; then
-#   echo "Found 'UE4Editor' in \"${image_reference}\". Skipping rebuilding."
-# else
-#   docker run --name "${tmp_name}" --gpus all -it "${image_reference}" \
-#     /bin/bash -c "sudo -H -u benchbot -- /bin/bash -c \"cd isaac_sim && \
-#     ./Setup.sh &&  ./GenerateProjectFiles.sh && ./GenerateTestRobotPaths.sh && \
-#     make && make IsaacSimProjectEditor\""
-
-#   docker commit --change='CMD ["/bin/bash", "-c"]' "${tmp_name}" "${image_reference}"
-#   docker rm "${tmp_name}"
-# fi
 
 # We are finally done...
 echo -e "\nFinished!"
