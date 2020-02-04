@@ -1,2 +1,7 @@
 *.sw*
 id_rsa
+
+# We never want to track BenchBot components
+api/
+eval/
+examples/

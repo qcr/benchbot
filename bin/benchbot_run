@@ -354,7 +354,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG /bin/bash -c 
 
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG
-# ${docker_run//'$name'/$name} -i $DOCKER_TAG
+${docker_run//'$name'/$name} -d $DOCKER_TAG
 xhost -local:root
 
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
