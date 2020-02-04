@@ -6,13 +6,11 @@
 
 BRANCH_DEFAULT="master"
 
-DOCKER_TAG="benchbot/simulator:devel"
+DOCKER_TAG_SIMULATOR="benchbot/simulator:base"
+DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
 
-FILENAME_API="api"
 FILENAME_ENV_METADATA=".benchbot_data_files"
-FILENAME_EVAL="eval"
-FILENAME_EXAMPLES="examples"
 
 GIT_API="git@bitbucket.org:acrv/benchbot_api"
 GIT_EVAL="git@bitbucket.org:acrv/benchbot_eval"
@@ -28,6 +26,8 @@ HOSTNAME_SUPERVISOR="benchbot_supervisor"
 PATH_ROOT=".."
 
 PATH_API="$PATH_ROOT/api"
+PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/simulator.Dockerfile"
+PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
@@ -156,8 +156,8 @@ function is_latest_benchbot_examples() {
 
 function is_latest_benchbot_envs() {
   url=${1:-$URL_ENVS_INFO_DEFAULT}
-  current=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG" /bin/bash -c \
+  current=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
     'echo -n "$BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_URL"')
   latest=$(wget -qO- "$url" | cut -d ' ' -f 1,2)
   echo "Current BenchBot Environments: $current"
@@ -168,8 +168,8 @@ function is_latest_benchbot_envs() {
 
 _SIMULATOR_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot_simulator() {
-  current_hash=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG" /bin/bash -c \
+  current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
     'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
   latest_hash=$(git ls-remote "$GIT_SIMULATOR" \
     "$_SIMULATOR_BRANCH" | awk '{print $1}')
@@ -181,8 +181,8 @@ function is_latest_benchbot_simulator() {
 
 _SUPERVISOR_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot_supervisor() {
-  current_hash=$(docker inspect "$DOCKER_TAG" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG" /bin/bash -c \
+  current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
     'cd $BENCHBOT_SUPERVISOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
   latest_hash=$(git ls-remote "$GIT_SUPERVISOR" \
     "$_SUPERVISOR_BRANCH" | awk '{print $1}')

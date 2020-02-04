@@ -12,7 +12,7 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-not_found_text="${colour_red}NOT FOUND${colour_nc}"
+not_found_text="NOT FOUND"
 
 # Requirements as an array of (required, recommended)
 nvidia_driver_version_reqs=("418" "430")
@@ -238,9 +238,9 @@ if [ -z "$updates_skip" ]; then
     echo -e "\n${colour_green}BenchBot scripts are up-to-date.${colour_nc}"
   else
     echo -e "\n${colour_yellow}BenchBot scripts are outdated. Updating &"\
-      "restarting install script ...\n"
-    git fetch --all && git checkout "$benchbot_latest_hash"
-    echo -e "\nDone.${colour_nc}"
+      "restarting install script ...\n${colour_nc}"
+    git fetch --all && git stash && git checkout "$benchbot_latest_hash"
+    echo -e "\n${colour_yellow}Done.${colour_nc}"
     exec $0 $input --no-update
   fi
 fi
@@ -271,7 +271,8 @@ free_space_blocks=$(df | grep '% /$' | awk '{print $4}')
 [ $free_space_blocks -gt ${free_space_recs[1]} ]
 free_space_valid=$?
 
-sdk_file=$(find_file "$PATH_ISAAC_SRCS" "${sdk_file_search[0]}" "${sdk_file_search[1]}")
+sdk_file=$(realpath --relative-to="$PATH_ROOT" \
+  $(find_file "$PATH_ISAAC_SRCS" "${sdk_file_search[0]}" "${sdk_file_search[1]}"))
 [ $(eval_found "$sdk_file") -lt 1 ]
 sdk_file_valid=$?
 
@@ -349,30 +350,36 @@ elif [ -z "$benchbot_envs_url" ] || \
 fi
 echo -e "\t\tDone."
 
-# PART 3: Build the docker image (non-interactive)
-header_block "PART 3: BUILDING THE DOCKER IMAGE" $colour_blue
+# PART 3: Build docker images (both simulator & submission base image)
+header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
-old_image_id=$(docker images -q -f "reference=$DOCKER_TAG")
-pushd "$PATH_ROOT"
-docker build -t "${DOCKER_TAG}" \
+
+docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" \
   --build-arg CUDA_VERSION_SHORT="${cuda_version_short}" \
-  --build-arg ISAAC_SDK_TGZ="./isaac/isaac-sdk-2019.2-30e21124.tar.xz" \
+  --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
-  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" .
+  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo "ERROR: Docker build returned a non-zero error code: $build_ret"
+  echo "ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
   echo "$build_err"
   exit 1
 fi
-popd
+
+docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" $PATH_ROOT
+build_ret=$?
+if [ $build_ret -ne 0 ]; then
+  echo "ERROR: Building \"submission\" returned a non-zero error code: $build_ret"
+  echo "$build_err"
+  exit 1
+fi
 
 # PART 4: Installing local componenets
 header_block "PART 4: INSTALLING LOCAL COMPONENTS" $colour_blue

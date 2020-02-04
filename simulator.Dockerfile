@@ -1,4 +1,4 @@
-# Use an official Ubuntu runtime as a parent image
+# Start from the official Ubuntu image
 FROM ubuntu:bionic
 
 # Declare any expected ARGS from the host system
