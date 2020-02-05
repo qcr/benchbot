@@ -138,20 +138,6 @@ function _env_pose() {
   return 1
 }
 
-function cleanup_benchbot() {
-  # TODO actually target BenchBot instead of all Docker!!!
-  # TODO make this quieter when I am confident it works as expected...
-  header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
-
-  if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
-    echo "Stopped the following containers:"
-    docker stop $(docker ps -a -q)
-  fi
-  echo -e "\nDeleted the following containers:"
-  docker system prune -f
-  echo -e "\nFinished cleaning!"
-}
-
 function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
@@ -285,8 +271,8 @@ elif ! update_check; then
 fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
 
-# Run the BenchBot software stack (cleanup whenever they exit)
-trap cleanup_benchbot EXIT
+# Run the BenchBot software stack (kill whenever they exit)
+trap kill_benchbot EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Pull out all useful data from the selected settings

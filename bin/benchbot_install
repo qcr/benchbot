@@ -189,6 +189,15 @@ function print_locate() {
   printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 -eq 0 ] && echo "$2" || echo "$not_found_text")";
 }
 
+function uninstall_benchbot() {
+  kill_benchbot
+
+  header_block "UNINSTALLING BENCHBOT" ${colour_blue}
+  pip uninstall -y benchbot_api
+  targets=$(docker images -q -f reference='benchbot/*:*')
+  if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
+  echo -e "\nFinished uninstalling!"
+}
 
 ################################################################################
 ############################# Installation process #############################
@@ -210,10 +219,9 @@ while true; do
       envs_url="$2"; echo "TODO envs_url untested & password unimplemented..."
       shift 2 ;;
     -f|--force-clean)
-      echo "TODO forcing clean install unimplemented..."; shift ;;
+      uninstall_benchbot; shift ;;
     -u|--uninstall)
-      updates_skip=1
-      echo "TODO uninstalling unimplemented..."; shift ;;
+      uninstall_benchbot; exit ;;
     --no-update)
       updates_skip=1; shift ;;
     --)
@@ -352,7 +360,6 @@ echo -e "\t\tDone."
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
-
 
 docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg TZ=$(cat /etc/timezone) \
