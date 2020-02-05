@@ -168,6 +168,7 @@ function install_component() {
   fi
   echo -e "\n${colour_blue}UPDATING ${name^^} ...${colour_nc}"
   pushd "$1"
+  git fetch --all
   git checkout "$($3 | latest_version_info | cut -d ' ' -f 1)"
   if [ ! -z "$4" ]; then eval "$4"; fi
   popd
@@ -196,6 +197,9 @@ function uninstall_benchbot() {
   pip uninstall -y benchbot_api
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
+
+  rm -rf {"$PATH_API","$PATH_EXAMPLES"} # TODO add eval to this
+
   echo -e "\nFinished uninstalling!"
 }
 

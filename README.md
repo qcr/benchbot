@@ -9,7 +9,7 @@ Hardware:
 - Nvidia Graphics card (GeForce GTX 1080 minimum, Titan XP+ / GeForce RTX 2070 recommended)
 - CPU with multiple cores (Intel i7-6800K minimum)
 - 32GB+ RAM
-- 256GB storage (SSD storage device **strongly** recommended)
+- 128GB+ spare storage (SSD storage device **strongly** recommended)
 
 Software (installation script will guide you through installing these if they are not detected):
 
@@ -21,8 +21,6 @@ Software (installation script will guide you through installing these if they ar
 Downloaded files (again, installation script will guide you through how to get them if missing):
 
 - ISAAC 2019.2 SDK (requires Nvidia login)
-- ISAAC 2019.2 SIM - note: **not** NavSim (requires Nvidia login)
-- ISAAC SIM branch of Unreal Engine 4 (requires GitHub account, & linking to EpicGames)
 
 ## Getting Started
 
@@ -34,22 +32,26 @@ cp -v ~/.ssh/id_rsa <ROOT_FOLDER_OF_THIS_REPOSITORY>
 
 Getting a solution up & running with BenchBot is as simple as 1,2,3:
 
-1. Install containerised BenchBot Development Software Stack via the install script (the script will examine your system, & provide you with suggestions for how to install / download / fix any missing components):
+1. Install the BenchBot Software Stack via the install script (the script will examine your system, & provide you with suggestions for how to install / download / fix any missing components):
 
     ```
     ./install
     ```
 
-2. Run the BenchBot Development stack by selecting a valid environment & task definition. For example (also see `--help`, `--list-tasks`, & `--list-envs` for more details of options):
+2. Run a simulator with the BenchBot Software stack by selecting a valid environment & task definition. For example (also see `--help`, `--list-tasks`, & `--list-envs` for more details of options):
 
     ```
     benchbot_run --env office:1 --task semantic_slam:active:ground_truth
     ```
 
-3. Develop a solution to the BenchBot task, & run into against the software stack. See [benchbot_examples](https://bitbucket.org/acrv/benchbot_examples/src/master/) for some basic 'hello_world' style solutions. To run your solution (also see `--help` for more details of options):
+3. Create a solution to a BenchBot task, & run it against the software stack. The `<BENCHBOT_ROOT>/examples` directory contains some basic 'hello_world' style solutions. For example, the following commands run the `hello_active` example in either a container or natively respectively (see `--help` for more details of options):
 
     ```
-    benchbot_submit --native python <PATH_TO_YOUR_SOLUTION_PYTHON_SCRIPT>
+    benchbot_submit --containerised <BENCHBOT_ROOT>/examples/hello_active/ 
     ```
 
-Note: Run `benchbot_install --uninstall` to remove from your system (**TODO this is it not currently implemented... for now a `docker rm $(docker ps -a -q); sudo rm -v /usr/local/bin/benchbot_*; sudo vim /etc/hosts` should be a blunt hammer to get rid of everything... be careful of the first command if you have other Docker containers installed you care about)
+    ```
+    benchbot_submit --native python <BENCHBOT_ROOT>/examples/hello_active/hello_active
+    ```
+
+Note: Run `benchbot_install --uninstall` to remove the BenchBot software stack from your system 
