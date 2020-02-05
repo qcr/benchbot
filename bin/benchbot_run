@@ -138,8 +138,18 @@ function _env_pose() {
   return 1
 }
 
-function check_updates() {
-  echo "TODO implement update check"
+function cleanup_benchbot() {
+  # TODO actually target BenchBot instead of all Docker!!!
+  # TODO make this quieter when I am confident it works as expected...
+  header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
+
+  if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
+    echo "Stopped the following containers:"
+    docker stop $(docker ps -a -q)
+  fi
+  echo -e "\nDeleted the following containers:"
+  docker system prune -f
+  echo -e "\nFinished cleaning!"
 }
 
 function opt_list_envs() {
@@ -275,19 +285,8 @@ elif ! update_check; then
 fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
 
-# Clean up any BenchBot remnants
-# TODO make this quieter when I am confident it works as expected...
-header_block "CLEANING UP OLD BENCHBOT REMNANTS" ${colour_blue}
-
-if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
-  echo "Stopped the following containers:"
-  docker stop $(docker ps -a -q)
-fi
-echo -e "\nDeleted the following containers:"
-docker system prune -f
-echo -e "\nFinished cleaning!\n"
-
-# Run the BenchBot software stack
+# Run the BenchBot software stack (cleanup whenever they exit)
+trap cleanup_benchbot EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Pull out all useful data from the selected settings
@@ -360,5 +359,3 @@ xhost -local:root
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker attach benchbot_supervisor
-
-# TODO killing the script should stop all of the containers!!! (capture SIGINT)
