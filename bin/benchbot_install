@@ -12,7 +12,7 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-not_found_text="${colour_red}NOT FOUND${colour_nc}"
+not_found_text="NOT FOUND"
 
 # Requirements as an array of (required, recommended)
 nvidia_driver_version_reqs=("418" "430")
@@ -24,7 +24,6 @@ nvidia_container_reqs=("1.0" "1.0.5")
 free_space_recs=("256G", 256000000)
 
 # File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
-isaac_srcs_path="../isaac"
 sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
 
 # Hostnames
@@ -35,7 +34,7 @@ $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
 # Command for install symlinks
-symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$LOCATION_SYMLINKS"
+symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$PATH_SYMLINKS"
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -149,7 +148,7 @@ sdk_file_err="\
         https://developer.nvidia.com/isaac/downloads
 "
 symlink_prompt="\
-Symlinks in '$LOCATION_SYMLINKS' could not be found for the 3 programs (benchbot_install,
+Symlinks in '$PATH_SYMLINKS' could not be found for the 3 programs (benchbot_install,
 benchbot_run, & benchbot_submit). Adding these programs to your path makes running
 BenchBot solutions significantly easier to work with. They can be added via the 
 command:
@@ -160,6 +159,19 @@ command:
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
+
+function install_component() {
+  name=$(basename "$1")
+  if [ ! -d "$1" ] ; then
+    echo -e "\n${colour_blue}INSTALLING ${name^^} ...${colour_nc}"
+    git clone "$2" "$1" 
+  fi
+  echo -e "\n${colour_blue}UPDATING ${name^^} ...${colour_nc}"
+  pushd "$1"
+  git checkout "$($3 | latest_version_info | cut -d ' ' -f 1)"
+  if [ ! -z "$4" ]; then eval "$4"; fi
+  popd
+}
 
 function print_version() {
   cs=($colour_green $colour_yellow $colour_red)
@@ -177,6 +189,15 @@ function print_locate() {
   printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 -eq 0 ] && echo "$2" || echo "$not_found_text")";
 }
 
+function uninstall_benchbot() {
+  kill_benchbot
+
+  header_block "UNINSTALLING BENCHBOT" ${colour_blue}
+  pip uninstall -y benchbot_api
+  targets=$(docker images -q -f reference='benchbot/*:*')
+  if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
+  echo -e "\nFinished uninstalling!"
+}
 
 ################################################################################
 ############################# Installation process #############################
@@ -198,10 +219,9 @@ while true; do
       envs_url="$2"; echo "TODO envs_url untested & password unimplemented..."
       shift 2 ;;
     -f|--force-clean)
-      echo "TODO forcing clean install unimplemented..."; shift ;;
+      uninstall_benchbot; shift ;;
     -u|--uninstall)
-      updates_skip=1
-      echo "TODO uninstalling unimplemented..."; shift ;;
+      uninstall_benchbot; exit ;;
     --no-update)
       updates_skip=1; shift ;;
     --)
@@ -226,9 +246,9 @@ if [ -z "$updates_skip" ]; then
     echo -e "\n${colour_green}BenchBot scripts are up-to-date.${colour_nc}"
   else
     echo -e "\n${colour_yellow}BenchBot scripts are outdated. Updating &"\
-      "restarting install script ...\n"
-    git fetch --all && git checkout "$benchbot_latest_hash"
-    echo -e "\nDone.${colour_nc}"
+      "restarting install script ...\n${colour_nc}"
+    git fetch --all && git stash && git checkout "$benchbot_latest_hash"
+    echo -e "\n${colour_yellow}Done.${colour_nc}"
     exec $0 $input --no-update
   fi
 fi
@@ -259,7 +279,8 @@ free_space_blocks=$(df | grep '% /$' | awk '{print $4}')
 [ $free_space_blocks -gt ${free_space_recs[1]} ]
 free_space_valid=$?
 
-sdk_file=$(find_file "$isaac_srcs_path" "${sdk_file_search[0]}" "${sdk_file_search[1]}")
+sdk_file=$(realpath --relative-to="$PATH_ROOT" \
+  $(find_file "$PATH_ISAAC_SRCS" "${sdk_file_search[0]}" "${sdk_file_search[1]}"))
 [ $(eval_found "$sdk_file") -lt 1 ]
 sdk_file_valid=$?
 
@@ -337,40 +358,48 @@ elif [ -z "$benchbot_envs_url" ] || \
 fi
 echo -e "\t\tDone."
 
-# PART 3: Build the docker image (non-interactive)
-header_block "PART 3: BUILDING THE DOCKER IMAGE" $colour_blue
+# PART 3: Build docker images (both simulator & submission base image)
+header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
-old_image_id=$(docker images -q -f "reference=$DOCKER_TAG")
-pushd ..
-docker build -t "${DOCKER_TAG}" \
+docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" \
   --build-arg CUDA_VERSION_SHORT="${cuda_version_short}" \
-  --build-arg ISAAC_SDK_TGZ="./isaac/isaac-sdk-2019.2-30e21124.tar.xz" \
+  --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
-  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" .
+  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo "ERROR: Docker build returned a non-zero error code: $build_ret"
+  echo "ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
   echo "$build_err"
   exit 1
 fi
-popd
 
-if [ ! -z "$old_image_id" ] && $(docker history -q ${old_image_id} | sed '1d' | \
-    grep -q $(docker images -q -f="reference=$DOCKER_TAG")); then
-  docker tag ${old_image_id} ${DOCKER_TAG}
-  echo "${old_image_id}"
-  echo "Existing docker for \"$DOCKER_TAG\" was a parent; tag has been re-attached to existing image"
+docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" $PATH_ROOT
+build_ret=$?
+if [ $build_ret -ne 0 ]; then
+  echo "ERROR: Building \"submission\" returned a non-zero error code: $build_ret"
+  echo "$build_err"
+  exit 1
 fi
 
-# PART 4: Run post build actions
-header_block "PART 4: RUNNING POST-INSTALL ACTIONS" $colour_blue
+# PART 4: Installing local componenets
+header_block "PART 4: INSTALLING LOCAL COMPONENTS" $colour_blue
+
+install_component "$PATH_API" "$GIT_API" 'is_latest_benchbot_api' \
+  'pip install -e .'
+install_component "$PATH_EXAMPLES" "$GIT_EXAMPLES" \
+  'is_latest_benchbot_examples'
+# TODO
+# install_component "eval" 
+
+# PART 5: Run post build actions
+header_block "PART 5: RUNNING POST-INSTALL ACTIONS" $colour_blue
 
 # Adding Docker specific hostnames to /etc/hosts
 # TODO this detection should probably be done by 'getent hosts <name>'... 
@@ -386,9 +415,9 @@ if ! grep -xq "$hostnames_header" /etc/hosts; then
 fi
 
 # Install symlinks if they aren't found
-if [ ! -e "$LOCATION_SYMLINKS/benchbot_install" ] || \
-    [ ! -e "$LOCATION_SYMLINKS/benchbot_run" ] || \
-    [ ! -e "$LOCATION_SYMLINKS/benchbot_submit" ]; then
+if [ ! -e "$PATH_SYMLINKS/benchbot_install" ] || \
+    [ ! -e "$PATH_SYMLINKS/benchbot_run" ] || \
+    [ ! -e "$PATH_SYMLINKS/benchbot_submit" ]; then
   echo -e "${colour_yellow}$symlink_prompt${colour_nc}"
   read -p "Add the symlinks by running the above command (sudo required) (y/n)? " prompt
   if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then

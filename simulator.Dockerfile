@@ -1,4 +1,4 @@
-# Use an official Ubuntu runtime as a parent image
+# Start from the official Ubuntu image
 FROM ubuntu:bionic
 
 # Declare any expected ARGS from the host system
@@ -114,4 +114,4 @@ RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchb
 ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
 
 # TODO Remove this SSH stuff...
-RUN rm -rf .ssh 
+# RUN rm -rf .ssh 

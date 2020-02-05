@@ -98,7 +98,7 @@ _env_data_cached=
 function _env_data() {
   # This is a little gross... sorry.
   if [ -z "$_env_data_cached" ]; then
-  _env_data_cached=$(docker run --rm -t $DOCKER_TAG /bin/bash -c \
+  _env_data_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash -c \
     'find $BENCHBOT_ENVS_PATH/$FILENAME_ENV_METADATA -name "*.yaml"\
     | while read env; do echo "$(basename $env)"; cat $env; done')
   fi
@@ -136,10 +136,6 @@ function _env_pose() {
     fi
   done <<< "$(_env_data)"
   return 1
-}
-
-function check_updates() {
-  echo "TODO implement update check"
 }
 
 function opt_list_envs() {
@@ -275,19 +271,8 @@ elif ! update_check; then
 fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
 
-# Clean up any BenchBot remnants
-# TODO make this quieter when I am confident it works as expected...
-header_block "CLEANING UP OLD BENCHBOT REMNANTS" ${colour_blue}
-
-if [ $(docker ps -a -q | wc -l) -gt 0 ]; then
-  echo "Stopped the following containers:"
-  docker stop $(docker ps -a -q)
-fi
-echo -e "\nDeleted the following containers:"
-docker system prune -f
-echo -e "\nFinished cleaning!\n"
-
-# Run the BenchBot software stack
+# Run the BenchBot software stack (kill whenever they exit)
+trap kill_benchbot EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Pull out all useful data from the selected settings
@@ -323,11 +308,11 @@ cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 name="$ros_master_host"
-${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 name="benchbot_simulator"
-${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
   $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
   cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
@@ -347,18 +332,16 @@ ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG /bin/bash -c \
                                                 # Note removed -game flag
 
 name="benchbot_supervisor"
-${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
   '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
   '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
 
 name="benchbot_debug"
-# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG
-# ${docker_run//'$name'/$name} -i $DOCKER_TAG
+# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_SIMULATOR
+${docker_run//'$name'/$name} -d $DOCKER_TAG_SIMULATOR
 xhost -local:root
 
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker attach benchbot_supervisor
-
-# TODO killing the script should stop all of the containers!!! (capture SIGINT)

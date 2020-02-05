@@ -215,9 +215,11 @@ else
     echo "Docker build returned a non-zero error code: $build_ret"
   else
     name="submission"
+    xhost +local:root
     docker run --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
             --network "$DOCKER_NETWORK" --name="$name" --hostname="$name" \
-            -i -t "$submission_tag"
+            -i -t "$submission_tag" 
+    xhost -local:root
   fi
   popd >/dev/null
 fi
