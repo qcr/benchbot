@@ -66,12 +66,14 @@ OPTION DETAILS:
                     semantic_slam:passive:ground_truth
 
             (Use --list-tasks to see a list of supported task options)
+
     -f, --force-updateless
             BenchBot will exit if it detects updates to the software stack. Set
             this flag to continue using outdated software temporarily. Note that
             limited support is available for outdated software stacks, and the
             challenge will run on the latest software stack. You should only use
             this flag when it is inconvenient to update immediately.
+
     -u,--update-check
             Check for available updates to the BenchBot software stack and exit
             immediately.
