@@ -229,7 +229,8 @@ function update_check() {
   _valid_text="BenchBot is up-to-date."
   _invalid_text=\
 "WARNING: Please install the latest BenchBot software stack by re-running the 
-\"benchbot_install\" command."
+\"benchbot_install\" command, or run this with [-f|--force-updateless] to skip
+updates."
 
   echo -ne "Checking BenchBot version ...\t\t\t"
   is_latest_benchbot > /dev/null

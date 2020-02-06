@@ -88,7 +88,9 @@ build_err="\
   Ensure that Docker has been installed correctly AND that you can run Docker 
   WITHOUT root access (there is no need to ever run Docker with root). See 
   https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
-  fix this.
+  fix this. Run something like the following to test Docker works without root:
+
+    docker images
 "
 cuda_err="\
   Cuda Runtime version did not meet the minimum requirements:
