@@ -426,16 +426,16 @@ docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo "ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo "$build_err"
+  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
+  echo -e "\n$build_err${colour_nc}"
   exit 1
 fi
 
 docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo "ERROR: Building \"submission\" returned a non-zero error code: $build_ret"
-  echo "$build_err"
+  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
+  echo -e "\n$build_err${colour_nc}"
   exit 1
 fi
 
