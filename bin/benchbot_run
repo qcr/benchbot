@@ -268,7 +268,7 @@ header_block "CHECKING FOR BENCHBOT SOFTWARE STACK UPDATES" ${colour_blue}
 
 if [ ! -z "$updates_skip" ]; then 
   echo -e "${colour_yellow}Skipping ...${colour_nc}"
-elif ! update_check; then 
+elif ! update_check "$(git rev-parse --abbrev-ref HEAD)"; then 
   exit 1; 
 fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
@@ -283,7 +283,6 @@ selected_map_path=$(_env_map_path "$SELECTED_ENV")
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 selected_env_file=$(_env_file "$SELECTED_ENV")
-echo "env_file: $selected_env_file"
 
 # Print some configuration information
 echo "Running the BenchBot system with the following settings:

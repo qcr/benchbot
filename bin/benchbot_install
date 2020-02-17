@@ -216,7 +216,7 @@ function install_component() {
   echo -e "\n${colour_blue}UPDATING ${name^^} ...${colour_nc}"
   pushd "$1"
   git fetch --all
-  git checkout "$($3 | latest_version_info | cut -d ' ' -f 1)"
+  git checkout "$($3 $BRANCH_DEFAULT | latest_version_info | cut -d ' ' -f 1)"
   if [ ! -z "$4" ]; then eval "$4"; fi
   popd
 }
@@ -256,7 +256,7 @@ function uninstall_benchbot() {
 
 # Safely parse options input
 input=$@
-parse_out=$(getopt -o he:fu --long help,envs-url:,force-clean,uninstall,no-update \
+parse_out=$(getopt -o hb:e:fu --long help,branch:,envs-url:,force-clean,uninstall,no-update \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -266,6 +266,10 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
+    -b|--branch)
+      # This is a real dirty way to do this... sorry
+      BRANCH_DEFAULT="$2"; shift 2
+      echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -e|--envs-url)
       envs_url="$2"; echo "TODO envs_url untested & password unimplemented..."
       shift 2 ;;
@@ -287,7 +291,7 @@ if [ -z "$updates_skip" ]; then
   header_block "CHECKING BENCHBOT SCRIPTS VERSION" ${colour_blue}
 
   echo -e "\nFetching latest hash for Benchbot scripts ... "
-  _benchbot_info=$(is_latest_benchbot)
+  _benchbot_info=$(is_latest_benchbot $BRANCH_DEFAULT)
   is_latest=$?
   benchbot_latest_hash=$(echo "$_benchbot_info" | latest_version_info | \
     cut -d ' ' -f 1)
@@ -295,12 +299,15 @@ if [ -z "$updates_skip" ]; then
 
   if [ $is_latest -eq 0 ]; then 
     echo -e "\n${colour_green}BenchBot scripts are up-to-date.${colour_nc}"
-  else
+  elif [ $is_latest -eq 1 ]; then
     echo -e "\n${colour_yellow}BenchBot scripts are outdated. Updating &"\
       "restarting install script ...\n${colour_nc}"
     git fetch --all && git stash && git checkout "$benchbot_latest_hash"
     echo -e "\n${colour_yellow}Done.${colour_nc}"
     exec $0 $input --no-update
+  else
+    echo -e "$_benchbot_info"
+    exit 1
   fi
 fi
 
@@ -385,10 +392,12 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
 echo -e "\nFetching latest hash for Benchbot Simulator ... "
-benchbot_simulator_hash=$(is_latest_benchbot_simulator | latest_version_info)
+benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
+  latest_version_info)
 echo -e "\t\t$benchbot_simulator_hash."
 echo "Fetching latest hash for Benchbot Supervisor ... "
-benchbot_supervisor_hash=$(is_latest_benchbot_supervisor | latest_version_info)
+benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
+  latest_version_info)
 echo -e "\t\t$benchbot_supervisor_hash."
 
 # Get md5sum of the latest from the provided envs_url
