@@ -140,40 +140,41 @@ function _is_latest_local_git() {
   # $1 = directory, $2 = repo URL, $3 = repo branch, $4 = verbose name of repo
   current_hash=$(cd "$1" > /dev/null 2>&1 && git rev-parse HEAD)
   latest_hash=$(git ls-remote "$2" "$3" | awk '{print $1}')
+  if [ -z "$latest_hash" ]; then 
+    echo -e "${colour_red}ERROR: Repo at $2 has no branch '$3'!${colour_nc}"
+    return 2
+  fi
   echo "Current $4: $current_hash"
   echo "Latest $4: $latest_hash"
   [ "$current_hash" == "$latest_hash" ]
   return
 }
 
-_BENCHBOT_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot() {
-  _is_latest_local_git "$PATH_ROOT" "$GIT_BENCHBOT" "$_BENCHBOT_BRANCH" \
+  _is_latest_local_git "$PATH_ROOT" "$GIT_BENCHBOT" "$1" \
     "BenchBot"
   return
 }
 
-_API_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot_api() {
-  _is_latest_local_git "$PATH_API" "$GIT_API" "$_API_BRANCH" "BenchBot API"
+  _is_latest_local_git "$PATH_API" "$GIT_API" "$1" "BenchBot API"
   return
 }
 
 # TODO enable the eval check
-# _EVAL_BRANCH="$BRANCH_DEFAULT"
 # function is_latest_benchbot_eval() {
-#   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$_EVAL_BRANCH" "BenchBot Eval"
+#   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
 #   return
 # }
 
-_EXAMPLES_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot_examples() {
-  _is_latest_local_git "$PATH_EXAMPLES" "$GIT_EXAMPLES" "$_EXAMPLES_BRANCH" \
+  _is_latest_local_git "$PATH_EXAMPLES" "$GIT_EXAMPLES" "$1" \
     "BenchBot Examples"
   return
 }
 
 function is_latest_benchbot_envs() {
+  # TODO this should loudly error if there are any URL failures!
   url=${1:-$URL_ENVS_INFO_DEFAULT}
   current=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
@@ -185,26 +186,22 @@ function is_latest_benchbot_envs() {
   return
 }
 
-_SIMULATOR_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot_simulator() {
   current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
     'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
-  latest_hash=$(git ls-remote "$GIT_SIMULATOR" \
-    "$_SIMULATOR_BRANCH" | awk '{print $1}')
+  latest_hash=$(git ls-remote "$GIT_SIMULATOR" "$1" | awk '{print $1}')
   echo "Current BenchBot Simulator: $current_hash"
   echo "Latest BenchBot Simulator: $latest_hash"
   [ "$current_hash" == "$latest_hash" ]
   return
 }
 
-_SUPERVISOR_BRANCH="$BRANCH_DEFAULT"
 function is_latest_benchbot_supervisor() {
   current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
     'cd $BENCHBOT_SUPERVISOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
-  latest_hash=$(git ls-remote "$GIT_SUPERVISOR" \
-    "$_SUPERVISOR_BRANCH" | awk '{print $1}')
+  latest_hash=$(git ls-remote "$GIT_SUPERVISOR" "$1" | awk '{print $1}')
   echo "Current BenchBot Supervisor: $current_hash"
   echo "Latest BenchBot Supervisor: $latest_hash"
   [ "$current_hash" == "$latest_hash" ]
@@ -229,31 +226,32 @@ function update_check() {
   _valid_text="BenchBot is up-to-date."
   _invalid_text=\
 "WARNING: Please install the latest BenchBot software stack by re-running the 
-\"benchbot_install\" command."
+\"benchbot_install\" command, or run this with [-f|--force-updateless] to skip
+updates."
 
   echo -ne "Checking BenchBot version ...\t\t\t"
-  is_latest_benchbot > /dev/null
+  is_latest_benchbot "$1" > /dev/null
   benchbot_valid=$?
   [ $benchbot_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot API version ...\t\t"
-  is_latest_benchbot_api > /dev/null
+  is_latest_benchbot_api "$1" > /dev/null
   api_valid=$?
   [ $api_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   # TODO enable eval check
   # echo -ne "Checking BenchBot Eval version ...\t\t"
-  # is_latest_benchbot_eval > /dev/null
+  # is_latest_benchbot_eval "$1" > /dev/null
   # eval_valid=$?
   # [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Examples version ...\t\t"
-  is_latest_benchbot_examples > /dev/null
+  is_latest_benchbot_examples "$1" > /dev/null
   examples_valid=$?
   [ $examples_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Simulator version ...\t\t"
-  is_latest_benchbot_simulator > /dev/null
+  is_latest_benchbot_simulator "$1" > /dev/null
   simulator_valid=$?
   [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Supervisor version ...\t"
-  is_latest_benchbot_supervisor > /dev/null
+  is_latest_benchbot_supervisor "$1" > /dev/null
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Environments version ...\t"

@@ -66,12 +66,14 @@ OPTION DETAILS:
                     semantic_slam:passive:ground_truth
 
             (Use --list-tasks to see a list of supported task options)
+
     -f, --force-updateless
             BenchBot will exit if it detects updates to the software stack. Set
             this flag to continue using outdated software temporarily. Note that
             limited support is available for outdated software stacks, and the
             challenge will run on the latest software stack. You should only use
             this flag when it is inconvenient to update immediately.
+
     -u,--update-check
             Check for available updates to the BenchBot software stack and exit
             immediately.
@@ -93,49 +95,49 @@ _task_list=("semantic_slam:passive:ground_truth"
   "scd:active:dead_reckoning"
 )
 
-_env_data_cached=
+_env_data_full_cached=
+
+function _env_file() {
+  echo "$(_env_data $1)" | head -1 | tr -d '[:space:]'
+}
 
 function _env_data() {
+  while read -r line; do
+    if [ -z "$found" ] && echo "$line" | grep -q '^/.*'"${1/:/_}"'\.yaml'; then
+      found=true
+      echo "$line"
+    elif [ ! -z "$found" ] && echo "$line" | grep -q '^/.*\.yaml'; then
+      return 0
+    elif [ ! -z "$found" ]; then
+      echo "$line"
+    fi
+  done <<< "$(_env_data_full)"
+  return 1
+}
+
+function _env_data_full() {
   # This is a little gross... sorry.
-  if [ -z "$_env_data_cached" ]; then
-  _env_data_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash -c \
-    'find $BENCHBOT_ENVS_PATH/$FILENAME_ENV_METADATA -name "*.yaml"\
-    | while read env; do echo "$(basename $env)"; cat $env; done')
+  if [ -z "$_env_data_full_cached" ]; then
+    _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash \
+      -c 'find $BENCHBOT_ENVS_PATH/'$FILENAME_ENV_METADATA' -name "*.yaml"\
+      | while read env; do echo "$(realpath $env)"; cat $env; done')
   fi
-  echo "$_env_data_cached"
+  echo "$_env_data_full_cached"
 }
 
 function _env_list() {
-  echo "$(_env_data)" | grep "environment_name:" | \
+  echo "$(_env_data_full)" | grep "environment_name:" | \
     sed 's/.*: "\([^_]*\)_\([^"]*\).*/\1:\2/' | sort
 }
 
 function _env_map_path() {
-  found=
-  while read -r line; do
-    if [ -z "$found" ] && echo -e "$line" | grep -q "environment_name:.*${1/:/_}"; then
-      found=true
-    elif [ ! -z "$found" ] && echo -e "$line" | grep -q "map_path:.*"; then
-      echo "${line#"map_path: "}"
-      return 0
-    fi
-  done <<< "$(_env_data)"
-  return 1
+  # Nested while... not quite ideal
+  echo "$(_env_data $1)" | sed -n 's/.*map_path: \(.*\)/\1/p' 
 }
 
 function _env_pose() {
-  found=
-  while read -r line; do
-    if [ -z "$found" ] && echo -e "$line" | \
-      grep -q "environment_name:.*${1/:/_}"; then
-          found=true
-    elif [ ! -z "$found" ] && echo -e "$line" | \
-      grep -q "start_pose_local:.*\[.*\]" ; then
-          echo "$line" | sed 's/start_pose_local:.*\(\[.*\]\).*/\1/'
-          return 0
-    fi
-  done <<< "$(_env_data)"
-  return 1
+  # Nested while... not quite ideal
+  echo "$(_env_data $1)" | sed -n 's/.*start_pose_local: \(.*\)/\1/p' 
 }
 
 function opt_list_envs() {
@@ -266,7 +268,7 @@ header_block "CHECKING FOR BENCHBOT SOFTWARE STACK UPDATES" ${colour_blue}
 
 if [ ! -z "$updates_skip" ]; then 
   echo -e "${colour_yellow}Skipping ...${colour_nc}"
-elif ! update_check; then 
+elif ! update_check "$(git rev-parse --abbrev-ref HEAD)"; then 
   exit 1; 
 fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
@@ -280,6 +282,7 @@ selected_pose=$(_env_pose "$SELECTED_ENV")
 selected_map_path=$(_env_map_path "$SELECTED_ENV")
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
+selected_env_file=$(_env_file "$SELECTED_ENV")
 
 # Print some configuration information
 echo "Running the BenchBot system with the following settings:
@@ -335,7 +338,8 @@ name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
   '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
-  '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"'
+  '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"\
+  _environment_file:='"$selected_env_file"''
 
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_SIMULATOR
