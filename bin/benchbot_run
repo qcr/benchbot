@@ -132,12 +132,12 @@ function _env_list() {
 
 function _env_map_path() {
   # Nested while... not quite ideal
-  echo "$(_env_data $1)" | sed -n 's/.*map_path: \(.*\)/\1/p' 
+  echo "$(_env_data $1)" | sed -n 's/.*map_path: \(.*\)/\1/p' | tr -d '[:space:]'
 }
 
 function _env_pose() {
   # Nested while... not quite ideal
-  echo "$(_env_data $1)" | sed -n 's/.*start_pose_local: \(.*\)/\1/p' 
+  echo "$(_env_data $1)" | sed -n 's/.*start_pose_local: \(.*\)/\1/p' | tr -d '[:space:]'
 }
 
 function opt_list_envs() {
@@ -316,23 +316,10 @@ ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_SIMULATOR /bin/bash 
 
 name="benchbot_simulator"
 ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
-  $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
-  cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
-  cd $BENCHBOT_ENVS_PATH && ./IsaacSimProject.sh '"$selected_map_path"' \
-  -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
-  -windowed -ResX=1024 -ResY=720 -vulkan -game' # NOTE: these have been collapsed into the one 
-                                                # container as Isaac seems to have no useful
-                                                # tools for linking between separate hosts except
-                                                # for manually creating a *.json for every TcpPublisher
-                                                # in your system to change the target (not sure how
-                                                # this would even work if I had a topic with listeners
-                                                # on both computers A & B...). Combine that with no 
-                                                # useful tools for listing what topics currently exist 
-                                                # (e.g. 'rostopic list'), and the task of manually 
-                                                # going through 1 by 1 & specifying what should point
-                                                # where... is a no from me.
-                                                # Note removed -game flag
+  "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller --file-collisions \
+  /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty --path-envs $BENCHBOT_ENVS_PATH \
+  --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH '"$selected_map_path"' \
+  '"$FILENAME_ENV_METADATA"' "'"$selected_pose"'"'
 
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
