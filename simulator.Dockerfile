@@ -87,6 +87,17 @@ RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts
 # TODO remove Ben's debugging toolset!
 RUN sudo apt update && sudo apt install -y vim ipython tmux iputils-ping
 
+# Install environments from a *.zip containing pre-compiled binaries
+ARG BENCHBOT_ENVS_MD5SUM
+ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
+ARG BENCHBOT_ENVS_URL
+ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
+RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
+    test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
+    echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
+    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
+ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
+
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH
@@ -101,17 +112,6 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
-
-# Install environments from a *.zip containing pre-compiled binaries
-ARG BENCHBOT_ENVS_MD5SUM
-ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
-ARG BENCHBOT_ENVS_URL
-ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
-RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
-    test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
-    echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
-    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
-ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
 
 # TODO Remove this SSH stuff...
 # RUN rm -rf .ssh 

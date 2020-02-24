@@ -303,7 +303,7 @@ echo -e "Created $DOCKER_NETWORK.\n"
 # Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root
 ros_master_host="benchbot_roscore"
-docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
+docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
             -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
             --network $DOCKER_NETWORK --name=\$name --hostname=\$name"
