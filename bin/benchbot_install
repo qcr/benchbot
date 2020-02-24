@@ -391,14 +391,18 @@ echo "TODO: Should we be enforcing 18.04?"
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-echo -e "\nFetching latest hash for Benchbot Simulator ... "
+echo -e "\nFetching latest hash for BenchBot Simulator ... "
 benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
   latest_version_info)
 echo -e "\t\t$benchbot_simulator_hash."
-echo "Fetching latest hash for Benchbot Supervisor ... "
+echo "Fetching latest hash for BenchBot Supervisor ... "
 benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
   latest_version_info)
 echo -e "\t\t$benchbot_supervisor_hash."
+echo "Fetching latest hash for BenchBot API ... "
+benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
+  latest_version_info)
+echo -e "\t\t$benchbot_api_hash."
 
 # Get md5sum of the latest from the provided envs_url
 echo -e "\nFetching md5sum & URL for latest version of environments ... "
@@ -440,7 +444,9 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
-docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" $PATH_ROOT
+docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
+  --build-arg BENCHBOT_API_GIT="${GIT_API}" \
+  --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
