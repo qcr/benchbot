@@ -316,17 +316,20 @@ ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_SIMULATOR /bin/bash 
 
 name="benchbot_simulator"
 ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller --file-collisions \
-  /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty --path-envs $BENCHBOT_ENVS_PATH \
-  --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH '"$selected_map_path"' \
-  '"$FILENAME_ENV_METADATA"' "'"$selected_pose"'"'
+  "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
+  --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
+  --path-envs $BENCHBOT_ENVS_PATH --path-isaac $ISAAC_SDK_PATH \
+  --path-simulator $BENCHBOT_SIMULATOR_PATH --port '"$PORT_SIMULATOR"' \
+  '"$selected_map_path"' '"$FILENAME_ENV_METADATA"' '"$selected_pose"
 
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
-  '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
-  '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"\
-  _environment_file:='"$selected_env_file"''
+  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
+  _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter.yaml" \
+  _observations_file:="'"$selected_observations"'.yaml" \
+  _actions_file:="'"$selected_actions"'_control.yaml"\
+  _environment_file:='"$selected_env_file"' \
+  _simulator_address:='"${HOSTNAME_SIMULATOR}"':'"${PORT_SIMULATOR}"
 
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_SIMULATOR
