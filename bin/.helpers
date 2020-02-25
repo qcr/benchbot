@@ -12,7 +12,7 @@ DOCKER_NETWORK="benchbot_network"
 
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
-GIT_API="git@bitbucket.org:acrv/benchbot_api"
+GIT_API="https://bitbucket.org/acrv/benchbot_api"
 GIT_EVAL="git@bitbucket.org:acrv/benchbot_eval"
 GIT_EXAMPLES="git@bitbucket.org:acrv/benchbot_examples"
 GIT_BENCHBOT="git@bitbucket.org:acrv/benchbot"
