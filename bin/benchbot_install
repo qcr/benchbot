@@ -460,7 +460,7 @@ header_block "PART 4: INSTALLING LOCAL COMPONENTS" $colour_blue
 install_component "$PATH_API" "$GIT_API" 'is_latest_benchbot_api' \
   'pip install -e .'
 install_component "$PATH_EXAMPLES" "$GIT_EXAMPLES" \
-  'is_latest_benchbot_examples'
+  'is_latest_benchbot_examples' 'pip install -r requirements.txt'
 # TODO
 # install_component "eval" 
 
