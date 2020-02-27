@@ -203,9 +203,73 @@ command:
    $symlink_cmd 
 "
 
+chk_nvidiacard_name='Nvidia Graphics card available'
+chk_nvidiacard_pass='Found card of type $check_result'
+chk_nvidiacard_fail='None found'
+chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | sed -E '\''s/.*(10de:[0-9a-f]{4}).*/\1/'\'
+chk_nvidiacard_eval='[ -z "$check_result" ]'
+chk_nvidiacard_issue="\
+  No Nivida Graphics Card was detected. If there is a card available on your 
+  host system, then it should be visible with 'lcpci -nn | grep VGA' with a ID 
+  of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
+chk_nvidiacard_fix=''
+chk_nvidiacard_reboot=0
+
+
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
+
+function handle_requirement() {
+  # Dirtily pull all of the check-related values based from the input argument
+  _name=$(eval 'echo "$chk_'$1'_name"')
+  _pass=$(eval 'echo "$chk_'$1'_pass"')
+  _fail=$(eval 'echo "$chk_'$1'_fail"')
+  _check=$(eval 'echo "$chk_'$1'_check"')
+  _eval=$(eval 'echo "$chk_'$1'_eval"')
+  _issue=$(eval 'echo "$chk_'$1'_issue"')
+  _fix=$(eval 'echo "$chk_'$1'_fix"')
+  _reboot=$(eval 'echo "$chk_'$1'_reboot"')
+
+  # Perform the check, printing the result & resolving issues if possible
+  printf "\t$_name: "
+  check_result=$(eval "$_check")
+  printf "\033[46G"
+  if $(eval $_eval); then 
+    printf "${colour_green}%35s\n${colour_nc}" \
+      "${_pass//'$check_result'/$check_result}"
+  else 
+    printf "${colour_yellow}%35s\n${colour_nc}" \
+      "${_fail//'$check_result'/$check_result}"
+    printf "\n${colour_yellow}%s\n" "$_issue"
+    if [ -z "$_fix" ]; then
+      printf "\n  No automatic fix is available.\n"
+      printf "\n  Please manually resolve the issue & then re-run the install "\
+        "script."
+    else
+      printf "\n  The following commands can be run to try & fix the issue:\n"
+      printf "\n    %s\n\n" "$_fix"
+      read -n 1 -r -p "  Would you like the above commands to be run (y/N)? " \
+        apply_fix
+      if [[ "$apply_fix" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+        printf "\n\n${colour_nc}"
+        eval "$_fix"
+        printf "\n${colour_yellow}"
+        if [ "$_reboot" -eq 0 ]; then
+          printf "\n  Please reboot your machine before re-running "\
+            "the install script."
+        else
+          printf "\n  Restarting the installation script ..."
+        fi
+      else
+        printf "\n\n  Please resolve this issue, & then re-run the install "\
+          "script."
+      fi
+    fi
+    printf "${colour_nc}\n"
+  fi
+
+}
 
 function install_component() {
   name=$(basename "$1")
@@ -310,6 +374,41 @@ if [ -z "$updates_skip" ]; then
     exit 1
   fi
 fi
+
+# PART 1: Ensuring the system state is compatible with BenchBot
+header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
+# TODO iterate through each check, whenever one fails we offer to fix, if no script exits, if yes, apply fix & start over (UNLESS requires reboot)
+
+# CHECKS
+
+# Nvidia
+echo -e "\n${colour_blue}Running Nvidia related system checks:${colour_nc}"
+handle_requirement "nvidiacard"  # Is a valid graphics card available?
+
+# - Driver available
+# - Driver version valid
+# - Driver version exists in nvidia or ubuntu-graphics-drivers PPA (could do URL method.... but getting flimsy / hard to maintain)
+# - Cuda available
+# - Cuda version exists in nvidia PPA
+# - Driver version matches cuda version dependency link...
+# - Is Isaac readily available???
+
+# Docker
+# - Docker available
+# - Docker version is > 19.0
+# - nvidia-container-toolkit installed
+# - Docker works without root!
+
+# Filesystem
+# - /var/lib/docker is on an ext4 filesystem
+# - /var/lib/docker is on a filesystem WITHOUT nosuid
+# - /var/lib/docker is on a filesystem with enough space
+
+# TODELETE checks
+# - Is an id_rsa available
+# - Does it work with out repos
+
+exit 0
 
 # PART 1: Report the current state of the system
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
