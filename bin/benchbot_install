@@ -203,11 +203,41 @@ command:
    $symlink_cmd 
 "
 
+################################################################################
+################### All checks for the host system (ouch...) ###################
+################################################################################
+
+checks_list=(
+  "Running Nvidia related system checks:"
+  "nvidiacard"  # Is a valid graphics card available?
+  "nvidiadriver"  # Is the driver available?
+  "nvidiaversion"  # Is the driver version valid?
+  "nvidiappa"  # Does the driver come from a supported PPA?
+  "cudaavailable"  # Is Cuda available?
+  "cudaversion"  # Is the cuda version valid?
+  "cudappa"  # Is cuda from the Nvidia PPA?
+  "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
+  "isaac"  # Is the Isaac *.zip readily available?
+  "Running Docker related system checks:"
+  "dockeravailable"  # Is Docker available?
+  "dockerversion"  # Is Docker version > 19.0?
+  "dockernct"  # Is nvidia-container-toolkit installed?
+  "dockerroot"  # Does Docker work WITHOUT root?
+  "Running checks of filesystem used for Docker:"
+  "fsext4"  # Is /var/lib/docker on an ext4 filesystem?
+  "fsnosuid"  # Is /var/lib/docker on a filesystem WITHOUT nosuid?
+  "fsspace"  # Is /var/lib/docker on a filesystem with enough space?
+  "Running TODELETE checks:"
+  "todeletersa"  # Is an id_rsa available?
+  "todeletepermission"  # Does the id_rsa give you permission to clone repos?
+  )
+
 chk_nvidiacard_name='Nvidia Graphics card available'
-chk_nvidiacard_pass='Found card of type $check_result'
+chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
-chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | sed -E '\''s/.*(10de:[0-9a-f]{4}).*/\1/'\'
-chk_nvidiacard_eval='[ -z "$check_result" ]'
+chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | '\
+'sed -E '\''s/.*(10de:[0-9a-f]{4}).*/\1/'\'
+chk_nvidiacard_eval='[ ! -z "$check_result" ]'
 chk_nvidiacard_issue="\
   No Nivida Graphics Card was detected. If there is a card available on your 
   host system, then it should be visible with 'lcpci -nn | grep VGA' with a ID 
@@ -215,6 +245,209 @@ chk_nvidiacard_issue="\
 chk_nvidiacard_fix=''
 chk_nvidiacard_reboot=0
 
+chk_nvidiadriver_name='Nvidia driver is installed'
+chk_nvidiadriver_pass='Driver version '"'"'$check_result'"'"
+chk_nvidiadriver_fail='Driver not found'
+chk_nvidiadriver_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_nvidiadriver_eval='[ ! -z "$check_result" ]'
+chk_nvidiadriver_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_nvidiadriver_fix='TODO'
+chk_nvidiadriver_reboot=0
+
+chk_nvidiaversion_name='Nvidia driver is installed'
+chk_nvidiaversion_pass='Driver version '"'"'$check_result'"'"
+chk_nvidiaversion_fail='Driver not found'
+chk_nvidiaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_nvidiaversion_eval='[ ! -z "$check_result" ]'
+chk_nvidiaversion_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_nvidiaversion_fix='TODO'
+chk_nvidiaversion_reboot=0
+
+chk_nvidiappa_name='Nvidia driver is installed'
+chk_nvidiappa_pass='Driver version '"'"'$check_result'"'"
+chk_nvidiappa_fail='Driver not found'
+chk_nvidiappa_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_nvidiappa_eval='[ ! -z "$check_result" ]'
+chk_nvidiappa_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_nvidiappa_fix='TODO'
+chk_nvidiappa_reboot=0
+
+chk_cudaavailable_name='Nvidia driver is installed'
+chk_cudaavailable_pass='Driver version '"'"'$check_result'"'"
+chk_cudaavailable_fail='Driver not found'
+chk_cudaavailable_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_cudaavailable_eval='[ ! -z "$check_result" ]'
+chk_cudaavailable_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_cudaavailable_fix='TODO'
+chk_cudaavailable_reboot=0
+
+chk_cudaversion_name='Nvidia driver is installed'
+chk_cudaversion_pass='Driver version '"'"'$check_result'"'"
+chk_cudaversion_fail='Driver not found'
+chk_cudaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_cudaversion_eval='[ ! -z "$check_result" ]'
+chk_cudaversion_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_cudaversion_fix='TODO'
+chk_cudaversion_reboot=0
+
+chk_cudappa_name='Nvidia driver is installed'
+chk_cudappa_pass='Driver version '"'"'$check_result'"'"
+chk_cudappa_fail='Driver not found'
+chk_cudappa_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_cudappa_eval='[ ! -z "$check_result" ]'
+chk_cudappa_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_cudappa_fix='TODO'
+chk_cudappa_reboot=0
+
+chk_cudadriverdep_name='Nvidia driver is installed'
+chk_cudadriverdep_pass='Driver version '"'"'$check_result'"'"
+chk_cudadriverdep_fail='Driver not found'
+chk_cudadriverdep_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_cudadriverdep_eval='[ ! -z "$check_result" ]'
+chk_cudadriverdep_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_cudadriverdep_fix='TODO'
+chk_cudadriverdep_reboot=0
+
+chk_isaac_name='Nvidia driver is installed'
+chk_isaac_pass='Driver version '"'"'$check_result'"'"
+chk_isaac_fail='Driver not found'
+chk_isaac_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_isaac_eval='[ ! -z "$check_result" ]'
+chk_isaac_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_isaac_fix='TODO'
+chk_isaac_reboot=0
+
+chk_dockeravailable_name='Nvidia driver is installed'
+chk_dockeravailable_pass='Driver version '"'"'$check_result'"'"
+chk_dockeravailable_fail='Driver not found'
+chk_dockeravailable_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_dockeravailable_eval='[ ! -z "$check_result" ]'
+chk_dockeravailable_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_dockeravailable_fix='TODO'
+chk_dockeravailable_reboot=0
+
+chk_dockerversion_name='Nvidia driver is installed'
+chk_dockerversion_pass='Driver version '"'"'$check_result'"'"
+chk_dockerversion_fail='Driver not found'
+chk_dockerversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_dockerversion_eval='[ ! -z "$check_result" ]'
+chk_dockerversion_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_dockerversion_fix='TODO'
+chk_dockerversion_reboot=0
+
+chk_dockernct_name='Nvidia driver is installed'
+chk_dockernct_pass='Driver version '"'"'$check_result'"'"
+chk_dockernct_fail='Driver not found'
+chk_dockernct_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_dockernct_eval='[ ! -z "$check_result" ]'
+chk_dockernct_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_dockernct_fix='TODO'
+chk_dockernct_reboot=0
+
+chk_dockerroot_name='Nvidia driver is installed'
+chk_dockerroot_pass='Driver version '"'"'$check_result'"'"
+chk_dockerroot_fail='Driver not found'
+chk_dockerroot_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_dockerroot_eval='[ ! -z "$check_result" ]'
+chk_dockerroot_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_dockerroot_fix='TODO'
+chk_dockerroot_reboot=0
+
+chk_fsext4_name='Nvidia driver is installed'
+chk_fsext4_pass='Driver version '"'"'$check_result'"'"
+chk_fsext4_fail='Driver not found'
+chk_fsext4_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_fsext4_eval='[ ! -z "$check_result" ]'
+chk_fsext4_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_fsext4_fix='TODO'
+chk_fsext4_reboot=0
+
+chk_fsnosuid_name='Nvidia driver is installed'
+chk_fsnosuid_pass='Driver version '"'"'$check_result'"'"
+chk_fsnosuid_fail='Driver not found'
+chk_fsnosuid_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_fsnosuid_eval='[ ! -z "$check_result" ]'
+chk_fsnosuid_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_fsnosuid_fix='TODO'
+chk_fsnosuid_reboot=0
+
+chk_fsspace_name='Nvidia driver is installed'
+chk_fsspace_pass='Driver version '"'"'$check_result'"'"
+chk_fsspace_fail='Driver not found'
+chk_fsspace_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_fsspace_eval='[ ! -z "$check_result" ]'
+chk_fsspace_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_fsspace_fix='TODO'
+chk_fsspace_reboot=0
+
+chk_todeletersa_name='Nvidia driver is installed'
+chk_todeletersa_pass='Driver version '"'"'$check_result'"'"
+chk_todeletersa_fail='Driver not found'
+chk_todeletersa_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_todeletersa_eval='[ ! -z "$check_result" ]'
+chk_todeletersa_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_todeletersa_fix='TODO'
+chk_todeletersa_reboot=0
+
+chk_todeletepermission_name='Nvidia driver is installed'
+chk_todeletepermission_pass='Driver version '"'"'$check_result'"'"
+chk_todeletepermission_fail='Driver not found'
+chk_todeletepermission_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_todeletepermission_eval='[ ! -z "$check_result" ]'
+chk_todeletepermission_issue="\
+  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_todeletepermission_fix='TODO'
+chk_todeletepermission_reboot=0
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -232,20 +465,22 @@ function handle_requirement() {
   _reboot=$(eval 'echo "$chk_'$1'_reboot"')
 
   # Perform the check, printing the result & resolving issues if possible
+  retval=0
   printf "\t$_name: "
   check_result=$(eval "$_check")
   printf "\033[46G"
   if $(eval $_eval); then 
-    printf "${colour_green}%35s\n${colour_nc}" \
-      "${_pass//'$check_result'/$check_result}"
+    printf "${colour_green}%35s" "${_pass//'$check_result'/$check_result}"
+    retval=0
   else 
     printf "${colour_yellow}%35s\n${colour_nc}" \
       "${_fail//'$check_result'/$check_result}"
     printf "\n${colour_yellow}%s\n" "$_issue"
     if [ -z "$_fix" ]; then
       printf "\n  No automatic fix is available.\n"
-      printf "\n  Please manually resolve the issue & then re-run the install "\
-        "script."
+      s="Please manually resolve the issue & then re-run the install script." 
+      printf "\n  $s"
+      retval=1
     else
       printf "\n  The following commands can be run to try & fix the issue:\n"
       printf "\n    %s\n\n" "$_fix"
@@ -256,19 +491,22 @@ function handle_requirement() {
         eval "$_fix"
         printf "\n${colour_yellow}"
         if [ "$_reboot" -eq 0 ]; then
-          printf "\n  Please reboot your machine before re-running "\
-            "the install script."
+          s="Please reboot your machine before re-running the install script." 
+          printf "\n  $s"
+          retval=1
         else
           printf "\n  Restarting the installation script ..."
+          retval=2
         fi
       else
-        printf "\n\n  Please resolve this issue, & then re-run the install "\
-          "script."
+        s="Please resolve this issue, & then re-run the install script."
+        printf "\n\n  $s"
+        retval=1
       fi
     fi
-    printf "${colour_nc}\n"
   fi
-
+  printf "${colour_nc}\n"
+  return $retval
 }
 
 function install_component() {
@@ -377,36 +615,22 @@ fi
 
 # PART 1: Ensuring the system state is compatible with BenchBot
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
-# TODO iterate through each check, whenever one fails we offer to fix, if no script exits, if yes, apply fix & start over (UNLESS requires reboot)
 
-# CHECKS
-
-# Nvidia
-echo -e "\n${colour_blue}Running Nvidia related system checks:${colour_nc}"
-handle_requirement "nvidiacard"  # Is a valid graphics card available?
-
-# - Driver available
-# - Driver version valid
-# - Driver version exists in nvidia or ubuntu-graphics-drivers PPA (could do URL method.... but getting flimsy / hard to maintain)
-# - Cuda available
-# - Cuda version exists in nvidia PPA
-# - Driver version matches cuda version dependency link...
-# - Is Isaac readily available???
-
-# Docker
-# - Docker available
-# - Docker version is > 19.0
-# - nvidia-container-toolkit installed
-# - Docker works without root!
-
-# Filesystem
-# - /var/lib/docker is on an ext4 filesystem
-# - /var/lib/docker is on a filesystem WITHOUT nosuid
-# - /var/lib/docker is on a filesystem with enough space
-
-# TODELETE checks
-# - Is an id_rsa available
-# - Does it work with out repos
+# Iterate through the list of checks, doing some dirty string based variable
+# extraction in the handle_requirement() function...
+for c in "${checks_list[@]}"; do
+  if [[ "$c" =~ :$ ]]; then
+    printf "\n${colour_blue}$c${colour_nc}\n"
+  else
+    handle_requirement "$c"
+    res=$?
+    if [ $res -eq 2 ]; then
+      echo "TODO restart the script"
+    elif [ $res -eq 1 ]; then
+      exit 1
+    fi
+  fi
+done
 
 exit 0
 
