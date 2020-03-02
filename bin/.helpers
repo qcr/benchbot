@@ -23,6 +23,8 @@ HOSTNAME_ROS="benchbot_ros"
 HOSTNAME_SIMULATOR="benchbot_simulator"
 HOSTNAME_SUPERVISOR="benchbot_supervisor"
 
+MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
+
 PATH_ROOT=".."
 
 PATH_API="$PATH_ROOT/api"
@@ -92,15 +94,13 @@ function eval_found() {
 }
 
 function eval_version() {
-  # $1 = version, $2 = required, $3=recommended: echos 0 if >= recommended, 1 if >= required, 2 if below
-  if [ "$1" = "" ] || [[ ! "$1" == [0-9]* ]]; then
-    echo 2
-  elif [ "$1" = "$3" ] || [ "$3" = $(echo -e "$1\n$3" | sort -V | head -n 1) ]; then
-    echo 0
+  # $1 = version number, $2 = required version number
+  if [ -z "$1" ] || [[ ! "$1" == [0-9]* ]]; then
+    return 2  # Bad version text
   elif [ "$1" = "$2" ] || [ "$2" = $(echo -e "$1\n$2" | sort -V | head -n 1) ]; then
-    echo 1
+    return 0  # Passes requirement
   else
-    echo 2
+    return 1  # Did not pass requirement
   fi
 }
 

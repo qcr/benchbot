@@ -12,20 +12,6 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-not_found_text="NOT FOUND"
-
-# Requirements as an array of (required, recommended)
-nvidia_driver_version_reqs=("418" "430")
-cuda_version_reqs=("10.0" "10.1")
-docker_version_reqs=("19.03" "19.03.2")
-nvidia_container_reqs=("1.0" "1.0.5")
-
-# Free space recommendations
-free_space_recs=("256G", 256000000)
-
-# File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
-sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
-
 # Hostnames
 hostnames_header="# BENCHBOT SPECIFIC HOSTNAMES"
 hostnames_list=\
@@ -93,7 +79,7 @@ build_err="\
     docker images
 "
 cuda_err="\
-  Cuda Runtime version did not meet the minimum requirements:
+  CUDA Runtime version did not meet the minimum requirements:
 
     At least version ${cuda_version_reqs[0]} is required to run BenchBot; please install 
     a suitable version on your host system. The recommended method for installing is the 
@@ -213,7 +199,7 @@ checks_list=(
   "nvidiadriver"  # Is the driver available?
   "nvidiaversion"  # Is the driver version valid?
   "nvidiappa"  # Does the driver come from a supported PPA?
-  "cudaavailable"  # Is Cuda available?
+  "cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
   "cudappa"  # Is cuda from the Nvidia PPA?
   "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
@@ -232,92 +218,118 @@ checks_list=(
   "todeletepermission"  # Does the id_rsa give you permission to clone repos?
   )
 
-chk_nvidiacard_name='Nvidia Graphics card available'
+chk_nvidiacard_name='Nvidia GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
 chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | '\
 'sed -E '\''s/.*(10de:[0-9a-f]{4}).*/\1/'\'
 chk_nvidiacard_eval='[ ! -z "$check_result" ]'
 chk_nvidiacard_issue="\
-  No Nivida Graphics Card was detected. If there is a card available on your 
+  No Nvidia Graphics Card was detected. If there is a card available on your 
   host system, then it should be visible with 'lcpci -nn | grep VGA' with a ID 
   of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
 chk_nvidiacard_fix=''
 chk_nvidiacard_reboot=0
 
-chk_nvidiadriver_name='Nvidia driver is installed'
-chk_nvidiadriver_pass='Driver version '"'"'$check_result'"'"
-chk_nvidiadriver_fail='Driver not found'
-chk_nvidiadriver_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_nvidiadriver_name='Nvidia driver is running'
+chk_nvidiadriver_pass='Found' 
+chk_nvidiadriver_fail='Not found'
+chk_nvidiadriver_check='cat /proc/driver/nvidia/version 2>/dev/null'
 chk_nvidiadriver_eval='[ ! -z "$check_result" ]'
 chk_nvidiadriver_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
+  No Nvidia driver detected. If a driver is installed & loaded, it should be
   visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
 chk_nvidiadriver_fix='TODO'
-chk_nvidiadriver_reboot=0
+chk_nvidiadriver_reboot=1
 
-chk_nvidiaversion_name='Nvidia driver is installed'
-chk_nvidiaversion_pass='Driver version '"'"'$check_result'"'"
-chk_nvidiaversion_fail='Driver not found'
+chk_nvidiaversion_name='Nvidia driver version valid'
+chk_nvidiaversion_pass='Valid ($check_result)'
+chk_nvidiaversion_fail='Invalid ($check_result)'
 chk_nvidiaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
 'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
-chk_nvidiaversion_eval='[ ! -z "$check_result" ]'
+chk_nvidiaversion_eval='eval_version "$check_result" 418'
 chk_nvidiaversion_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_nvidiaversion_fix='TODO'
-chk_nvidiaversion_reboot=0
+  The version of the running Nvidia driver ("'$check_result'") is incompatible
+  with BenchBot which requires at least version 418 for the Isaac SDK.
 
-chk_nvidiappa_name='Nvidia driver is installed'
-chk_nvidiappa_pass='Driver version '"'"'$check_result'"'"
-chk_nvidiappa_fail='Driver not found'
-chk_nvidiappa_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
-chk_nvidiappa_eval='[ ! -z "$check_result" ]'
+  Please install a more recent version of the driver from the Nvidia repository."
+chk_nvidiaversion_fix='TODO'
+chk_nvidiaversion_reboot=1
+
+chk_nvidiappa_name='Nvidia driver from a standard PPA'
+chk_nvidiappa_pass='PPA is valid'
+chk_nvidiappa_fail='PPA is invalid'
+chk_nvidiappa_check='version=$(apt list --installed 2>/dev/null | '\
+'grep nvidia-driver- | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"'); '\
+'apt download --print-uris nvidia-driver-$(echo $version | '\
+'cut -d'"'"'.'"'"' -f1)=$version 2>/dev/null | cut -d'"'"' '"'"' -f1'
+chk_nvidiappa_eval=\
+'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"'| \
+'"'"'ppa.launchpad.net/graphics-drivers/ppa/ubuntu'"'"').* ]]'
 chk_nvidiappa_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+  The installed Nvidia driver was detected to have come from somewhere other
+  than the Nvidia / Ubuntu graphics-drivers PPAs. The driver was sourced from:
+    "'$check_result'"
+
+  Our Docker container only supports official drivers, & GPUs only work in 
+  containers if the driver version exactly matches the version of the host.
+  Please use a driver from either of the following locations (the Nvidia PPA is
+  preferred):
+    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
+    http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
 chk_nvidiappa_fix='TODO'
 chk_nvidiappa_reboot=0
 
-chk_cudaavailable_name='Nvidia driver is installed'
-chk_cudaavailable_pass='Driver version '"'"'$check_result'"'"
-chk_cudaavailable_fail='Driver not found'
-chk_cudaavailable_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_cudaavailable_name='CUDA is installed'
+chk_cudaavailable_pass='CUDA found'
+chk_cudaavailable_fail='CUDA not found'
+chk_cudaavailable_check='apt list --installed 2>/dev/null | grep -E '\
+'"cuda-[0-9]*-[0-9]*" | awk '"'"'{print $2}'"'"
 chk_cudaavailable_eval='[ ! -z "$check_result" ]'
 chk_cudaavailable_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+  No version of CUDA detected. Our Docker only supports CUDA installations from
+  the official Nvidia repository. Please add the Nvidia repository, & install 
+  'cuda-10' through apt."
 chk_cudaavailable_fix='TODO'
 chk_cudaavailable_reboot=0
 
-chk_cudaversion_name='Nvidia driver is installed'
-chk_cudaversion_pass='Driver version '"'"'$check_result'"'"
-chk_cudaversion_fail='Driver not found'
-chk_cudaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
-chk_cudaversion_eval='[ ! -z "$check_result" ]'
+chk_cudaversion_name='CUDA version valid'
+chk_cudaversion_pass='Valid ($check_result)'
+chk_cudaversion_fail='Invalid'
+chk_cudaversion_check=\
+'cat /usr/local/cuda/version.txt 2>/dev/null | cut -d " " -f3'
+chk_cudaversion_eval='eval_version "$check_result" 10'
 chk_cudaversion_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+  The version of CUDA detected ("'$check_result'") is incompatible with BenchBot
+  which requires at least 10.0 for the Isaac SDK.
+
+  Please install a more recent version of CUDA from the Nvidia repository."
 chk_cudaversion_fix='TODO'
 chk_cudaversion_reboot=0
 
-chk_cudappa_name='Nvidia driver is installed'
-chk_cudappa_pass='Driver version '"'"'$check_result'"'"
-chk_cudappa_fail='Driver not found'
-chk_cudappa_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
-chk_cudappa_eval='[ ! -z "$check_result" ]'
+chk_cudappa_name='CUDA is from the Nvidia PPA'
+chk_cudappa_pass='PPA is valid'
+chk_cudappa_fail='PPA is invalid'
+chk_cudappa_check=\
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9]*-[0-9]*"); \
+apt download --print-uris $(echo $installed | sed '"'"'s/^\([^\/]*\).*/\1/'"'"')=\
+$(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
+cut -d'"'"' '"'"' -f1'
+chk_cudappa_eval=\
+'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudappa_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+  CUDA was detected to have come from somewhere other than the Nvidia PPAs. The 
+  driver was sourced from:
+    "'$check_result'"
+
+  Our Docker container only supports official CUDA installs, & GPUs only work in 
+  containers if the CUDA version exactly matches the version of the host.
+  Please install CUDA from the official Nvidia repository:
+    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudappa_fix='TODO'
 chk_cudappa_reboot=0
 
-chk_cudadriverdep_name='Nvidia driver is installed'
+chk_cudadriverdep_name='TODO cuda driver dep weirdness'
 chk_cudadriverdep_pass='Driver version '"'"'$check_result'"'"
 chk_cudadriverdep_fail='Driver not found'
 chk_cudadriverdep_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
@@ -329,124 +341,203 @@ chk_cudadriverdep_issue="\
 chk_cudadriverdep_fix='TODO'
 chk_cudadriverdep_reboot=0
 
-chk_isaac_name='Nvidia driver is installed'
-chk_isaac_pass='Driver version '"'"'$check_result'"'"
-chk_isaac_fail='Driver not found'
-chk_isaac_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
+chk_isaac_pass='Found archive'
+chk_isaac_fail='Not found'
+chk_isaac_check='find $PATH_ISAAC_SRCS -type f -exec md5sum {} + | \
+grep "$MD5_ISAAC_SDK" | tr -s " " | cut -d " " -f 2'
 chk_isaac_eval='[ ! -z "$check_result" ]'
 chk_isaac_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_isaac_fix='TODO'
+  "'$check_result'"
+  Isaac SDK was not found in the folder:
+    $PATH_ISAAC_SRCS
+
+  Due to licensing restrictions we cannot automatically download this file.
+  Please sign up for an Nvidia developer account, download the *.zip for Isaac 
+  2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
+  in the isaac folder of benchbot (mentioned above). The 2019.2 version of 
+  Isaac is hidden under the 'Archive' section of the downloads page.
+
+  This check will only pass when a file is found with the following MD5SUM:
+    $MD5_ISAAC_SDK"
+chk_isaac_fix=''
 chk_isaac_reboot=0
 
-chk_dockeravailable_name='Nvidia driver is installed'
-chk_dockeravailable_pass='Driver version '"'"'$check_result'"'"
-chk_dockeravailable_fail='Driver not found'
-chk_dockeravailable_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_dockeravailable_name='Docker is available'
+chk_dockeravailable_pass='Found'
+chk_dockeravailable_fail='Not found'
+chk_dockeravailable_check='docker --version 2>/dev/null'
 chk_dockeravailable_eval='[ ! -z "$check_result" ]'
 chk_dockeravailable_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_dockeravailable_fix='TODO'
-chk_dockeravailable_reboot=0
+  Docker was not detected on the host system ('docker --version' did not return
+  a version).
 
-chk_dockerversion_name='Nvidia driver is installed'
-chk_dockerversion_pass='Driver version '"'"'$check_result'"'"
-chk_dockerversion_fail='Driver not found'
-chk_dockerversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
-chk_dockerversion_eval='[ ! -z "$check_result" ]'
+  Please ensure Docker Engine - Community edition is installed on the system."
+chk_dockeravailable_fix=\
+'sudo apt install -y apt-transport-https ca-certificates curl \
+  software-properties-common &&
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+sudo add-apt-repository "deb [arch=amd64] \
+  https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
+sudo apt update &&
+sudo apt install -y docker-ce &&
+sudo groupadd docker &&
+sudo usermod -aG docker '"$USER"
+chk_dockeravailable_reboot=1
+
+chk_dockerversion_name='Docker version valid'
+chk_dockerversion_pass='Valid ($check_result)'
+chk_dockerversion_fail='Invalid ($check_result)'
+chk_dockerversion_check='docker --version 2>/dev/null | '\
+'sed "s/Docker version \([^,]*\).*/\1/"'
+chk_dockerversion_eval='eval_version "$check_result" 19.03'
 chk_dockerversion_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_dockerversion_fix='TODO'
-chk_dockerversion_reboot=0
+  The version of Docker running ("'$check_result'") is incompatible with the 
+  BenchBot built process which requires at least version 19.03 to use the
+  Nvidia Container Toolkit.
 
-chk_dockernct_name='Nvidia driver is installed'
-chk_dockernct_pass='Driver version '"'"'$check_result'"'"
-chk_dockernct_fail='Driver not found'
-chk_dockernct_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+  Please install a more recent version of Docker Engine - Community Edition."
+chk_dockerversion_fix=\
+'sudo apt remove docker*;
+sudo apt-get install apt-transport-https ca-certificates curl \
+  software-properties-common &&
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+sudo add-apt-repository "deb [arch=amd64] \
+  https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
+sudo apt update &&
+sudo apt install -y docker-ce &&
+sudo groupadd docker &&
+sudo usermod -aG docker '"$USER"
+chk_dockerversion_reboot=1
+
+chk_dockernct_name='Nvidia Container Toolkit installed'
+chk_dockernct_pass='Found ($check_result)'
+chk_dockernct_fail='Not found'
+chk_dockernct_check='nvidia-container-cli --version 2>/dev/null | head -n 1 | '\
+'cut -d " " -f2'
 chk_dockernct_eval='[ ! -z "$check_result" ]'
 chk_dockernct_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_dockernct_fix='TODO'
+  Nvidia Container Toolkit was not detected. It is required to allow Docker
+  containers to access the GPU on your host system.
+
+  Please install the toolkit from https://github.com/NVIDIA/nvidia-docker"
+chk_dockernct_fix=\
+'curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - &&
+curl -s -L https://nvidia.github.io/nvidia-docker/\
+  '"$(. /etc/os-release;echo $ID$VERSION_ID)"'/nvidia-docker.list | \
+  sudo tee /etc/apt/sources.list.d/nvidia-docker.list &&
+sudo apt update && 
+sudo apt install -y nvidia-container-toolkit &&
+sudo systemctl restart docker
+'
 chk_dockernct_reboot=0
 
-chk_dockerroot_name='Nvidia driver is installed'
-chk_dockerroot_pass='Driver version '"'"'$check_result'"'"
-chk_dockerroot_fail='Driver not found'
-chk_dockerroot_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
-chk_dockerroot_eval='[ ! -z "$check_result" ]'
+chk_dockerroot_name='Docker runs without root'
+chk_dockerroot_pass='Passed'
+chk_dockerroot_fail='Failed'
+chk_dockerroot_check='docker run hello-world &>/dev/null && echo $?'
+chk_dockerroot_eval='[ $check_result -eq 0 ]'
 chk_dockerroot_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_dockerroot_fix='TODO'
-chk_dockerroot_reboot=0
+  Docker failed to run the hello-world test.
 
-chk_fsext4_name='Nvidia driver is installed'
-chk_fsext4_pass='Driver version '"'"'$check_result'"'"
-chk_fsext4_fail='Driver not found'
-chk_fsext4_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+  Usually this is caused by Docker not being configured to run without root. If
+  the fix below fails to fix the issue (a restart / logout is required after
+  changing groups), please run 'docker run hello-world' & resolve any issues
+  that occur."
+chk_dockerroot_fix=\
+'sudo groupadd docker &&
+sudo usermod -aG docker '"$USER"
+chk_dockerroot_reboot=1
+
+chk_fsext4_name='/var/lib/docker on ext4 filesystem'
+chk_fsext4_pass='Yes ($check_result)'
+chk_fsext4_fail='No'
+chk_fsext4_check=\
+'if [ $(df -T /var/lib/docker | awk '"'"'/^\// {print $2}'"'"') == "ext4" ]; \
+   then df -T /var/lib/docker | awk '"'"'/^\// {print $1}'"'"'; fi'
 chk_fsext4_eval='[ ! -z "$check_result" ]'
 chk_fsext4_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_fsext4_fix='TODO'
+  The location of Docker images, '/var/lib/docker', is on partition '"'$check_result'"'
+  which is not a fileystem of type 'ext4'. Non-ext4 filesystems have generally
+  been found to produce unstable behaviour with Linux Docker images.
+
+  Please move '/var/lib/docker/' to an ext4 drive for best results."
+chk_fsext4_fix=\
+'read -p "New location for /var/lib/docker on an ext4 drive:" new_location
+sudo systemctl stop docker
+sudo mv /var/lib/docker "$new_location"
+sudo ln -sv "$new_location" /var/lib/docker
+sudo systemctl start docker'
 chk_fsext4_reboot=0
 
-chk_fsnosuid_name='Nvidia driver is installed'
-chk_fsnosuid_pass='Driver version '"'"'$check_result'"'"
-chk_fsnosuid_fail='Driver not found'
-chk_fsnosuid_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_fsnosuid_name='/var/lib/docker supports suid'
+chk_fsnosuid_pass='Enabled'
+chk_fsnosuid_fail='Disabled'
+chk_fsnosuid_check=\
+'if [ -z $(cat /proc/mounts | grep $(df -T /var/lib/docker | \
+awk '"'"'/^\// {print $1}'"'"') | grep "nosuid") ]; then \
+   df -T /var/lib/docker | awk '"'"'/^\// {print $1}'"'"'; fi'
 chk_fsnosuid_eval='[ ! -z "$check_result" ]'
 chk_fsnosuid_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_fsnosuid_fix='TODO'
+  Support for suid flags was not found on the drive holding /var/lib/docker:
+  "'$check_result'"
+  
+  Please disable the nosuid option on the drive (by editing /etc/fstab, using
+  the Ubuntu Disk UI, or any other method you prefer). "
+chk_fsnosuid_fix=\
+'sudo sed -E -n '"'"'s|(^[^#]*'"'"'$check_result'"'"' .*)nosuid|\1|p; s/,,/,/p; \
+   s/ ,/ /p; s/, / /p'"'"' /etc/fstab &&
+sudo systemct daemon-reload'
 chk_fsnosuid_reboot=0
 
-chk_fsspace_name='Nvidia driver is installed'
-chk_fsspace_pass='Driver version '"'"'$check_result'"'"
-chk_fsspace_fail='Driver not found'
-chk_fsspace_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_fsspace_name='/var/lib/docker driver space check'
+chk_fsspace_pass='Sufficient space ($check_result)'
+chk_fsspace_fail='Insufficient space ($check_result)'
+chk_fsspace_check=\
+'space=$(df -Th /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
+if [ "${space: -1}" == "G" ] && [ ${space::-1} -ge 128 ]; then echo "$space"; fi'
 chk_fsspace_eval='[ ! -z "$check_result" ]'
 chk_fsspace_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_fsspace_fix='TODO'
+  The drive holding /var/lib/docker needs at least 128GB free. Please clear
+  space from the drive, or run the following fix to move /var/lib/docker to a 
+  drive with more space."
+chk_fsspace_fix=\
+'read -p "New location for /var/lib/docker with 128GB free:" new_location
+sudo systemctl stop docker
+sudo mv /var/lib/docker "$new_location"
+sudo ln -sv "$new_location" /var/lib/docker
+sudo systemctl start docker'
 chk_fsspace_reboot=0
 
-chk_todeletersa_name='Nvidia driver is installed'
-chk_todeletersa_pass='Driver version '"'"'$check_result'"'"
-chk_todeletersa_fail='Driver not found'
-chk_todeletersa_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_todeletersa_name='SSH key available'
+chk_todeletersa_pass='Found ($check_result)'
+chk_todeletersa_fail='Not found'
+chk_todeletersa_check=\
+'key="$PATH_ROOT/id_rsa" && if [ -f "$key" ]; then echo "$key"; fi'
 chk_todeletersa_eval='[ ! -z "$check_result" ]'
 chk_todeletersa_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_todeletersa_fix='TODO'
+  SSH key for accessing private BenchBot repositories was not found at locstion:
+  $PATH_ROOT/id_rsa
+
+  Please copy a private SSH key with access to the respositories to the above
+  location."
+chk_todeletersa_fix='cp ~/.ssh/id_rsa '"$PATH_ROOT"
 chk_todeletersa_reboot=0
 
-chk_todeletepermission_name='Nvidia driver is installed'
-chk_todeletepermission_pass='Driver version '"'"'$check_result'"'"
-chk_todeletepermission_fail='Driver not found'
-chk_todeletepermission_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+chk_todeletepermission_name='SSH key has permissions'
+chk_todeletepermission_pass='Successful'
+chk_todeletepermission_fail='Denied'
+chk_todeletepermission_check=\
+'ssh-agent bash -c '"'"'ssh-add '"$PATH_ROOT"'/id_rsa &>/dev/null; 
+rm -rf /tmp/benchbot && \
+git clone '"$GIT_BENCHBOT"' /tmp/benchbot &>/dev/null && \
+rm -rf /tmp/benchbot && echo "success"'"'"
 chk_todeletepermission_eval='[ ! -z "$check_result" ]'
 chk_todeletepermission_issue="\
-  No Nvidia driver was detected. If a driver is installed & loaded, it should be
-  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_todeletepermission_fix='TODO'
+  The provided SSH key failed to clone the BenchBot software stack.
+
+  Are you sure it has permission? See Ben."
+chk_todeletepermission_fix=''
 chk_todeletepermission_reboot=0
 
 ################################################################################
@@ -475,7 +566,7 @@ function handle_requirement() {
   else 
     printf "${colour_yellow}%35s\n${colour_nc}" \
       "${_fail//'$check_result'/$check_result}"
-    printf "\n${colour_yellow}%s\n" "$_issue"
+    printf "\n${colour_yellow}%s\n" "${_issue//'$check_result'/$check_result}"
     if [ -z "$_fix" ]; then
       printf "\n  No automatic fix is available.\n"
       s="Please manually resolve the issue & then re-run the install script." 
@@ -483,7 +574,7 @@ function handle_requirement() {
       retval=1
     else
       printf "\n  The following commands can be run to try & fix the issue:\n"
-      printf "\n    %s\n\n" "$_fix"
+      printf "\n%s\n\n" "${_fix//'$check_result'/$check_result}"
       read -n 1 -r -p "  Would you like the above commands to be run (y/N)? " \
         apply_fix
       if [[ "$apply_fix" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -667,7 +758,7 @@ sdk_file_valid=$?
 
 # Print out what we found & what we thought
 print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]} $nvidia_driver_valid
-print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]} $cuda_valid
+print_version "CUDA runtime version:" "$cuda_version" ${cuda_version_reqs[*]} $cuda_valid
 print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]} $docker_valid
 print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]} $nvidia_container_valid
 printf "\n"
