@@ -83,16 +83,6 @@ function header_block() {
 ################################################################################
 
 
-function eval_found() {
-  # $1 file: echos 0 if found, 1 if not found
-  # NOTE: this is a real frail check if the file is valid at the moment...
-  if [ -z "$1" ] || [ 1 != $(echo "$1" | wc -l) ]; then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
 function eval_version() {
   # $1 = version number, $2 = required version number
   if [ -z "$1" ] || [[ ! "$1" == [0-9]* ]]; then
@@ -101,18 +91,6 @@ function eval_version() {
     return 0  # Passes requirement
   else
     return 1  # Did not pass requirement
-  fi
-}
-
-function find_file() {
-  # $1 = directory, $2 = md5sum, $3 = file regex command: echos matching filename
-  md5_list=$(find "$1" -type f | xargs md5sum)
-  file_match=$(echo "$md5_list" | awk '{print $2}' | eval ${3})
-  md5_match=$([ -z "$2" ] && echo "" || echo "$md5_list" | grep "$2" | awk '{print $2}')
-  if [ ! -z "$file_match" ]; then
-    echo "$file_match"
-  elif [ ! -z "$md5_match" ]; then
-    echo "$md5_match"
   fi
 }
 

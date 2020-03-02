@@ -74,69 +74,18 @@ build_err="\
   Ensure that Docker has been installed correctly AND that you can run Docker 
   WITHOUT root access (there is no need to ever run Docker with root). See 
   https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
-  fix this. Run something like the following to test Docker works without root:
+  fix this. 
 
-    docker images
-"
-cuda_err="\
-  CUDA Runtime version did not meet the minimum requirements:
-
-    At least version ${cuda_version_reqs[0]} is required to run BenchBot; please install 
-    a suitable version on your host system. The recommended method for installing is the 
-    following commands:
-
-      wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-      sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-      sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
-      sudo add-apt-repository \"deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /\"
-      sudo apt-get update
-      sudo apt-get install cuda-10-1
-"
-docker_err="\
-  Docker version did not meet the minimum requirements:
-
-    At least version ${docker_version_reqs[0]} is required to run BenchBot;
-    please install a suitable version on your host system. The recommended
-    method for installing is the following commands:
-
-      sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-      sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"
-      sudo apt-get update
-      sudo apt-get install docker-ce
-
-    When you are done, ensure that you can run Docker WITHOUT root (running Docker
-    with root is a massive security issue & this install script deliberately does
-    not do that). Add your username to the Docker group to enable running
-    without root (will require re-login after):
-
-      sudo groupadd docker
-      sudo usermod -aG docker $USER
+  If the error is more generic, please contact us so that we can update our
+  pre-install host system checks.
 "
 envs_err="\
-  Ensure that URL: "'$envs_url'"
+  Ensure that the URL: 
+    "'$envs_url'"
   points to a single-line text file with whitespace-separated fields. The first 
   field contains the md5sum of the latest envs_*.zip, second field is URL of 
   envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
   internet connection also helps!
-"
-free_space_warn="\
-
-  NOTE: this warning can be safely ignored if you have moved Docker to a different
-  partition (as outlined below), or believe that you will be able to fit the
-  container on the '/' partition.
-
-  You appear not to have enough free space on your root partition (mounted at '/'):
-
-    If the install process runs out of space, it will fail unexpectedly. If space
-    is limited in your root partition, it is recommended that you change where
-    Docker stores its images to a partition with enough space. To change where
-    Docker stores images:
-
-      sudo systemctl stop docker
-      sudo mv /var/lib/docker /<location_on_secondary_drive>
-      sudo ln -sv /<location_on_secondary_drive> /var/lib/docker
-      sudo systemctl start docker
 "
 hosts_prompt="\
 Your hosts file does not appear to have the required hostnames added. To run
@@ -144,41 +93,6 @@ BenchBot solutions natively on your machine (as opposed to containerised),
 your host system needs to know about some Docker specific hostnames:
 
 $hostnames_list
-"
-nvidia_driver_err="\
-  Nvidia Graphics Driver version did not meet minimum requirements:
-
-    At least version ${nvidia_driver_version_reqs[0]} is required to run 
-    BenchBot; please install a suitable version on your host system. The 
-    recommended method for installing is the following command:
-
-      sudo apt install nvidia-driver-430
-"
-nvidia_container_err="\
-  Could not find a valid version of the Nvidia Container toolkit:
-
-    At least version ${nvidia_container_reqs[0]} is required to run Benchbot
-    with GPU support; please install following the instructions on the project
-    GitHub page: https://github.com/NVIDIA/nvidia-docker. In short:
-
-      curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-      curl -s -L https://nvidia.github.io/nvidia-docker/$(. /etc/os-release;echo $ID$VERSION_ID)/nvidia-docker.list \\
-        | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-
-      sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-      sudo systemctl restart docker
-  "
-sdk_file_err="\
-  Isaac SDK was not found in the './isaac/' directory:
-
-    A *.tgz file was not found in the './isaac/' directory that matched the
-    below MD5sum, or was a unique return for the below grep statement:
-        ${sdk_file_search[0]}
-        ${sdk_file_search[1]}
-
-    Download the latest version of the corresponding file at the website below
-    (you will have to create an account, accept a license, & sign in first):
-        https://developer.nvidia.com/isaac/downloads
 "
 symlink_prompt="\
 Symlinks in '$PATH_SYMLINKS' could not be found for the 3 programs (benchbot_install,
@@ -626,22 +540,6 @@ function install_component() {
   popd
 }
 
-function print_version() {
-  cs=($colour_green $colour_yellow $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$5]}%-15s" "$2";
-  printf "($3+ required, $4 recommended)${colour_nc}\n"
-}
-
-function print_free_space() {
-  cs=($colour_green $colour_yellow)
-  printf '%-25s' "$1"; printf "${cs[$4]}%-15s" "$2"; printf "($3 recommended)${colour_nc}\n"
-}
-
-function print_locate() {
-  cs=($colour_green $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 -eq 0 ] && echo "$2" || echo "$not_found_text")";
-}
-
 function uninstall_benchbot() {
   kill_benchbot
 
@@ -735,79 +633,16 @@ for c in "${checks_list[@]}"; do
   fi
 done
 
-exit 0
-
-# PART 1: Report the current state of the system
-header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
-
-# Get all of your stats, & whether they are valid for proceeding with the install
-nvidia_driver_version=$(cat /proc/driver/nvidia/version 2>/dev/null | sed '/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/')
-if [ -z ${nvidia_driver_version} ]; then nvidia_driver_version="$not_found_text"; fi
-cuda_version=$(apt list --installed 2>/dev/null | sed '/cuda-[0-9]*-[0-9]*/!d' | awk '{print $2}')
-if [ -z ${cuda_version} ]; then cuda_version="$not_found_text"; fi
-cuda_version_short=$(echo "$cuda_version" | grep -o '^[0-9]*\.[0-9]*' | tr . -)
-docker_version=$(docker --version 2>/dev/null | sed 's/Docker version \([^ ,]*\).*/\1/')
-if [ -z ${docker_version} ]; then docker_version="$not_found_text"; fi
-nvidia_container_version=$(apt list --installed 2>/dev/null | grep 'nvidia-container-toolkit' | awk '{print $2}')
-if [ -z ${nvidia_container_version} ]; then nvidia_container_version="$not_found_text"; fi
-
-nvidia_driver_valid=$(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]})
-cuda_valid=$(eval_version $cuda_version ${cuda_version_reqs[*]})
-docker_valid=$(eval_version $docker_version ${docker_version_reqs[*]})
-nvidia_container_valid=$(eval_version $nvidia_container_version ${nvidia_container_reqs[*]})
-
-free_space_drive=$(df | grep '% /$' | awk '{print $1}')
-free_space_human=$(df -H | grep '% /$' | awk '{print $4}')
-free_space_blocks=$(df | grep '% /$' | awk '{print $4}')
-
-[ $free_space_blocks -gt ${free_space_recs[1]} ]
-free_space_valid=$?
-
-sdk_file=$(realpath --relative-to="$PATH_ROOT" \
-  $(find_file "$PATH_ISAAC_SRCS" "${sdk_file_search[0]}" "${sdk_file_search[1]}"))
-[ $(eval_found "$sdk_file") -lt 1 ]
-sdk_file_valid=$?
-
-# Print out what we found & what we thought
-print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]} $nvidia_driver_valid
-print_version "CUDA runtime version:" "$cuda_version" ${cuda_version_reqs[*]} $cuda_valid
-print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]} $docker_valid
-print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]} $nvidia_container_valid
-printf "\n"
-print_free_space "Free space in '/':" "$free_space_human" ${free_space_recs[0]} $free_space_valid
-printf "\n"
-print_locate "Isaac SDK:" "$sdk_file" $sdk_file_valid
 printf "\n\n"
-
-# Either proceed or let them know why we won't be
-# (note ordering here is important!)
-err_string=""
-if [ $nvidia_driver_valid -gt 0 ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
-if [ $cuda_valid -gt 0 ]; then err_string+="ERROR:$cuda_err\n\n"; fi
-if [ $docker_valid -gt 0 ]; then err_string+="ERROR:$docker_err\n\n"; fi
-if [ $nvidia_container_valid -gt 0 ]; then err_string+="ERROR:$nvidia_container_err\n\n"; fi
-if [ $sdk_file_valid -gt 0 ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
-
-warn_string=""
-if [ $free_space_valid -gt 0 ]; then warn_string+="WARN:$free_space_warn\n\n"; fi
-
-if [ -n "$err_string" ]; then
-  echo -e "${colour_red}Installation will not proceed due to the following unmet requirements / dependencies:\n"
-  echo -e "${err_string}"
-  echo -e "Please address each of the above issues before installing BenchBot.${colour_nc}"
+read -n 1 -r -p \
+  "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
+  prompt
+printf "\n"
+if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+  printf "Proceeding with install ... \n\n"
+else
+  printf "Install aborted.\n\n"
   exit 1
-fi
-if [ -n "$warn_string" ]; then
-  echo -e "${colour_yellow}$warn_string${colour_nc}"
-fi
-if [ -z "$err_string" ]; then
-  read -p "All requirements & dependencies fulfilled; proceed with install (y/n)? " prompt
-      if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-        echo "Proceeding with install ..."
-      else
-        echo "Install aborted."
-        exit 1
-      fi
 fi
 
 echo ""
