@@ -239,7 +239,16 @@ chk_nvidiadriver_eval='[ ! -z "$check_result" ]'
 chk_nvidiadriver_issue="\
   No Nvidia driver detected. If a driver is installed & loaded, it should be
   visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
-chk_nvidiadriver_fix='TODO'
+chk_nvidiadriver_fix=\
+'v=$(. /etc/os-release; echo "$VERSION_ID" | sed "s/\.//") &&
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${v}/\
+  x86_64/cuda-ubuntu${v}.pin &&
+sudo mv cuda-ubuntu${v}.pin /etc/apt/preferences.d/cuda-repository-pin-600 &&
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/\
+  cuda/repos/ubuntu1804/x86_64/7fa2af80.pub &&
+sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/\
+  cuda/repos/ubuntu${v}/x86_64/ /" &&
+sudo apt-get update && sudo apt-get -y install nvidia-driver-440'
 chk_nvidiadriver_reboot=1
 
 chk_nvidiaversion_name='Nvidia driver version valid'
@@ -253,7 +262,7 @@ chk_nvidiaversion_issue="\
   with BenchBot which requires at least version 418 for the Isaac SDK.
 
   Please install a more recent version of the driver from the Nvidia repository."
-chk_nvidiaversion_fix='TODO'
+chk_nvidiaversion_fix="$chk_nvidiadriver_fix"
 chk_nvidiaversion_reboot=1
 
 chk_nvidiappa_name='Nvidia driver from a standard PPA'
@@ -277,7 +286,9 @@ chk_nvidiappa_issue="\
   preferred):
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
     http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
-chk_nvidiappa_fix='TODO'
+chk_nvidiappa_fix=\
+'sudo apt remove -y nvidia-driver-* && '\
+"$chk_nvidiadriver_fix"
 chk_nvidiappa_reboot=0
 
 chk_cudaavailable_name='CUDA is installed'
@@ -290,7 +301,7 @@ chk_cudaavailable_issue="\
   No version of CUDA detected. Our Docker only supports CUDA installations from
   the official Nvidia repository. Please add the Nvidia repository, & install 
   'cuda-10' through apt."
-chk_cudaavailable_fix='TODO'
+chk_cudaavailable_fix="${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
 chk_cudaavailable_reboot=0
 
 chk_cudaversion_name='CUDA version valid'
@@ -304,7 +315,7 @@ chk_cudaversion_issue="\
   which requires at least 10.0 for the Isaac SDK.
 
   Please install a more recent version of CUDA from the Nvidia repository."
-chk_cudaversion_fix='TODO'
+chk_cudaversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}
 chk_cudaversion_reboot=0
 
 chk_cudappa_name='CUDA is from the Nvidia PPA'
@@ -326,7 +337,9 @@ chk_cudappa_issue="\
   containers if the CUDA version exactly matches the version of the host.
   Please install CUDA from the official Nvidia repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
-chk_cudappa_fix='TODO'
+chk_cudappa_fix=\
+'sudo apt remove -y cuda-10-1 && '\
+"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
 chk_cudappa_reboot=0
 
 chk_cudadriverdep_name='TODO cuda driver dep weirdness'
@@ -428,8 +441,7 @@ curl -s -L https://nvidia.github.io/nvidia-docker/\
   sudo tee /etc/apt/sources.list.d/nvidia-docker.list &&
 sudo apt update && 
 sudo apt install -y nvidia-container-toolkit &&
-sudo systemctl restart docker
-'
+sudo systemctl restart docker'
 chk_dockernct_reboot=0
 
 chk_dockerroot_name='Docker runs without root'
