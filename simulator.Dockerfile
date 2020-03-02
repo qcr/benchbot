@@ -39,16 +39,16 @@ ADD ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 # TODO handle driver versions from graphics drivers PPA
 ARG NVIDIA_DRIVER_VERSION
 ARG CUDA_VERSION
-ARG CUDA_VERSION_SHORT
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,display,graphics,utility
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
+RUN add-apt-repository ppa:graphics-drivers && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
     mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
     add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /" && \
     apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
     "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" \
-    "cuda-${CUDA_VERSION_SHORT}=${CUDA_VERSION}" && \
+    "cuda-$(echo "${CUDA_VERSION}" | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1-\2/')=${CUDA_VERSION}" && \
     ln -sv lib /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux/lib64 && \
     ln -sv /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux /usr/local/cuda
 
