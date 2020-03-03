@@ -107,7 +107,7 @@ command:
 ################### All checks for the host system (ouch...) ###################
 ################################################################################
 
-checks_list=(
+checks_list_pre=(
   "Running Nvidia related system checks:"
   "nvidiacard"  # Is a valid graphics card available?
   "nvidiadriver"  # Is the driver available?
@@ -116,7 +116,6 @@ checks_list=(
   "cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
   "cudappa"  # Is cuda from the Nvidia PPA?
-  "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
   "isaac"  # Is the Isaac *.zip readily available?
   "Running Docker related system checks:"
   "dockeravailable"  # Is Docker available?
@@ -131,7 +130,7 @@ checks_list=(
   "todeletersa"  # Is an id_rsa available?
   "todeletepermission"  # Does the id_rsa give you permission to clone repos?
   )
-
+  
 chk_nvidiacard_name='Nvidia GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
@@ -169,7 +168,7 @@ chk_nvidiaversion_name='Nvidia driver version valid'
 chk_nvidiaversion_pass='Valid ($check_result)'
 chk_nvidiaversion_fail='Invalid ($check_result)'
 chk_nvidiaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
-'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/'"'"
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/'"'"
 chk_nvidiaversion_eval='eval_version "$check_result" 418'
 chk_nvidiaversion_issue="\
   The version of the running Nvidia driver ("'$check_result'") is incompatible
@@ -255,32 +254,6 @@ chk_cudappa_fix=\
 'sudo apt remove -y cuda-10-1 && '\
 "${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
 chk_cudappa_reboot=0
-
-chk_cudadriverdep_name='CUDA / Nvidia driver pairing'
-chk_cudadriverdep_pass='Feasible'
-chk_cudadriverdep_fail='Infeasible'
-chk_cudadriverdep_check='echo "TODO"'
-chk_cudadriverdep_eval='[ ! -z "$check_result" ]'
-chk_cudadriverdep_issue="\
-  During development we ran into a situation where it was impossible for the
-  Dockerfile to reproduce the CUDA version / Nvidia driver pairing of the host,
-  even while using exactly the same PPAs / repos as the host system. From what
-  we found, it seemed Nvidia had updated the Nvidia driver dependencies for the 
-  latest CUDA in apt & not changed the version number (effectively deleting the
-  old version from existence through apt).
-
-  Consequence: all machines setup with the 'old' CUDA / Nvidia pairing were in
-  zombie states that could not be reproduced by apt (and they would not upgrade
-  automatically as apt could see no version change).
-
-  Solution: the best solution we could find was to remove the existing CUDA
-  install & reinstall. Please do this if we have identified this issue with your
-  host system setup."
-chk_cudadriverdep_fix=\
-'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
-if [ -z "$v" ]; then v="cuda-10-1"; fi &&
-sudo apt remove -y "$v" && sudo apt install -y "$v"'
-chk_cudadriverdep_reboot=0
 
 chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
 chk_isaac_pass='Found archive'
@@ -480,6 +453,184 @@ chk_todeletepermission_issue="\
 chk_todeletepermission_fix=''
 chk_todeletepermission_reboot=0
 
+checks_list_post=(
+  "Validating the build against the host system:"
+  "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
+  "Validating BenchBot libraries on the host system:"
+  "apicloned"
+  "apiuptodate"
+  "apiinstalled"
+  "examplescloned"
+  "examplesuptodate"
+  "examplesinstalled"
+  "evalcloned"
+  "evaluptodate"
+  "evalinstalled"
+  "Integrating BenchBot with the host system:"
+  "hostsavail"
+  "symlinks"
+  )
+
+chk_cudadriverdep_name='CUDA / Nvidia versions match'
+chk_cudadriverdep_pass='Matches'
+chk_cudadriverdep_fail='Does not match'
+chk_cudadriverdep_check=\
+'fn='"'"'echo "Nvidia: $(cat /proc/driver/nvidia/version | \
+  sed "/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/"), \
+  CUDA: $(cat /usr/local/cuda/version.txt | cut -d " " -f 3)"'"'"' &&
+host=$(eval "$fn") && 
+bb=$(docker run --rm -t '$DOCKER_TAG_SIMULATOR' /bin/bash -c "$fn" | \
+  sed '"'"'s/[[:space:]]*$//'"'"') &&
+eq=$([ "$host" == "$bb" ] && echo "==" || echo "!=") &&
+printf "%s\n%s\n%s" "Host: $host" "BenchBot: $bb" "Result: $eq"'
+chk_cudadriverdep_eval='[[ "$check_result" == *"=="* ]]'
+chk_cudadriverdep_issue="\
+  The CUDA / Nvidia driver version pairing in the installed BenchBot does not
+  match the version on your host system, despite our best efforts:
+
+"'$check_result'"
+
+  During development we ran into a situation where it was impossible for the
+  Dockerfile to reproduce the CUDA version / Nvidia driver pairing of the host,
+  even while using exactly the same PPAs / repos as the host system. From what
+  we found, it seemed the Nvidia driver dependencies for the latest CUDA in apt
+  had been updated WITHOUT changing version number (effectively deleting the
+  old version from existence in apt).
+
+  Consequence: all machines setup with the 'old' CUDA / Nvidia pairing were in
+  zombie states that could not be reproduced by apt (and they would not upgrade
+  automatically as apt could see no version change).
+
+  Solution: the best solution we could find was to remove the existing CUDA
+  install on the host machine & reinstall. Please do this if we have identified
+  this issue with your host system setup."
+chk_cudadriverdep_fix=\
+'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
+if [ -z "$v" ]; then v="cuda-10-1"; fi &&
+sudo apt remove -y "$v" && sudo apt install -y "$v"'
+chk_cudadriverdep_reboot=0
+
+chk_apicloned_name='TODO api cloned'
+chk_apicloned_pass='Exists'
+chk_apicloned_fail='Does not exist'
+chk_apicloned_check='echo "TODO"'
+chk_apicloned_eval='[ ! -z "$check_result" ]'
+chk_apicloned_issue="\
+  TODO"
+chk_apicloned_fix=\
+'echo "TODO"'
+chk_apicloned_reboot=0
+
+chk_apiuptodate_name='TODO api cloned'
+chk_apiuptodate_pass='Exists'
+chk_apiuptodate_fail='Does not exist'
+chk_apiuptodate_check='echo "TODO"'
+chk_apiuptodate_eval='[ ! -z "$check_result" ]'
+chk_apiuptodate_issue="\
+  TODO"
+chk_apiuptodate_fix=\
+'echo "TODO"'
+chk_apiuptodate_reboot=0
+
+chk_apiinstalled_name='TODO api cloned'
+chk_apiinstalled_pass='Exists'
+chk_apiinstalled_fail='Does not exist'
+chk_apiinstalled_check='echo "TODO"'
+chk_apiinstalled_eval='[ ! -z "$check_result" ]'
+chk_apiinstalled_issue="\
+  TODO"
+chk_apiinstalled_fix=\
+'echo "TODO"'
+chk_apiinstalled_reboot=0
+
+chk_examplescloned_name='TODO api cloned'
+chk_examplescloned_pass='Exists'
+chk_examplescloned_fail='Does not exist'
+chk_examplescloned_check='echo "TODO"'
+chk_examplescloned_eval='[ ! -z "$check_result" ]'
+chk_examplescloned_issue="\
+  TODO"
+chk_examplescloned_fix=\
+'echo "TODO"'
+chk_examplescloned_reboot=0
+
+chk_examplesuptodate_name='TODO api cloned'
+chk_examplesuptodate_pass='Exists'
+chk_examplesuptodate_fail='Does not exist'
+chk_examplesuptodate_check='echo "TODO"'
+chk_examplesuptodate_eval='[ ! -z "$check_result" ]'
+chk_examplesuptodate_issue="\
+  TODO"
+chk_examplesuptodate_fix=\
+'echo "TODO"'
+chk_examplesuptodate_reboot=0
+
+chk_examplesinstalled_name='TODO api cloned'
+chk_examplesinstalled_pass='Exists'
+chk_examplesinstalled_fail='Does not exist'
+chk_examplesinstalled_check='echo "TODO"'
+chk_examplesinstalled_eval='[ ! -z "$check_result" ]'
+chk_examplesinstalled_issue="\
+  TODO"
+chk_examplesinstalled_fix=\
+'echo "TODO"'
+chk_examplesinstalled_reboot=0
+
+chk_evalcloned_name='TODO api cloned'
+chk_evalcloned_pass='Exists'
+chk_evalcloned_fail='Does not exist'
+chk_evalcloned_check='echo "TODO"'
+chk_evalcloned_eval='[ ! -z "$check_result" ]'
+chk_evalcloned_issue="\
+  TODO"
+chk_evalcloned_fix=\
+'echo "TODO"'
+chk_evalcloned_reboot=0
+
+chk_evaluptodate_name='TODO api cloned'
+chk_evaluptodate_pass='Exists'
+chk_evaluptodate_fail='Does not exist'
+chk_evaluptodate_check='echo "TODO"'
+chk_evaluptodate_eval='[ ! -z "$check_result" ]'
+chk_evaluptodate_issue="\
+  TODO"
+chk_evaluptodate_fix=\
+'echo "TODO"'
+chk_evaluptodate_reboot=0
+
+chk_evalinstalled_name='TODO api cloned'
+chk_evalinstalled_pass='Exists'
+chk_evalinstalled_fail='Does not exist'
+chk_evalinstalled_check='echo "TODO"'
+chk_evalinstalled_eval='[ ! -z "$check_result" ]'
+chk_evalinstalled_issue="\
+  TODO"
+chk_evalinstalled_fix=\
+'echo "TODO"'
+chk_evalinstalled_reboot=0
+
+chk_hostsavail_name='TODO api cloned'
+chk_hostsavail_pass='Exists'
+chk_hostsavail_fail='Does not exist'
+chk_hostsavail_check='echo "TODO"'
+chk_hostsavail_eval='[ ! -z "$check_result" ]'
+chk_hostsavail_issue="\
+  TODO"
+chk_hostsavail_fix=\
+'echo "TODO"'
+chk_hostsavail_reboot=0
+
+chk_symlinks_name='TODO api cloned'
+chk_symlinks_pass='Exists'
+chk_symlinks_fail='Does not exist'
+chk_symlinks_check='echo "TODO"'
+chk_symlinks_eval='[ ! -z "$check_result" ]'
+chk_symlinks_issue="\
+  TODO"
+chk_symlinks_fix=\
+'echo "TODO"'
+chk_symlinks_reboot=0
+
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
@@ -628,114 +779,133 @@ if [ -z "$updates_skip" ]; then
   fi
 fi
 
-# PART 1: Ensuring the system state is compatible with BenchBot
-header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
+# # PART 1: Ensuring the system state is compatible with BenchBot
+# header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
-# Iterate through the list of checks, doing some dirty string based variable
-# extraction in the handle_requirement() function...
-for c in "${checks_list[@]}"; do
+# # Iterate through the list of checks, doing some dirty string based variable
+# # extraction in the handle_requirement() function...
+# for c in "${checks_list_pre[@]}"; do
+#   if [[ "$c" =~ :$ ]]; then
+#     printf "\n${colour_blue}$c${colour_nc}\n"
+#   else
+#     handle_requirement "$c"
+#     res=$?
+#     if [ $res -eq 2 ]; then
+#       echo "TODO restart the script"
+#     elif [ $res -eq 1 ]; then
+#       exit 1
+#     fi
+#   fi
+# done
+
+# printf "\n\n"
+# read -n 1 -r -p \
+#   "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
+#   prompt
+# printf "\n"
+# if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+#   printf "Proceeding with install ... \n\n"
+# else
+#   printf "Install aborted.\n\n"
+#   exit 1
+# fi
+
+# echo ""
+# echo "TODO: Should we be enforcing 18.04?"
+
+# exit 0
+
+# # PART 2: Fetching information about latest benchbot versions
+# header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
+
+# # Get the latest commit hashes for each of our git repos
+# echo -e "\nFetching latest hash for BenchBot Simulator ... "
+# benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
+#   latest_version_info)
+# echo -e "\t\t$benchbot_simulator_hash."
+# echo "Fetching latest hash for BenchBot Supervisor ... "
+# benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
+#   latest_version_info)
+# echo -e "\t\t$benchbot_supervisor_hash."
+# echo "Fetching latest hash for BenchBot API ... "
+# benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
+#   latest_version_info)
+# echo -e "\t\t$benchbot_api_hash."
+
+# # Get md5sum of the latest from the provided envs_url
+# echo -e "\nFetching md5sum & URL for latest version of environments ... "
+# _envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
+# benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
+# benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
+# if [ -z "$benchbot_envs_md5sum" ] || \
+#     [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
+#   echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
+#   echo "${envs_err/'$envs_url'/$envs_url}"
+#   exit 1
+# elif [ -z "$benchbot_envs_url" ] || \
+#     [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
+#   echo -e "\n\nERROR: Failed to fetch valid URL for environments"
+#   echo "${envs_err/'$envs_url'/$envs_url}"
+#   exit 1
+# fi
+# echo -e "\t\tDone."
+
+# # PART 3: Build docker images (both simulator & submission base image)
+# header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
+
+# # Get some useful variables from the host
+# nvidia_driver_version=$(apt list --installed 2>/dev/null | \
+#   grep "nvidia-driver-" | cut -d ' ' -f 2)
+# cuda_version=$(apt list --installed 2>/dev/null | \
+#   grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
+# sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
+
+# # Build the BenchBot Simulator Docker image
+# docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
+#   --build-arg TZ=$(cat /etc/timezone) \
+#   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
+#   --build-arg CUDA_VERSION="${cuda_version}" \
+#   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
+#   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
+#   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
+#   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
+#   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
+#   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
+#   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
+# build_ret=$?
+# if [ $build_ret -ne 0 ]; then
+#   echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
+#   echo -e "\n$build_err${colour_nc}"
+#   exit 1
+# fi
+
+# # Build the BenchBot Submission Docker image
+# docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
+#   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
+#   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
+# build_ret=$?
+# if [ $build_ret -ne 0 ]; then
+#   echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
+#   echo -e "\n$build_err${colour_nc}"
+#   exit 1
+# fi
+
+# PART 4: Running post build checks
+header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue
+
+for c in "${checks_list_post[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
   else
     handle_requirement "$c"
     res=$?
-    if [ $res -eq 2 ]; then
-      echo "TODO restart the script"
-    elif [ $res -eq 1 ]; then
+    if [ $res -ne 0 ]; then
       exit 1
     fi
   fi
 done
 
-printf "\n\n"
-read -n 1 -r -p \
-  "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
-  prompt
-printf "\n"
-if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-  printf "Proceeding with install ... \n\n"
-else
-  printf "Install aborted.\n\n"
-  exit 1
-fi
-
-echo ""
-echo "TODO: Should we be enforcing 18.04?"
-
-# PART 2: Fetching information about latest benchbot versions
-header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
-
-# Get the latest commit hashes for each of our git repos
-echo -e "\nFetching latest hash for BenchBot Simulator ... "
-benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
-  latest_version_info)
-echo -e "\t\t$benchbot_simulator_hash."
-echo "Fetching latest hash for BenchBot Supervisor ... "
-benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
-  latest_version_info)
-echo -e "\t\t$benchbot_supervisor_hash."
-echo "Fetching latest hash for BenchBot API ... "
-benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
-  latest_version_info)
-echo -e "\t\t$benchbot_api_hash."
-
-# Get md5sum of the latest from the provided envs_url
-echo -e "\nFetching md5sum & URL for latest version of environments ... "
-_envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
-benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
-benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
-if [ -z "$benchbot_envs_md5sum" ] || \
-    [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-  echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
-  echo "${envs_err/'$envs_url'/$envs_url}"
-  exit 1
-elif [ -z "$benchbot_envs_url" ] || \
-    [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-  echo -e "\n\nERROR: Failed to fetch valid URL for environments"
-  echo "${envs_err/'$envs_url'/$envs_url}"
-  exit 1
-fi
-echo -e "\t\tDone."
-
-# PART 3: Build docker images (both simulator & submission base image)
-header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
-
-# Get some useful variables from the host
-nvidia_driver_version=$(apt list --installed 2>/dev/null | \
-  grep "nvidia-driver-" | cut -d ' ' -f 2)
-cuda_version=$(apt list --installed 2>/dev/null | \
-  grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
-sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
-
-# Build the BenchBot Simulator Docker image
-docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
-  --build-arg TZ=$(cat /etc/timezone) \
-  --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
-  --build-arg CUDA_VERSION="${cuda_version}" \
-  --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-  --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
-  --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
-  --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
-  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
-  --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
-  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
-build_ret=$?
-if [ $build_ret -ne 0 ]; then
-  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo -e "\n$build_err${colour_nc}"
-  exit 1
-fi
-
-# Build the BenchBot Submission Docker image
-docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
-  --build-arg BENCHBOT_API_GIT="${GIT_API}" \
-  --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
-build_ret=$?
-if [ $build_ret -ne 0 ]; then
-  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo -e "\n$build_err${colour_nc}"
-  exit 1
-fi
+exit 0
 
 # PART 4: Installing local componenets
 header_block "PART 4: INSTALLING LOCAL COMPONENTS" $colour_blue
