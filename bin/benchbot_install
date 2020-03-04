@@ -715,20 +715,6 @@ function handle_requirement() {
   return $retval
 }
 
-function install_component() {
-  name=$(basename "$1")
-  if [ ! -d "$1" ] ; then
-    echo -e "\n${colour_blue}INSTALLING ${name^^} ...${colour_nc}"
-    git clone "$2" "$1" 
-  fi
-  echo -e "\n${colour_blue}UPDATING ${name^^} ...${colour_nc}"
-  pushd "$1"
-  git fetch --all
-  git checkout "$($3 $BRANCH_DEFAULT | latest_version_info | cut -d ' ' -f 1)"
-  if [ ! -z "$4" ]; then eval "$4"; fi
-  popd
-}
-
 function uninstall_benchbot() {
   kill_benchbot
 
