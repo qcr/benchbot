@@ -13,9 +13,9 @@ source .helpers
 ################################################################################
 
 # Hostnames
-hostnames_header="# BENCHBOT SPECIFIC HOSTNAMES"
-hostnames_list=\
-"$URL_ROS $HOSTNAME_ROS
+hostnames_block=\
+"# BENCHBOT SPECIFIC HOSTNAMES
+$URL_ROS $HOSTNAME_ROS
 $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
@@ -87,21 +87,6 @@ envs_err="\
   envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
   internet connection also helps!
 "
-hosts_prompt="\
-Your hosts file does not appear to have the required hostnames added. To run
-BenchBot solutions natively on your machine (as opposed to containerised), 
-your host system needs to know about some Docker specific hostnames:
-
-$hostnames_list
-"
-symlink_prompt="\
-Symlinks in '$PATH_SYMLINKS' could not be found for the 3 programs (benchbot_install,
-benchbot_run, & benchbot_submit). Adding these programs to your path makes running
-BenchBot solutions significantly easier to work with. They can be added via the 
-command:
-
-   $symlink_cmd 
-"
 
 ################################################################################
 ################### All checks for the host system (ouch...) ###################
@@ -162,7 +147,7 @@ sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/\
 sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/\
   cuda/repos/ubuntu${v}/x86_64/ /" &&
 sudo apt-get update && sudo apt-get -y install nvidia-driver-440'
-chk_nvidiadriver_reboot=1
+chk_nvidiadriver_reboot=0
 
 chk_nvidiaversion_name='Nvidia driver version valid'
 chk_nvidiaversion_pass='Valid ($check_result)'
@@ -176,7 +161,7 @@ chk_nvidiaversion_issue="\
 
   Please install a more recent version of the driver from the Nvidia repository."
 chk_nvidiaversion_fix="$chk_nvidiadriver_fix"
-chk_nvidiaversion_reboot=1
+chk_nvidiaversion_reboot=0
 
 chk_nvidiappa_name='Nvidia driver from a standard PPA'
 chk_nvidiappa_pass='PPA is valid'
@@ -215,7 +200,7 @@ chk_cudaavailable_issue="\
   the official Nvidia repository. Please add the Nvidia repository, & install 
   'cuda-10' through apt."
 chk_cudaavailable_fix="${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
-chk_cudaavailable_reboot=0
+chk_cudaavailable_reboot=1
 
 chk_cudaversion_name='CUDA version valid'
 chk_cudaversion_pass='Valid ($check_result)'
@@ -229,7 +214,7 @@ chk_cudaversion_issue="\
 
   Please install a more recent version of CUDA from the Nvidia repository."
 chk_cudaversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}
-chk_cudaversion_reboot=0
+chk_cudaversion_reboot=1
 
 chk_cudappa_name='CUDA is from the Nvidia PPA'
 chk_cudappa_pass='PPA is valid'
@@ -253,7 +238,7 @@ chk_cudappa_issue="\
 chk_cudappa_fix=\
 'sudo apt remove -y cuda-10-1 && '\
 "${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
-chk_cudappa_reboot=0
+chk_cudappa_reboot=1
 
 chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
 chk_isaac_pass='Found archive'
@@ -275,7 +260,7 @@ chk_isaac_issue="\
   This check will only pass when a file is found with the following MD5SUM:
     $MD5_ISAAC_SDK"
 chk_isaac_fix=''
-chk_isaac_reboot=0
+chk_isaac_reboot=1
 
 chk_dockeravailable_name='Docker is available'
 chk_dockeravailable_pass='Found'
@@ -297,7 +282,7 @@ sudo apt update &&
 sudo apt install -y docker-ce &&
 sudo groupadd docker &&
 sudo usermod -aG docker '"$USER"
-chk_dockeravailable_reboot=1
+chk_dockeravailable_reboot=0
 
 chk_dockerversion_name='Docker version valid'
 chk_dockerversion_pass='Valid ($check_result)'
@@ -322,7 +307,7 @@ sudo apt update &&
 sudo apt install -y docker-ce &&
 sudo groupadd docker &&
 sudo usermod -aG docker '"$USER"
-chk_dockerversion_reboot=1
+chk_dockerversion_reboot=0
 
 chk_dockernct_name='Nvidia Container Toolkit installed'
 chk_dockernct_pass='Found ($check_result)'
@@ -343,7 +328,7 @@ curl -s -L https://nvidia.github.io/nvidia-docker/\
 sudo apt update && 
 sudo apt install -y nvidia-container-toolkit &&
 sudo systemctl restart docker'
-chk_dockernct_reboot=0
+chk_dockernct_reboot=1
 
 chk_dockerroot_name='Docker runs without root'
 chk_dockerroot_pass='Passed'
@@ -360,7 +345,7 @@ chk_dockerroot_issue="\
 chk_dockerroot_fix=\
 'sudo groupadd docker &&
 sudo usermod -aG docker '"$USER"
-chk_dockerroot_reboot=1
+chk_dockerroot_reboot=0
 
 chk_fsext4_name='/var/lib/docker on ext4 filesystem'
 chk_fsext4_pass='Yes ($check_result)'
@@ -381,7 +366,7 @@ sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
 sudo systemctl start docker'
-chk_fsext4_reboot=0
+chk_fsext4_reboot=1
 
 chk_fsnosuid_name='/var/lib/docker supports suid'
 chk_fsnosuid_pass='Enabled'
@@ -401,7 +386,7 @@ chk_fsnosuid_fix=\
 'sudo sed -E -n '"'"'s|(^[^#]*'"'"'$check_result'"'"' .*)nosuid|\1|p; s/,,/,/p; \
    s/ ,/ /p; s/, / /p'"'"' /etc/fstab &&
 sudo systemct daemon-reload'
-chk_fsnosuid_reboot=0
+chk_fsnosuid_reboot=1
 
 chk_fsspace_name='/var/lib/docker driver space check'
 chk_fsspace_pass='Sufficient space ($check_result)'
@@ -420,7 +405,7 @@ sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
 sudo systemctl start docker'
-chk_fsspace_reboot=0
+chk_fsspace_reboot=1
 
 chk_todeletersa_name='SSH key available'
 chk_todeletersa_pass='Found ($check_result)'
@@ -435,7 +420,7 @@ chk_todeletersa_issue="\
   Please copy a private SSH key with access to the respositories to the above
   location."
 chk_todeletersa_fix='cp ~/.ssh/id_rsa '"$PATH_ROOT"
-chk_todeletersa_reboot=0
+chk_todeletersa_reboot=1
 
 chk_todeletepermission_name='SSH key has permissions'
 chk_todeletepermission_pass='Successful'
@@ -451,7 +436,7 @@ chk_todeletepermission_issue="\
 
   Are you sure it has permission? See Ben."
 chk_todeletepermission_fix=''
-chk_todeletepermission_reboot=0
+chk_todeletepermission_reboot=1
 
 checks_list_post=(
   "Validating the build against the host system:"
@@ -507,7 +492,7 @@ chk_cudadriverdep_fix=\
 'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
 if [ -z "$v" ]; then v="cuda-10-1"; fi &&
 sudo apt remove -y "$v" && sudo apt install -y "$v"'
-chk_cudadriverdep_reboot=0
+chk_cudadriverdep_reboot=1
 
 chk_apicloned_name='BenchBot API cloned'
 chk_apicloned_pass='Yes'
@@ -520,8 +505,9 @@ chk_apicloned_issue="\
   installed significantly improves the development experience, & allows you to
   run your submissions natively without containerisation."
 chk_apicloned_fix=\
-'echo "TODO"'
-chk_apicloned_reboot=0
+'rm -rf '"$PATH_API"' && git clone '"$GIT_API $PATH_API"' &&
+pushd '"$PATH_API"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
 chk_apiuptodate_pass='Up-to-date'
@@ -538,8 +524,9 @@ chk_apiuptodate_issue="\
 
   Please move to the latest version."
 chk_apiuptodate_fix=\
-'echo "TODO"'
-chk_apiuptodate_reboot=0
+'pushd '"$PATH_API"' && git fetch --all && 
+git checkout $BRANCH_DEFAULT && git pull'
+chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
 chk_apiinstalled_pass='Available'
@@ -556,8 +543,8 @@ chk_apiinstalled_issue="\
   Please do not run the automatic fix if you intend to source a different python
   environment before running BenchBot."
 chk_apiinstalled_fix=\
-'echo "TODO"'
-chk_apiinstalled_reboot=0
+'pushd '"$PATH_API"' && pip install -e .'
+chk_apiinstalled_reboot=1
 
 chk_examplescloned_name='BenchBot examples cloned'
 chk_examplescloned_pass='Yes'
@@ -570,8 +557,9 @@ chk_examplescloned_issue="\
   it installed provides hands on examples to get up & running with the BenchBot
   system, including introductions to all of the different challenge modes."
 chk_examplescloned_fix=\
-'echo "TODO"'
-chk_examplescloned_reboot=0
+'rm -rf '"$PATH_EXAMPLES"' && git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
+pushd '"$PATH_EXAMPLES"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+chk_examplescloned_reboot=1
 
 chk_examplesuptodate_name='BenchBot examples up-to-date'
 chk_examplesuptodate_pass='Up-to-date'
@@ -588,8 +576,9 @@ chk_examplesuptodate_issue="\
 
   Please move to the latest version."
 chk_examplesuptodate_fix=\
-'echo "TODO"'
-chk_examplesuptodate_reboot=0
+'pushd '"$PATH_EXAMPLES"' && git fetch --all 
+&& git checkout $BRANCH_DEFAULT && git pull'
+chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='TODO BenchBot eval cloned'
 chk_evalcloned_pass='Yes'
@@ -600,7 +589,7 @@ chk_evalcloned_issue="\
   TODO"
 chk_evalcloned_fix=\
 'echo "TODO"'
-chk_evalcloned_reboot=0
+chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='TODO BenchBot eval up-to-date'
 chk_evaluptodate_pass='Up-to-date'
@@ -611,7 +600,7 @@ chk_evaluptodate_issue="\
   TODO"
 chk_evaluptodate_fix=\
 'echo "TODO"'
-chk_evaluptodate_reboot=0
+chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='TODO BenchBot eval installed'
 chk_evalinstalled_pass='Available'
@@ -622,7 +611,7 @@ chk_evalinstalled_issue="\
   TODO"
 chk_evalinstalled_fix=\
 'echo "TODO"'
-chk_evalinstalled_reboot=0
+chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
 chk_hostsavail_pass='Found'
@@ -640,8 +629,8 @@ chk_hostsavail_issue="\
   to communicate between each of the individual components. Please add the host
   to your /etc/hosts file."
 chk_hostsavail_fix=\
-'echo "TODO"'
-chk_hostsavail_reboot=0
+'echo -e "$hostnames_block" | sudo tee -a /etc/hosts'
+chk_hostsavail_reboot=1
 
 chk_symlinks_name='BenchBot symlinks available'
 chk_symlinks_pass='Found'
@@ -657,63 +646,69 @@ chk_symlinks_issue="\
   not wish to add symbolic links, or would rather add the './bin/' directory to
   your PATH, please skip this step."
 chk_symlinks_fix=\
-'echo "TODO"'
-chk_symlinks_reboot=0
+'sudo ln -svf '"$(dirname $abs_path)"'/* '"$PATH_SYMLINKS"
+chk_symlinks_reboot=1
 
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
 
 function handle_requirement() {
+  required=${2:-0}
+
   # Dirtily pull all of the check-related values based from the input argument
-  _name=$(eval 'echo "$chk_'$1'_name"')
-  _pass=$(eval 'echo "$chk_'$1'_pass"')
-  _fail=$(eval 'echo "$chk_'$1'_fail"')
-  _check=$(eval 'echo "$chk_'$1'_check"')
-  _eval=$(eval 'echo "$chk_'$1'_eval"')
-  _issue=$(eval 'echo "$chk_'$1'_issue"')
-  _fix=$(eval 'echo "$chk_'$1'_fix"')
-  _reboot=$(eval 'echo "$chk_'$1'_reboot"')
+  name=$(eval 'echo "$chk_'$1'_name"')
+  pass=$(eval 'echo "$chk_'$1'_pass"')
+  fail=$(eval 'echo "$chk_'$1'_fail"')
+  check=$(eval 'echo "$chk_'$1'_check"')
+  evaluate=$(eval 'echo "$chk_'$1'_eval"')
+  issue=$(eval 'echo "$chk_'$1'_issue"')
+  fix=$(eval 'echo "$chk_'$1'_fix"')
+  reboot=$(eval 'echo "$chk_'$1'_reboot"')
 
   # Perform the check, printing the result & resolving issues if possible
   retval=0
-  printf "\t$_name: "
-  check_result=$(eval "$_check")
+  printf "\t$name: "
+  check_result=$(eval "$check")
   printf "\033[46G"
-  if $(eval $_eval); then 
-    printf "${colour_green}%35s" "${_pass//'$check_result'/$check_result}"
+  if $(eval $evaluate); then 
+    printf "${colour_green}%35s" "${pass//'$check_result'/$check_result}"
     retval=0
   else 
     printf "${colour_yellow}%35s\n${colour_nc}" \
-      "${_fail//'$check_result'/$check_result}"
-    printf "\n${colour_yellow}%s\n" "${_issue//'$check_result'/$check_result}"
-    if [ -z "$_fix" ]; then
+      "${fail//'$check_result'/$check_result}"
+    printf "\n${colour_yellow}%s\n" "${issue//'$check_result'/$check_result}"
+    if [ -z "$fix" ]; then
       printf "\n  No automatic fix is available.\n"
-      s="Please manually resolve the issue & then re-run the install script." 
-      printf "\n  $s"
-      retval=1
+      unresolved=1
     else
       printf "\n  The following commands can be run to try & fix the issue:\n"
-      printf "\n%s\n\n" "${_fix//'$check_result'/$check_result}"
+      printf "\n%s\n\n" "${fix//'$check_result'/$check_result}"
       read -n 1 -r -p "  Would you like the above commands to be run (y/N)? " \
         apply_fix
       if [[ "$apply_fix" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
         printf "\n\n${colour_nc}"
-        eval "$_fix"
+        eval "$fix"
+        unresolved=$?
         printf "\n${colour_yellow}"
-        if [ "$_reboot" -eq 0 ]; then
+        if [ "$reboot" -eq 0 ]; then
           s="Please reboot your machine before re-running the install script." 
           printf "\n  $s"
           retval=1
-        else
+        elif [ $unresolved -eq 0 ] && [ $required -eq 0 ]; then
           printf "\n  Restarting the installation script ..."
           retval=2
         fi
       else
-        s="Please resolve this issue, & then re-run the install script."
-        printf "\n\n  $s"
-        retval=1
+        unresolved=1
       fi
+    fi
+    if [ $unresolved -ne 0 ] && [ $required -eq 0 ]; then
+      s="Please manually resolve this issue, & re-run the install script."
+      printf "\n\n  $s"
+      retval=1
+    elif [ $required -ne 0 ]; then
+      printf "\n\n"
     fi
   fi
   printf "${colour_nc}\n"
@@ -926,9 +921,8 @@ for c in "${checks_list_post[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
   else
-    handle_requirement "$c"
-    res=$?
-    if [ $res -ne 0 ]; then
+    handle_requirement "$c" 1
+    if [ $? -ne 0 ]; then
       exit 1
     fi
   fi
