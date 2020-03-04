@@ -462,7 +462,6 @@ checks_list_post=(
   "apiinstalled"
   "examplescloned"
   "examplesuptodate"
-  "examplesinstalled"
   "evalcloned"
   "evaluptodate"
   "evalinstalled"
@@ -510,75 +509,91 @@ if [ -z "$v" ]; then v="cuda-10-1"; fi &&
 sudo apt remove -y "$v" && sudo apt install -y "$v"'
 chk_cudadriverdep_reboot=0
 
-chk_apicloned_name='TODO api cloned'
-chk_apicloned_pass='Exists'
-chk_apicloned_fail='Does not exist'
-chk_apicloned_check='echo "TODO"'
-chk_apicloned_eval='[ ! -z "$check_result" ]'
+chk_apicloned_name='BenchBot API cloned'
+chk_apicloned_pass='Yes'
+chk_apicloned_fail='No'
+chk_apicloned_check=\
+'git -C '"$PATH_API"' rev-parse --show-toplevel 2>/dev/null'
+chk_apicloned_eval='[ "$check_result" == "$(realpath '"$PATH_API"')" ]'
 chk_apicloned_issue="\
-  TODO"
+  The BenchBot API python library is not cloned on the host system. Having it
+  installed significantly improves the development experience, & allows you to
+  run your submissions natively without containerisation."
 chk_apicloned_fix=\
 'echo "TODO"'
 chk_apicloned_reboot=0
 
-chk_apiuptodate_name='TODO api cloned'
-chk_apiuptodate_pass='Exists'
-chk_apiuptodate_fail='Does not exist'
-chk_apiuptodate_check='echo "TODO"'
-chk_apiuptodate_eval='[ ! -z "$check_result" ]'
+chk_apiuptodate_name='BenchBot API up-to-date'
+chk_apiuptodate_pass='Up-to-date'
+chk_apiuptodate_fail='Outdated'
+chk_apiuptodate_check=\
+'git -C '"$PATH_API"' rev-parse HEAD && 
+git ls-remote '"$GIT_API"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_apiuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_apiuptodate_issue="\
-  TODO"
+  The version of the BenchBot API python library on the host system is out of
+  date. The current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
 chk_apiuptodate_fix=\
 'echo "TODO"'
 chk_apiuptodate_reboot=0
 
-chk_apiinstalled_name='TODO api cloned'
-chk_apiinstalled_pass='Exists'
-chk_apiinstalled_fail='Does not exist'
-chk_apiinstalled_check='echo "TODO"'
+chk_apiinstalled_name='BenchBot API installed'
+chk_apiinstalled_pass='Available'
+chk_apiinstalled_fail='Not found'
+chk_apiinstalled_check=\
+'python -c '"'"'import benchbot_api; print(benchbot_api.__file__);'"'"' \
+  2>/dev/null'
 chk_apiinstalled_eval='[ ! -z "$check_result" ]'
 chk_apiinstalled_issue="\
-  TODO"
+  BenchBot API was not found in python. It is either not installed, or the 
+  current terminal is not correctly sourcing your installed python packages 
+  (could be a virtual environment, conda, ROS, etc).
+
+  Please do not run the automatic fix if you intend to source a different python
+  environment before running BenchBot."
 chk_apiinstalled_fix=\
 'echo "TODO"'
 chk_apiinstalled_reboot=0
 
-chk_examplescloned_name='TODO api cloned'
-chk_examplescloned_pass='Exists'
-chk_examplescloned_fail='Does not exist'
-chk_examplescloned_check='echo "TODO"'
-chk_examplescloned_eval='[ ! -z "$check_result" ]'
+chk_examplescloned_name='BenchBot examples cloned'
+chk_examplescloned_pass='Yes'
+chk_examplescloned_fail='No'
+chk_examplescloned_check=\
+'git -C '"$PATH_EXAMPLES"' rev-parse --show-toplevel 2>/dev/null'
+chk_examplescloned_eval='[ "$check_result" == "$(realpath '"$PATH_EXAMPLES"')" ]'
 chk_examplescloned_issue="\
-  TODO"
+  The BenchBot examples python library is not cloned on the host system. Having
+  it installed provides hands on examples to get up & running with the BenchBot
+  system, including introductions to all of the different challenge modes."
 chk_examplescloned_fix=\
 'echo "TODO"'
 chk_examplescloned_reboot=0
 
-chk_examplesuptodate_name='TODO api cloned'
-chk_examplesuptodate_pass='Exists'
-chk_examplesuptodate_fail='Does not exist'
-chk_examplesuptodate_check='echo "TODO"'
-chk_examplesuptodate_eval='[ ! -z "$check_result" ]'
+chk_examplesuptodate_name='BenchBot examples up-to-date'
+chk_examplesuptodate_pass='Up-to-date'
+chk_examplesuptodate_fail='Outdated'
+chk_examplesuptodate_check=\
+'git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
+git ls-remote '"$GIT_EXAMPLES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_examplesuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_examplesuptodate_issue="\
-  TODO"
+  The version of the BenchBot examples python library on the host system is out
+  of date. The current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
 chk_examplesuptodate_fix=\
 'echo "TODO"'
 chk_examplesuptodate_reboot=0
 
-chk_examplesinstalled_name='TODO api cloned'
-chk_examplesinstalled_pass='Exists'
-chk_examplesinstalled_fail='Does not exist'
-chk_examplesinstalled_check='echo "TODO"'
-chk_examplesinstalled_eval='[ ! -z "$check_result" ]'
-chk_examplesinstalled_issue="\
-  TODO"
-chk_examplesinstalled_fix=\
-'echo "TODO"'
-chk_examplesinstalled_reboot=0
-
-chk_evalcloned_name='TODO api cloned'
-chk_evalcloned_pass='Exists'
-chk_evalcloned_fail='Does not exist'
+chk_evalcloned_name='TODO BenchBot eval cloned'
+chk_evalcloned_pass='Yes'
+chk_evalcloned_fail='No'
 chk_evalcloned_check='echo "TODO"'
 chk_evalcloned_eval='[ ! -z "$check_result" ]'
 chk_evalcloned_issue="\
@@ -587,9 +602,9 @@ chk_evalcloned_fix=\
 'echo "TODO"'
 chk_evalcloned_reboot=0
 
-chk_evaluptodate_name='TODO api cloned'
-chk_evaluptodate_pass='Exists'
-chk_evaluptodate_fail='Does not exist'
+chk_evaluptodate_name='TODO BenchBot eval up-to-date'
+chk_evaluptodate_pass='Up-to-date'
+chk_evaluptodate_fail='Outdated'
 chk_evaluptodate_check='echo "TODO"'
 chk_evaluptodate_eval='[ ! -z "$check_result" ]'
 chk_evaluptodate_issue="\
@@ -598,9 +613,9 @@ chk_evaluptodate_fix=\
 'echo "TODO"'
 chk_evaluptodate_reboot=0
 
-chk_evalinstalled_name='TODO api cloned'
-chk_evalinstalled_pass='Exists'
-chk_evalinstalled_fail='Does not exist'
+chk_evalinstalled_name='TODO BenchBot eval installed'
+chk_evalinstalled_pass='Available'
+chk_evalinstalled_fail='Not found'
 chk_evalinstalled_check='echo "TODO"'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
@@ -609,24 +624,38 @@ chk_evalinstalled_fix=\
 'echo "TODO"'
 chk_evalinstalled_reboot=0
 
-chk_hostsavail_name='TODO api cloned'
-chk_hostsavail_pass='Exists'
-chk_hostsavail_fail='Does not exist'
-chk_hostsavail_check='echo "TODO"'
-chk_hostsavail_eval='[ ! -z "$check_result" ]'
+chk_hostsavail_name='BenchBot hosts available'
+chk_hostsavail_pass='Found'
+chk_hostsavail_fail='Not found'
+chk_hostsavail_check=\
+'getent hosts benchbot_ros benchbot_simulator benchbot_supervisor'
+chk_hostsavail_eval='[ $(echo "$check_result" | wc -l) -eq 3 ]'
 chk_hostsavail_issue="\
-  TODO"
+  The hosts benchbot_ros, benchbot_simulator, & benchbot_supervisor were not
+  found on the host system. Only the following hosts were found (may be empty):
+
+"'$check_result'"
+
+  Having all hosts available to your system allows the BenchBot software stack
+  to communicate between each of the individual components. Please add the host
+  to your /etc/hosts file."
 chk_hostsavail_fix=\
 'echo "TODO"'
 chk_hostsavail_reboot=0
 
-chk_symlinks_name='TODO api cloned'
-chk_symlinks_pass='Exists'
-chk_symlinks_fail='Does not exist'
-chk_symlinks_check='echo "TODO"'
+chk_symlinks_name='BenchBot symlinks available'
+chk_symlinks_pass='Found'
+chk_symlinks_fail='Not found'
+chk_symlinks_check=\
+'[ -e "'$PATH_SYMLINKS'/benchbot_install" ] && 
+  [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
+  ls -l "'$PATH_SYMLINKS'/benchbot_"* | cut -d " " -f 9-11'
 chk_symlinks_eval='[ ! -z "$check_result" ]'
 chk_symlinks_issue="\
-  TODO"
+  Symbolic links for each of the 3 BenchBot scripts were not found. If you do 
+  not wish to add symbolic links, or would rather add the './bin/' directory to
+  your PATH, please skip this step."
 chk_symlinks_fix=\
 'echo "TODO"'
 chk_symlinks_reboot=0
