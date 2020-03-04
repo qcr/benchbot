@@ -803,116 +803,114 @@ if [ -z "$updates_skip" ]; then
   fi
 fi
 
-# # PART 1: Ensuring the system state is compatible with BenchBot
-# header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
+# PART 1: Ensuring the system state is compatible with BenchBot
+header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
-# # Iterate through the list of checks, doing some dirty string based variable
-# # extraction in the handle_requirement() function...
-# for c in "${checks_list_pre[@]}"; do
-#   if [[ "$c" =~ :$ ]]; then
-#     printf "\n${colour_blue}$c${colour_nc}\n"
-#   else
-#     handle_requirement "$c"
-#     res=$?
-#     if [ $res -eq 2 ]; then
-#       echo "TODO restart the script"
-#     elif [ $res -eq 1 ]; then
-#       exit 1
-#     fi
-#   fi
-# done
+# Iterate through the list of checks, doing some dirty string based variable
+# extraction in the handle_requirement() function...
+for c in "${checks_list_pre[@]}"; do
+  if [[ "$c" =~ :$ ]]; then
+    printf "\n${colour_blue}$c${colour_nc}\n"
+  else
+    handle_requirement "$c"
+    res=$?
+    if [ $res -eq 2 ]; then
+      echo "TODO restart the script"
+    elif [ $res -eq 1 ]; then
+      exit 1
+    fi
+  fi
+done
 
-# printf "\n\n"
-# read -n 1 -r -p \
-#   "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
-#   prompt
-# printf "\n"
-# if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-#   printf "Proceeding with install ... \n\n"
-# else
-#   printf "Install aborted.\n\n"
-#   exit 1
-# fi
+printf "\n\n"
+read -n 1 -r -p \
+  "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
+  prompt
+printf "\n"
+if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+  printf "Proceeding with install ... \n\n"
+else
+  printf "Install aborted.\n\n"
+  exit 1
+fi
 
-# echo ""
-# echo "TODO: Should we be enforcing 18.04?"
+echo ""
+echo "TODO: Should we be enforcing 18.04?"
 
-# exit 0
+# PART 2: Fetching information about latest benchbot versions
+header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
-# # PART 2: Fetching information about latest benchbot versions
-# header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
+# Get the latest commit hashes for each of our git repos
+echo -e "\nFetching latest hash for BenchBot Simulator ... "
+benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
+  latest_version_info)
+echo -e "\t\t$benchbot_simulator_hash."
+echo "Fetching latest hash for BenchBot Supervisor ... "
+benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
+  latest_version_info)
+echo -e "\t\t$benchbot_supervisor_hash."
+echo "Fetching latest hash for BenchBot API ... "
+benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
+  latest_version_info)
+echo -e "\t\t$benchbot_api_hash."
 
-# # Get the latest commit hashes for each of our git repos
-# echo -e "\nFetching latest hash for BenchBot Simulator ... "
-# benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
-#   latest_version_info)
-# echo -e "\t\t$benchbot_simulator_hash."
-# echo "Fetching latest hash for BenchBot Supervisor ... "
-# benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
-#   latest_version_info)
-# echo -e "\t\t$benchbot_supervisor_hash."
-# echo "Fetching latest hash for BenchBot API ... "
-# benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
-#   latest_version_info)
-# echo -e "\t\t$benchbot_api_hash."
+# Get md5sum of the latest from the provided envs_url
+echo -e "\nFetching md5sum & URL for latest version of environments ... "
+_envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
+benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
+benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
+if [ -z "$benchbot_envs_md5sum" ] || \
+    [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
+  echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
+  echo "${envs_err/'$envs_url'/$envs_url}"
+  exit 1
+elif [ -z "$benchbot_envs_url" ] || \
+    [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
+  echo -e "\n\nERROR: Failed to fetch valid URL for environments"
+  echo "${envs_err/'$envs_url'/$envs_url}"
+  exit 1
+fi
+echo -e "\t\tDone."
 
-# # Get md5sum of the latest from the provided envs_url
-# echo -e "\nFetching md5sum & URL for latest version of environments ... "
-# _envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
-# benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
-# benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
-# if [ -z "$benchbot_envs_md5sum" ] || \
-#     [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-#   echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
-#   echo "${envs_err/'$envs_url'/$envs_url}"
-#   exit 1
-# elif [ -z "$benchbot_envs_url" ] || \
-#     [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-#   echo -e "\n\nERROR: Failed to fetch valid URL for environments"
-#   echo "${envs_err/'$envs_url'/$envs_url}"
-#   exit 1
-# fi
-# echo -e "\t\tDone."
+# PART 3: Build docker images (both simulator & submission base image)
+header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
-# # PART 3: Build docker images (both simulator & submission base image)
-# header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
+# Get some useful variables from the host
+nvidia_driver_version=$(apt list --installed 2>/dev/null | \
+  grep "nvidia-driver-" | cut -d ' ' -f 2)
+cuda_version=$(apt list --installed 2>/dev/null | \
+  grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
+sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 
-# # Get some useful variables from the host
-# nvidia_driver_version=$(apt list --installed 2>/dev/null | \
-#   grep "nvidia-driver-" | cut -d ' ' -f 2)
-# cuda_version=$(apt list --installed 2>/dev/null | \
-#   grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
-# sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
+# Build the BenchBot Simulator Docker image
+docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
+  --build-arg TZ=$(cat /etc/timezone) \
+  --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
+  --build-arg CUDA_VERSION="${cuda_version}" \
+  --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
+  --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
+  --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
+  --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
+  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
+  --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
+  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
+build_ret=$?
+if [ $build_ret -ne 0 ]; then
+  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
+  echo -e "\n$build_err${colour_nc}"
+  exit 1
+fi
 
-# # Build the BenchBot Simulator Docker image
-# docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
-#   --build-arg TZ=$(cat /etc/timezone) \
-#   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
-#   --build-arg CUDA_VERSION="${cuda_version}" \
-#   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-#   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
-#   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
-#   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
-#   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
-#   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
-#   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
-# build_ret=$?
-# if [ $build_ret -ne 0 ]; then
-#   echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-#   echo -e "\n$build_err${colour_nc}"
-#   exit 1
-# fi
-
-# # Build the BenchBot Submission Docker image
-# docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
-#   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
-#   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
-# build_ret=$?
-# if [ $build_ret -ne 0 ]; then
-#   echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-#   echo -e "\n$build_err${colour_nc}"
-#   exit 1
-# fi
+# Build the BenchBot Submission Docker image
+docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
+  --build-arg BENCHBOT_API_GIT="${GIT_API}" \
+  --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
+build_ret=$?
+if [ $build_ret -ne 0 ]; then
+  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
+  echo -e "\n$build_err${colour_nc}"
+  exit 1
+fi
 
 # PART 4: Running post build checks
 header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue
@@ -927,52 +925,6 @@ for c in "${checks_list_post[@]}"; do
     fi
   fi
 done
-
-exit 0
-
-# PART 4: Installing local componenets
-header_block "PART 4: INSTALLING LOCAL COMPONENTS" $colour_blue
-
-install_component "$PATH_API" "$GIT_API" 'is_latest_benchbot_api' \
-  'pip install -e .'
-install_component "$PATH_EXAMPLES" "$GIT_EXAMPLES" \
-  'is_latest_benchbot_examples' 'pip install -r requirements.txt'
-# TODO
-# install_component "eval" 
-
-# PART 5: Run post build actions
-header_block "PART 5: RUNNING POST-INSTALL ACTIONS" $colour_blue
-
-# Adding Docker specific hostnames to /etc/hosts
-# TODO this detection should probably be done by 'getent hosts <name>'... 
-if ! grep -xq "$hostnames_header" /etc/hosts; then
-  echo -e "${colour_yellow}$hosts_prompt${colour_nc}"
-  read -p "Add the above hosts to '/etc/hosts' (sudo required) (y/n)? " prompt
-  if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-    echo -e "$hostnames_header\n$hostnames_list" | sudo tee -a /etc/hosts
-    echo "Done."
-  else
-    echo "Skipped."
-  fi
-fi
-
-# Install symlinks if they aren't found
-if [ ! -e "$PATH_SYMLINKS/benchbot_install" ] || \
-    [ ! -e "$PATH_SYMLINKS/benchbot_run" ] || \
-    [ ! -e "$PATH_SYMLINKS/benchbot_submit" ]; then
-  echo -e "${colour_yellow}$symlink_prompt${colour_nc}"
-  read -p "Add the symlinks by running the above command (sudo required) (y/n)? " prompt
-  if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-    eval $symlink_cmd
-    echo "Done."
-  else
-    echo "Skipped."
-  fi
-fi
-
-echo -e "\nAll post-install actions are complete."
-
-header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
 
 # We are finally done...
 echo -e "\nFinished!"
