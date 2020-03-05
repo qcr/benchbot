@@ -111,6 +111,9 @@ checks_list_pre=(
   "fsext4"  # Is /var/lib/docker on an ext4 filesystem?
   "fsnosuid"  # Is /var/lib/docker on a filesystem WITHOUT nosuid?
   "fsspace"  # Is /var/lib/docker on a filesystem with enough space?
+  "Miscellaneous requirements:"
+  "pip" # Is pip available? (required to install Python libraries)
+  "pythontk" # Is python-tk installed (required for matplotlib...)
   "Running TODELETE checks:"
   "todeletersa"  # Is an id_rsa available?
   "todeletepermission"  # Does the id_rsa give you permission to clone repos?
@@ -419,6 +422,38 @@ sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
 sudo systemctl start docker'
 chk_fsspace_reboot=1
+
+chk_pip_name='Pip python package manager available'
+chk_pip_pass='Found ($check_result)'
+chk_pip_fail='Not found'
+chk_pip_check=\
+'pip --version 2>/dev/null | cut -d " " -f 2'
+chk_pip_eval='[ ! -z "$check_result" ]'
+chk_pip_issue="\
+  Python package manager pip was not found. It is required for installation of
+  BenchBot python modules. Please either restart the install script with pip
+  available, or install it."
+chk_pip_fix=\
+'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
+  sed "/2/d")
+sudo apt install -y python${v}-pip'
+chk_pip_reboot=1
+
+chk_pythontk_name='Tkinter for Python installed'
+chk_pythontk_pass='Found'
+chk_pythontk_fail='Not found'
+chk_pythontk_check=\
+'python -c "import Tkinter; print(Tkinter.__file__)" 2>/dev/null'
+chk_pythontk_eval='[ ! -z "$check_result" ]'
+chk_pythontk_issue="\
+  Python package pythontk was not found. It is required to use the
+  visualisation tools available with the BenchBot API. Please install it via
+  package manager. "
+chk_pythontk_fix=\
+'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
+  sed "/2/d")
+sudo apt install -y python${v}-tk'
+chk_pythontk_reboot=1
 
 chk_todeletersa_name='SSH key available'
 chk_todeletersa_pass='Found ($check_result)'
@@ -822,7 +857,7 @@ if [ -z "$updates_skip" ]; then
       "restarting install script ...\n${colour_nc}"
     git fetch --all && git stash && git checkout "$benchbot_latest_hash"
     echo -e "\n${colour_yellow}Done.${colour_nc}"
-    exec $0 $input --no-update
+    popd > /dev/null && exec $0 $input --no-update
   else
     echo -e "$_benchbot_info"
     exit 1
@@ -841,7 +876,7 @@ for c in "${checks_list_pre[@]}"; do
     handle_requirement "$c"
     res=$?
     if [ $res -eq 2 ]; then
-      exec $0 $input --no-update
+      popd > /dev/null && exec $0 $input --no-update
     elif [ $res -eq 1 ]; then
       exit 1
     fi
