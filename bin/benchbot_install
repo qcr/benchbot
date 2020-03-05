@@ -666,6 +666,10 @@ chk_symlinks_reboot=1
 ######################## Helper functions for commands #########################
 ################################################################################
 
+function cleanup_terminal() {
+  printf "${colour_nc}"
+}
+
 function handle_requirement() {
   required=${2:-0}
 
@@ -744,6 +748,9 @@ function uninstall_benchbot() {
 ################################################################################
 ############################# Installation process #############################
 ################################################################################
+
+# Cleanup terminal colours whenever exiting
+trap cleanup_terminal EXIT
 
 # Safely parse options input
 input=$@
