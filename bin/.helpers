@@ -79,9 +79,8 @@ function header_block() {
 }
 
 ################################################################################
-################### Checking if dependencies exist / are met ###################
+######################## Helpers for managing BenchBot #########################
 ################################################################################
-
 
 function eval_version() {
   # $1 = version number, $2 = required version number
@@ -93,10 +92,6 @@ function eval_version() {
     return 1  # Did not pass requirement
   fi
 }
-
-################################################################################
-######################## Helpers for managing BenchBot #########################
-################################################################################
 
 function kill_benchbot() {
   # TODO make this quieter when I am confident it works as expected...
@@ -196,8 +191,6 @@ function latest_version_info() {
 }
 
 # TODO:
-# benchbot_api
-# benchbot_examples
 # benchbot_eval
 
 function update_check() {
