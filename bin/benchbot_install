@@ -124,7 +124,7 @@ chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | '\
 chk_nvidiacard_eval='[ ! -z "$check_result" ]'
 chk_nvidiacard_issue="\
   No Nvidia Graphics Card was detected. If there is a card available on your 
-  host system, then it should be visible with 'lcpci -nn | grep VGA' with a ID 
+  host system, then it should be visible with 'lspci -nn | grep VGA' with an ID
   of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
 chk_nvidiacard_fix=''
 chk_nvidiacard_reboot=0
@@ -254,7 +254,7 @@ chk_isaac_issue="\
   Due to licensing restrictions we cannot automatically download this file.
   Please sign up for an Nvidia developer account, download the *.zip for Isaac 
   2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
-  in the isaac folder of benchbot (mentioned above). The 2019.2 version of 
+  in the isaac folder of BenchBot (mentioned above). The 2019.2 version of
   Isaac is hidden under the 'Archive' section of the downloads page.
 
   This check will only pass when a file is found with the following MD5SUM:
@@ -271,7 +271,7 @@ chk_dockeravailable_issue="\
   Docker was not detected on the host system ('docker --version' did not return
   a version).
 
-  Please ensure Docker Engine - Community edition is installed on the system."
+  Please ensure Docker Engine - Community Edition is installed on the system."
 chk_dockeravailable_fix=\
 'sudo apt install -y apt-transport-https ca-certificates curl \
   software-properties-common &&
