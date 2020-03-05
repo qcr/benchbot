@@ -40,7 +40,7 @@ OPTION DETAILS:
 
     --list-tasks   
             Lists all supported task combinations. The listed tasks are printed
-            in the formant needed for the --task option.
+            in the format needed for the --task option.
 
     -e, --env             
             Select an environment to launch in the simulator (this must be
@@ -196,7 +196,6 @@ LOCALISATION_MODE DETAILS:
             represent the exact depth from the camera to the objecs they see.
 
         dead_reckoning:
-            TODO
             Sensor data is not perfect. In particular, due to noise, the robot
             position and orientation will drift off course the longer the robot
             runs. Images have noise. Depth images have noise and will have
