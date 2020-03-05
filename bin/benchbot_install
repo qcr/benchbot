@@ -254,7 +254,7 @@ chk_isaac_issue="\
   Due to licensing restrictions we cannot automatically download this file.
   Please sign up for an Nvidia developer account, download the *.zip for Isaac 
   2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
-  in the isaac folder of BenchBot (mentioned above). The 2019.2 version of
+  in the 'isaac' folder of BenchBot (mentioned above). The 2019.2 version of
   Isaac is hidden under the 'Archive' section of the downloads page.
 
   This check will only pass when a file is found with the following MD5SUM:
@@ -396,8 +396,8 @@ chk_fsspace_check=\
 if [ "${space: -1}" == "G" ] && [ ${space::-1} -ge 128 ]; then echo "$space"; fi'
 chk_fsspace_eval='[ ! -z "$check_result" ]'
 chk_fsspace_issue="\
-  The drive holding /var/lib/docker needs at least 128GB free. Please clear
-  space from the drive, or run the following fix to move /var/lib/docker to a 
+  The drive holding '/var/lib/docker' needs at least 128GB free. Please clear
+  space from the drive, or run the following fix to move '/var/lib/docker' to a
   drive with more space."
 chk_fsspace_fix=\
 'read -p "New location for /var/lib/docker with 128GB free:" new_location
@@ -414,7 +414,7 @@ chk_todeletersa_check=\
 'key="$PATH_ROOT/id_rsa" && if [ -f "$key" ]; then echo "$key"; fi'
 chk_todeletersa_eval='[ ! -z "$check_result" ]'
 chk_todeletersa_issue="\
-  SSH key for accessing private BenchBot repositories was not found at locstion:
+  SSH key for accessing private BenchBot repositories was not found at location:
   $PATH_ROOT/id_rsa
 
   Please copy a private SSH key with access to the respositories to the above
