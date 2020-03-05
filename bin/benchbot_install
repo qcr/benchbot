@@ -280,7 +280,7 @@ sudo add-apt-repository "deb [arch=amd64] \
   https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
 sudo apt update &&
 sudo apt install -y docker-ce &&
-sudo groupadd docker &&
+sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockeravailable_reboot=0
 
@@ -305,7 +305,7 @@ sudo add-apt-repository "deb [arch=amd64] \
   https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
 sudo apt update &&
 sudo apt install -y docker-ce &&
-sudo groupadd docker &&
+sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockerversion_reboot=0
 
@@ -333,7 +333,7 @@ chk_dockernct_reboot=1
 chk_dockerroot_name='Docker runs without root'
 chk_dockerroot_pass='Passed'
 chk_dockerroot_fail='Failed'
-chk_dockerroot_check='docker run hello-world &>/dev/null && echo $?'
+chk_dockerroot_check='docker run hello-world &>/dev/null; echo $?'
 chk_dockerroot_eval='[ $check_result -eq 0 ]'
 chk_dockerroot_issue="\
   Docker failed to run the hello-world test.
@@ -343,7 +343,7 @@ chk_dockerroot_issue="\
   changing groups), please run 'docker run hello-world' & resolve any issues
   that occur."
 chk_dockerroot_fix=\
-'sudo groupadd docker &&
+'sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockerroot_reboot=0
 
@@ -727,7 +727,7 @@ function handle_requirement() {
         eval "$fix"
         unresolved=$?
         printf "\n${colour_yellow}"
-        if [ "$reboot" -eq 0 ]; then
+        if [ "$reboot" -eq 0 ] && [ $unresolved -eq 0 ]; then
           s="Please reboot your machine before re-running the install script." 
           printf "\n  $s"
           retval=1
@@ -740,7 +740,8 @@ function handle_requirement() {
       fi
     fi
     if [ $unresolved -ne 0 ] && [ $required -eq 0 ]; then
-      s="Please manually resolve this issue, & re-run the install script."
+      s="Failed to solve issue. Please manually resolve, & re-run the "
+      s+="install script."
       printf "\n\n  $s"
       retval=1
     elif [ $required -ne 0 ]; then
