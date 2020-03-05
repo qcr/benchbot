@@ -322,8 +322,8 @@ chk_dockernct_issue="\
   Please install the toolkit from https://github.com/NVIDIA/nvidia-docker"
 chk_dockernct_fix=\
 'curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - &&
-curl -s -L https://nvidia.github.io/nvidia-docker/\
-  '"$(. /etc/os-release;echo $ID$VERSION_ID)"'/nvidia-docker.list | \
+curl -s -L "https://nvidia.github.io/nvidia-docker/\
+'"$(. /etc/os-release;echo $ID$VERSION_ID)"'/nvidia-docker.list" | \
   sudo tee /etc/apt/sources.list.d/nvidia-docker.list &&
 sudo apt update && 
 sudo apt install -y nvidia-container-toolkit &&
