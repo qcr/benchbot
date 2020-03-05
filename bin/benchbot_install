@@ -139,13 +139,13 @@ chk_nvidiadriver_issue="\
   visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
 chk_nvidiadriver_fix=\
 'v=$(. /etc/os-release; echo "$VERSION_ID" | sed "s/\.//") &&
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${v}/\
-  x86_64/cuda-ubuntu${v}.pin &&
+wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${v}/\
+x86_64/cuda-ubuntu${v}.pin" &&
 sudo mv cuda-ubuntu${v}.pin /etc/apt/preferences.d/cuda-repository-pin-600 &&
-sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/\
-  cuda/repos/ubuntu1804/x86_64/7fa2af80.pub &&
+sudo apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/\
+cuda/repos/ubuntu1804/x86_64/7fa2af80.pub" &&
 sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/\
-  cuda/repos/ubuntu${v}/x86_64/ /" &&
+cuda/repos/ubuntu${v}/x86_64/ /" &&
 sudo apt-get update && sudo apt-get -y install nvidia-driver-440'
 chk_nvidiadriver_reboot=0
 
