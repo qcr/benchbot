@@ -12,24 +12,10 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-not_found_text="NOT FOUND"
-
-# Requirements as an array of (required, recommended)
-nvidia_driver_version_reqs=("418" "430")
-cuda_version_reqs=("10.0" "10.1")
-docker_version_reqs=("19.03" "19.03.2")
-nvidia_container_reqs=("1.0" "1.0.5")
-
-# Free space recommendations
-free_space_recs=("256G", 256000000)
-
-# File search schemes (array of md5sum, grep calls... the grep calls TRUMP md5sum)
-sdk_file_search=("06387f9c7a02afa0de835ef07927aadf" "grep 'sdk'")
-
 # Hostnames
-hostnames_header="# BENCHBOT SPECIFIC HOSTNAMES"
-hostnames_list=\
-"$URL_ROS $HOSTNAME_ROS
+hostnames_block=\
+"# BENCHBOT SPECIFIC HOSTNAMES
+$URL_ROS $HOSTNAME_ROS
 $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
@@ -88,153 +74,645 @@ build_err="\
   Ensure that Docker has been installed correctly AND that you can run Docker 
   WITHOUT root access (there is no need to ever run Docker with root). See 
   https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
-  fix this. Run something like the following to test Docker works without root:
+  fix this. 
 
-    docker images
-"
-cuda_err="\
-  Cuda Runtime version did not meet the minimum requirements:
-
-    At least version ${cuda_version_reqs[0]} is required to run BenchBot; please install 
-    a suitable version on your host system. The recommended method for installing is the 
-    following commands:
-
-      wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-      sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-      sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
-      sudo add-apt-repository \"deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /\"
-      sudo apt-get update
-      sudo apt-get install cuda-10-1
-"
-docker_err="\
-  Docker version did not meet the minimum requirements:
-
-    At least version ${docker_version_reqs[0]} is required to run BenchBot;
-    please install a suitable version on your host system. The recommended
-    method for installing is the following commands:
-
-      sudo apt-get install apt-transport-https ca-certificates curl software-properties-common
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-      sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"
-      sudo apt-get update
-      sudo apt-get install docker-ce
-
-    When you are done, ensure that you can run Docker WITHOUT root (running Docker
-    with root is a massive security issue & this install script deliberately does
-    not do that). Add your username to the Docker group to enable running
-    without root (will require re-login after):
-
-      sudo groupadd docker
-      sudo usermod -aG docker $USER
+  If the error is more generic, please contact us so that we can update our
+  pre-install host system checks.
 "
 envs_err="\
-  Ensure that URL: "'$envs_url'"
+  Ensure that the URL: 
+    "'$envs_url'"
   points to a single-line text file with whitespace-separated fields. The first 
   field contains the md5sum of the latest envs_*.zip, second field is URL of 
   envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
   internet connection also helps!
 "
-free_space_warn="\
 
-  NOTE: this warning can be safely ignored if you have moved Docker to a different
-  partition (as outlined below), or believe that you will be able to fit the
-  container on the '/' partition.
+################################################################################
+################### All checks for the host system (ouch...) ###################
+################################################################################
 
-  You appear not to have enough free space on your root partition (mounted at '/'):
+checks_list_pre=(
+  "Running Nvidia related system checks:"
+  "nvidiacard"  # Is a valid graphics card available?
+  "nvidiadriver"  # Is the driver available?
+  "nvidiaversion"  # Is the driver version valid?
+  "nvidiappa"  # Does the driver come from a supported PPA?
+  "cudaavailable"  # Is CUDA available?
+  "cudaversion"  # Is the cuda version valid?
+  "cudappa"  # Is cuda from the Nvidia PPA?
+  "isaac"  # Is the Isaac *.zip readily available?
+  "Running Docker related system checks:"
+  "dockeravailable"  # Is Docker available?
+  "dockerversion"  # Is Docker version > 19.0?
+  "dockernct"  # Is nvidia-container-toolkit installed?
+  "dockerroot"  # Does Docker work WITHOUT root?
+  "Running checks of filesystem used for Docker:"
+  "fsext4"  # Is /var/lib/docker on an ext4 filesystem?
+  "fsnosuid"  # Is /var/lib/docker on a filesystem WITHOUT nosuid?
+  "fsspace"  # Is /var/lib/docker on a filesystem with enough space?
+  "Running TODELETE checks:"
+  "todeletersa"  # Is an id_rsa available?
+  "todeletepermission"  # Does the id_rsa give you permission to clone repos?
+  )
+  
+chk_nvidiacard_name='Nvidia GPU available'
+chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
+chk_nvidiacard_fail='None found'
+chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | '\
+'sed -E '\''s/.*(10de:[0-9a-f]{4}).*/\1/'\'
+chk_nvidiacard_eval='[ ! -z "$check_result" ]'
+chk_nvidiacard_issue="\
+  No Nvidia Graphics Card was detected. If there is a card available on your 
+  host system, then it should be visible with 'lcpci -nn | grep VGA' with a ID 
+  of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
+chk_nvidiacard_fix=''
+chk_nvidiacard_reboot=0
 
-    If the install process runs out of space, it will fail unexpectedly. If space
-    is limited in your root partition, it is recommended that you change where
-    Docker stores its images to a partition with enough space. To change where
-    Docker stores images:
+chk_nvidiadriver_name='Nvidia driver is running'
+chk_nvidiadriver_pass='Found' 
+chk_nvidiadriver_fail='Not found'
+chk_nvidiadriver_check='cat /proc/driver/nvidia/version 2>/dev/null'
+chk_nvidiadriver_eval='[ ! -z "$check_result" ]'
+chk_nvidiadriver_issue="\
+  No Nvidia driver detected. If a driver is installed & loaded, it should be
+  visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
+chk_nvidiadriver_fix=\
+'v=$(. /etc/os-release; echo "$VERSION_ID" | sed "s/\.//") &&
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${v}/\
+  x86_64/cuda-ubuntu${v}.pin &&
+sudo mv cuda-ubuntu${v}.pin /etc/apt/preferences.d/cuda-repository-pin-600 &&
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/\
+  cuda/repos/ubuntu1804/x86_64/7fa2af80.pub &&
+sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/\
+  cuda/repos/ubuntu${v}/x86_64/ /" &&
+sudo apt-get update && sudo apt-get -y install nvidia-driver-440'
+chk_nvidiadriver_reboot=0
 
-      sudo systemctl stop docker
-      sudo mv /var/lib/docker /<location_on_secondary_drive>
-      sudo ln -sv /<location_on_secondary_drive> /var/lib/docker
-      sudo systemctl start docker
-"
-hosts_prompt="\
-Your hosts file does not appear to have the required hostnames added. To run
-BenchBot solutions natively on your machine (as opposed to containerised), 
-your host system needs to know about some Docker specific hostnames:
+chk_nvidiaversion_name='Nvidia driver version valid'
+chk_nvidiaversion_pass='Valid ($check_result)'
+chk_nvidiaversion_fail='Invalid ($check_result)'
+chk_nvidiaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
+'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/'"'"
+chk_nvidiaversion_eval='eval_version "$check_result" 418'
+chk_nvidiaversion_issue="\
+  The version of the running Nvidia driver ("'$check_result'") is incompatible
+  with BenchBot which requires at least version 418 for the Isaac SDK.
 
-$hostnames_list
-"
-nvidia_driver_err="\
-  Nvidia Graphics Driver version did not meet minimum requirements:
+  Please install a more recent version of the driver from the Nvidia repository."
+chk_nvidiaversion_fix="$chk_nvidiadriver_fix"
+chk_nvidiaversion_reboot=0
 
-    At least version ${nvidia_driver_version_reqs[0]} is required to run 
-    BenchBot; please install a suitable version on your host system. The 
-    recommended method for installing is the following command:
+chk_nvidiappa_name='Nvidia driver from a standard PPA'
+chk_nvidiappa_pass='PPA is valid'
+chk_nvidiappa_fail='PPA is invalid'
+chk_nvidiappa_check='version=$(apt list --installed 2>/dev/null | '\
+'grep nvidia-driver- | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"'); '\
+'apt download --print-uris nvidia-driver-$(echo $version | '\
+'cut -d'"'"'.'"'"' -f1)=$version 2>/dev/null | cut -d'"'"' '"'"' -f1'
+chk_nvidiappa_eval=\
+'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"'| \
+'"'"'ppa.launchpad.net/graphics-drivers/ppa/ubuntu'"'"').* ]]'
+chk_nvidiappa_issue="\
+  The installed Nvidia driver was detected to have come from somewhere other
+  than the Nvidia / Ubuntu graphics-drivers PPAs. The driver was sourced from:
+    "'$check_result'"
 
-      sudo apt install nvidia-driver-430
-"
-nvidia_container_err="\
-  Could not find a valid version of the Nvidia Container toolkit:
+  Our Docker container only supports official drivers, & GPUs only work in 
+  containers if the driver version exactly matches the version of the host.
+  Please use a driver from either of the following locations (the Nvidia PPA is
+  preferred):
+    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
+    http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
+chk_nvidiappa_fix=\
+'sudo apt remove -y nvidia-driver-* && '\
+"$chk_nvidiadriver_fix"
+chk_nvidiappa_reboot=0
 
-    At least version ${nvidia_container_reqs[0]} is required to run Benchbot
-    with GPU support; please install following the instructions on the project
-    GitHub page: https://github.com/NVIDIA/nvidia-docker. In short:
+chk_cudaavailable_name='CUDA is installed'
+chk_cudaavailable_pass='CUDA found'
+chk_cudaavailable_fail='CUDA not found'
+chk_cudaavailable_check='apt list --installed 2>/dev/null | grep -E '\
+'"cuda-[0-9]*-[0-9]*" | awk '"'"'{print $2}'"'"
+chk_cudaavailable_eval='[ ! -z "$check_result" ]'
+chk_cudaavailable_issue="\
+  No version of CUDA detected. Our Docker only supports CUDA installations from
+  the official Nvidia repository. Please add the Nvidia repository, & install 
+  'cuda-10' through apt."
+chk_cudaavailable_fix="${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
+chk_cudaavailable_reboot=1
 
-      curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-      curl -s -L https://nvidia.github.io/nvidia-docker/$(. /etc/os-release;echo $ID$VERSION_ID)/nvidia-docker.list \\
-        | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+chk_cudaversion_name='CUDA version valid'
+chk_cudaversion_pass='Valid ($check_result)'
+chk_cudaversion_fail='Invalid'
+chk_cudaversion_check=\
+'cat /usr/local/cuda/version.txt 2>/dev/null | cut -d " " -f3'
+chk_cudaversion_eval='eval_version "$check_result" 10'
+chk_cudaversion_issue="\
+  The version of CUDA detected ("'$check_result'") is incompatible with BenchBot
+  which requires at least 10.0 for the Isaac SDK.
 
-      sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-      sudo systemctl restart docker
-  "
-sdk_file_err="\
-  Isaac SDK was not found in the './isaac/' directory:
+  Please install a more recent version of CUDA from the Nvidia repository."
+chk_cudaversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}
+chk_cudaversion_reboot=1
 
-    A *.tgz file was not found in the './isaac/' directory that matched the
-    below MD5sum, or was a unique return for the below grep statement:
-        ${sdk_file_search[0]}
-        ${sdk_file_search[1]}
+chk_cudappa_name='CUDA is from the Nvidia PPA'
+chk_cudappa_pass='PPA is valid'
+chk_cudappa_fail='PPA is invalid'
+chk_cudappa_check=\
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9]*-[0-9]*"); \
+apt download --print-uris $(echo $installed | sed '"'"'s/^\([^\/]*\).*/\1/'"'"')=\
+$(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
+cut -d'"'"' '"'"' -f1'
+chk_cudappa_eval=\
+'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
+chk_cudappa_issue="\
+  CUDA was detected to have come from somewhere other than the Nvidia PPAs. The 
+  driver was sourced from:
+    "'$check_result'"
 
-    Download the latest version of the corresponding file at the website below
-    (you will have to create an account, accept a license, & sign in first):
-        https://developer.nvidia.com/isaac/downloads
-"
-symlink_prompt="\
-Symlinks in '$PATH_SYMLINKS' could not be found for the 3 programs (benchbot_install,
-benchbot_run, & benchbot_submit). Adding these programs to your path makes running
-BenchBot solutions significantly easier to work with. They can be added via the 
-command:
+  Our Docker container only supports official CUDA installs, & GPUs only work in 
+  containers if the CUDA version exactly matches the version of the host.
+  Please install CUDA from the official Nvidia repository:
+    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
+chk_cudappa_fix=\
+'sudo apt remove -y cuda-10-1 && '\
+"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
+chk_cudappa_reboot=1
 
-   $symlink_cmd 
-"
+chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
+chk_isaac_pass='Found archive'
+chk_isaac_fail='Not found'
+chk_isaac_check='find $PATH_ISAAC_SRCS -type f -exec md5sum {} + | \
+grep "$MD5_ISAAC_SDK" | tr -s " " | cut -d " " -f 2'
+chk_isaac_eval='[ ! -z "$check_result" ]'
+chk_isaac_issue="\
+  "'$check_result'"
+  Isaac SDK was not found in the folder:
+    $PATH_ISAAC_SRCS
+
+  Due to licensing restrictions we cannot automatically download this file.
+  Please sign up for an Nvidia developer account, download the *.zip for Isaac 
+  2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
+  in the isaac folder of benchbot (mentioned above). The 2019.2 version of 
+  Isaac is hidden under the 'Archive' section of the downloads page.
+
+  This check will only pass when a file is found with the following MD5SUM:
+    $MD5_ISAAC_SDK"
+chk_isaac_fix=''
+chk_isaac_reboot=1
+
+chk_dockeravailable_name='Docker is available'
+chk_dockeravailable_pass='Found'
+chk_dockeravailable_fail='Not found'
+chk_dockeravailable_check='docker --version 2>/dev/null'
+chk_dockeravailable_eval='[ ! -z "$check_result" ]'
+chk_dockeravailable_issue="\
+  Docker was not detected on the host system ('docker --version' did not return
+  a version).
+
+  Please ensure Docker Engine - Community edition is installed on the system."
+chk_dockeravailable_fix=\
+'sudo apt install -y apt-transport-https ca-certificates curl \
+  software-properties-common &&
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+sudo add-apt-repository "deb [arch=amd64] \
+  https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
+sudo apt update &&
+sudo apt install -y docker-ce &&
+sudo groupadd docker &&
+sudo usermod -aG docker '"$USER"
+chk_dockeravailable_reboot=0
+
+chk_dockerversion_name='Docker version valid'
+chk_dockerversion_pass='Valid ($check_result)'
+chk_dockerversion_fail='Invalid ($check_result)'
+chk_dockerversion_check='docker --version 2>/dev/null | '\
+'sed "s/Docker version \([^,]*\).*/\1/"'
+chk_dockerversion_eval='eval_version "$check_result" 19.03'
+chk_dockerversion_issue="\
+  The version of Docker running ("'$check_result'") is incompatible with the 
+  BenchBot built process which requires at least version 19.03 to use the
+  Nvidia Container Toolkit.
+
+  Please install a more recent version of Docker Engine - Community Edition."
+chk_dockerversion_fix=\
+'sudo apt remove docker*;
+sudo apt-get install apt-transport-https ca-certificates curl \
+  software-properties-common &&
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+sudo add-apt-repository "deb [arch=amd64] \
+  https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
+sudo apt update &&
+sudo apt install -y docker-ce &&
+sudo groupadd docker &&
+sudo usermod -aG docker '"$USER"
+chk_dockerversion_reboot=0
+
+chk_dockernct_name='Nvidia Container Toolkit installed'
+chk_dockernct_pass='Found ($check_result)'
+chk_dockernct_fail='Not found'
+chk_dockernct_check='nvidia-container-cli --version 2>/dev/null | head -n 1 | '\
+'cut -d " " -f2'
+chk_dockernct_eval='[ ! -z "$check_result" ]'
+chk_dockernct_issue="\
+  Nvidia Container Toolkit was not detected. It is required to allow Docker
+  containers to access the GPU on your host system.
+
+  Please install the toolkit from https://github.com/NVIDIA/nvidia-docker"
+chk_dockernct_fix=\
+'curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - &&
+curl -s -L https://nvidia.github.io/nvidia-docker/\
+  '"$(. /etc/os-release;echo $ID$VERSION_ID)"'/nvidia-docker.list | \
+  sudo tee /etc/apt/sources.list.d/nvidia-docker.list &&
+sudo apt update && 
+sudo apt install -y nvidia-container-toolkit &&
+sudo systemctl restart docker'
+chk_dockernct_reboot=1
+
+chk_dockerroot_name='Docker runs without root'
+chk_dockerroot_pass='Passed'
+chk_dockerroot_fail='Failed'
+chk_dockerroot_check='docker run hello-world &>/dev/null && echo $?'
+chk_dockerroot_eval='[ $check_result -eq 0 ]'
+chk_dockerroot_issue="\
+  Docker failed to run the hello-world test.
+
+  Usually this is caused by Docker not being configured to run without root. If
+  the fix below fails to fix the issue (a restart / logout is required after
+  changing groups), please run 'docker run hello-world' & resolve any issues
+  that occur."
+chk_dockerroot_fix=\
+'sudo groupadd docker &&
+sudo usermod -aG docker '"$USER"
+chk_dockerroot_reboot=0
+
+chk_fsext4_name='/var/lib/docker on ext4 filesystem'
+chk_fsext4_pass='Yes ($check_result)'
+chk_fsext4_fail='No'
+chk_fsext4_check=\
+'if [ $(df -T /var/lib/docker | awk '"'"'/^\// {print $2}'"'"') == "ext4" ]; \
+   then df -T /var/lib/docker | awk '"'"'/^\// {print $1}'"'"'; fi'
+chk_fsext4_eval='[ ! -z "$check_result" ]'
+chk_fsext4_issue="\
+  The location of Docker images, '/var/lib/docker', is on partition '"'$check_result'"'
+  which is not a fileystem of type 'ext4'. Non-ext4 filesystems have generally
+  been found to produce unstable behaviour with Linux Docker images.
+
+  Please move '/var/lib/docker/' to an ext4 drive for best results."
+chk_fsext4_fix=\
+'read -p "New location for /var/lib/docker on an ext4 drive:" new_location
+sudo systemctl stop docker
+sudo mv /var/lib/docker "$new_location"
+sudo ln -sv "$new_location" /var/lib/docker
+sudo systemctl start docker'
+chk_fsext4_reboot=1
+
+chk_fsnosuid_name='/var/lib/docker supports suid'
+chk_fsnosuid_pass='Enabled'
+chk_fsnosuid_fail='Disabled'
+chk_fsnosuid_check=\
+'if [ -z $(cat /proc/mounts | grep $(df -T /var/lib/docker | \
+awk '"'"'/^\// {print $1}'"'"') | grep "nosuid") ]; then \
+   df -T /var/lib/docker | awk '"'"'/^\// {print $1}'"'"'; fi'
+chk_fsnosuid_eval='[ ! -z "$check_result" ]'
+chk_fsnosuid_issue="\
+  Support for suid flags was not found on the drive holding /var/lib/docker:
+  "'$check_result'"
+  
+  Please disable the nosuid option on the drive (by editing /etc/fstab, using
+  the Ubuntu Disk UI, or any other method you prefer). "
+chk_fsnosuid_fix=\
+'sudo sed -E -n '"'"'s|(^[^#]*'"'"'$check_result'"'"' .*)nosuid|\1|p; s/,,/,/p; \
+   s/ ,/ /p; s/, / /p'"'"' /etc/fstab &&
+sudo systemct daemon-reload'
+chk_fsnosuid_reboot=1
+
+chk_fsspace_name='/var/lib/docker driver space check'
+chk_fsspace_pass='Sufficient space ($check_result)'
+chk_fsspace_fail='Insufficient space ($check_result)'
+chk_fsspace_check=\
+'space=$(df -Th /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
+if [ "${space: -1}" == "G" ] && [ ${space::-1} -ge 128 ]; then echo "$space"; fi'
+chk_fsspace_eval='[ ! -z "$check_result" ]'
+chk_fsspace_issue="\
+  The drive holding /var/lib/docker needs at least 128GB free. Please clear
+  space from the drive, or run the following fix to move /var/lib/docker to a 
+  drive with more space."
+chk_fsspace_fix=\
+'read -p "New location for /var/lib/docker with 128GB free:" new_location
+sudo systemctl stop docker
+sudo mv /var/lib/docker "$new_location"
+sudo ln -sv "$new_location" /var/lib/docker
+sudo systemctl start docker'
+chk_fsspace_reboot=1
+
+chk_todeletersa_name='SSH key available'
+chk_todeletersa_pass='Found ($check_result)'
+chk_todeletersa_fail='Not found'
+chk_todeletersa_check=\
+'key="$PATH_ROOT/id_rsa" && if [ -f "$key" ]; then echo "$key"; fi'
+chk_todeletersa_eval='[ ! -z "$check_result" ]'
+chk_todeletersa_issue="\
+  SSH key for accessing private BenchBot repositories was not found at locstion:
+  $PATH_ROOT/id_rsa
+
+  Please copy a private SSH key with access to the respositories to the above
+  location."
+chk_todeletersa_fix='cp ~/.ssh/id_rsa '"$PATH_ROOT"
+chk_todeletersa_reboot=1
+
+chk_todeletepermission_name='SSH key has permissions'
+chk_todeletepermission_pass='Successful'
+chk_todeletepermission_fail='Denied'
+chk_todeletepermission_check=\
+'ssh-agent bash -c '"'"'ssh-add '"$PATH_ROOT"'/id_rsa &>/dev/null; 
+rm -rf /tmp/benchbot && \
+git clone '"$GIT_BENCHBOT"' /tmp/benchbot &>/dev/null && \
+rm -rf /tmp/benchbot && echo "success"'"'"
+chk_todeletepermission_eval='[ ! -z "$check_result" ]'
+chk_todeletepermission_issue="\
+  The provided SSH key failed to clone the BenchBot software stack.
+
+  Are you sure it has permission? See Ben."
+chk_todeletepermission_fix=''
+chk_todeletepermission_reboot=1
+
+checks_list_post=(
+  "Validating the build against the host system:"
+  "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
+  "Validating BenchBot libraries on the host system:"
+  "apicloned"
+  "apiuptodate"
+  "apiinstalled"
+  "examplescloned"
+  "examplesuptodate"
+  "evalcloned"
+  "evaluptodate"
+  "evalinstalled"
+  "Integrating BenchBot with the host system:"
+  "hostsavail"
+  "symlinks"
+  )
+
+chk_cudadriverdep_name='CUDA / Nvidia versions match'
+chk_cudadriverdep_pass='Matches'
+chk_cudadriverdep_fail='Does not match'
+chk_cudadriverdep_check=\
+'fn='"'"'echo "Nvidia: $(cat /proc/driver/nvidia/version | \
+  sed "/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/"), \
+  CUDA: $(cat /usr/local/cuda/version.txt | cut -d " " -f 3)"'"'"' &&
+host=$(eval "$fn") && 
+bb=$(docker run --rm -t '$DOCKER_TAG_SIMULATOR' /bin/bash -c "$fn" | \
+  sed '"'"'s/[[:space:]]*$//'"'"') &&
+eq=$([ "$host" == "$bb" ] && echo "==" || echo "!=") &&
+printf "%s\n%s\n%s" "Host: $host" "BenchBot: $bb" "Result: $eq"'
+chk_cudadriverdep_eval='[[ "$check_result" == *"=="* ]]'
+chk_cudadriverdep_issue="\
+  The CUDA / Nvidia driver version pairing in the installed BenchBot does not
+  match the version on your host system, despite our best efforts:
+
+"'$check_result'"
+
+  During development we ran into a situation where it was impossible for the
+  Dockerfile to reproduce the CUDA version / Nvidia driver pairing of the host,
+  even while using exactly the same PPAs / repos as the host system. From what
+  we found, it seemed the Nvidia driver dependencies for the latest CUDA in apt
+  had been updated WITHOUT changing version number (effectively deleting the
+  old version from existence in apt).
+
+  Consequence: all machines setup with the 'old' CUDA / Nvidia pairing were in
+  zombie states that could not be reproduced by apt (and they would not upgrade
+  automatically as apt could see no version change).
+
+  Solution: the best solution we could find was to remove the existing CUDA
+  install on the host machine & reinstall. Please do this if we have identified
+  this issue with your host system setup."
+chk_cudadriverdep_fix=\
+'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
+if [ -z "$v" ]; then v="cuda-10-1"; fi &&
+sudo apt remove -y "$v" && sudo apt install -y "$v"'
+chk_cudadriverdep_reboot=1
+
+chk_apicloned_name='BenchBot API cloned'
+chk_apicloned_pass='Yes'
+chk_apicloned_fail='No'
+chk_apicloned_check=\
+'git -C '"$PATH_API"' rev-parse --show-toplevel 2>/dev/null'
+chk_apicloned_eval='[ "$check_result" == "$(realpath '"$PATH_API"')" ]'
+chk_apicloned_issue="\
+  The BenchBot API python library is not cloned on the host system. Having it
+  installed significantly improves the development experience, & allows you to
+  run your submissions natively without containerisation."
+chk_apicloned_fix=\
+'rm -rf '"$PATH_API"' && git clone '"$GIT_API $PATH_API"' &&
+pushd '"$PATH_API"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+chk_apicloned_reboot=1
+
+chk_apiuptodate_name='BenchBot API up-to-date'
+chk_apiuptodate_pass='Up-to-date'
+chk_apiuptodate_fail='Outdated'
+chk_apiuptodate_check=\
+'git -C '"$PATH_API"' rev-parse HEAD && 
+git ls-remote '"$GIT_API"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_apiuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_apiuptodate_issue="\
+  The version of the BenchBot API python library on the host system is out of
+  date. The current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
+chk_apiuptodate_fix=\
+'pushd '"$PATH_API"' && git fetch --all && 
+git checkout $BRANCH_DEFAULT && git pull'
+chk_apiuptodate_reboot=1
+
+chk_apiinstalled_name='BenchBot API installed'
+chk_apiinstalled_pass='Available'
+chk_apiinstalled_fail='Not found'
+chk_apiinstalled_check=\
+'python -c '"'"'import benchbot_api; print(benchbot_api.__file__);'"'"' \
+  2>/dev/null'
+chk_apiinstalled_eval='[ ! -z "$check_result" ]'
+chk_apiinstalled_issue="\
+  BenchBot API was not found in python. It is either not installed, or the 
+  current terminal is not correctly sourcing your installed python packages 
+  (could be a virtual environment, conda, ROS, etc).
+
+  Please do not run the automatic fix if you intend to source a different python
+  environment before running BenchBot."
+chk_apiinstalled_fix=\
+'pushd '"$PATH_API"' && pip install -e .'
+chk_apiinstalled_reboot=1
+
+chk_examplescloned_name='BenchBot examples cloned'
+chk_examplescloned_pass='Yes'
+chk_examplescloned_fail='No'
+chk_examplescloned_check=\
+'git -C '"$PATH_EXAMPLES"' rev-parse --show-toplevel 2>/dev/null'
+chk_examplescloned_eval='[ "$check_result" == "$(realpath '"$PATH_EXAMPLES"')" ]'
+chk_examplescloned_issue="\
+  The BenchBot examples python library is not cloned on the host system. Having
+  it installed provides hands on examples to get up & running with the BenchBot
+  system, including introductions to all of the different challenge modes."
+chk_examplescloned_fix=\
+'rm -rf '"$PATH_EXAMPLES"' && git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
+pushd '"$PATH_EXAMPLES"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+chk_examplescloned_reboot=1
+
+chk_examplesuptodate_name='BenchBot examples up-to-date'
+chk_examplesuptodate_pass='Up-to-date'
+chk_examplesuptodate_fail='Outdated'
+chk_examplesuptodate_check=\
+'git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
+git ls-remote '"$GIT_EXAMPLES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_examplesuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_examplesuptodate_issue="\
+  The version of the BenchBot examples python library on the host system is out
+  of date. The current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
+chk_examplesuptodate_fix=\
+'pushd '"$PATH_EXAMPLES"' && git fetch --all 
+&& git checkout $BRANCH_DEFAULT && git pull'
+chk_examplesuptodate_reboot=1
+
+chk_evalcloned_name='TODO BenchBot eval cloned'
+chk_evalcloned_pass='Yes'
+chk_evalcloned_fail='No'
+chk_evalcloned_check='echo "TODO"'
+chk_evalcloned_eval='[ ! -z "$check_result" ]'
+chk_evalcloned_issue="\
+  TODO"
+chk_evalcloned_fix=\
+'echo "TODO"'
+chk_evalcloned_reboot=1
+
+chk_evaluptodate_name='TODO BenchBot eval up-to-date'
+chk_evaluptodate_pass='Up-to-date'
+chk_evaluptodate_fail='Outdated'
+chk_evaluptodate_check='echo "TODO"'
+chk_evaluptodate_eval='[ ! -z "$check_result" ]'
+chk_evaluptodate_issue="\
+  TODO"
+chk_evaluptodate_fix=\
+'echo "TODO"'
+chk_evaluptodate_reboot=1
+
+chk_evalinstalled_name='TODO BenchBot eval installed'
+chk_evalinstalled_pass='Available'
+chk_evalinstalled_fail='Not found'
+chk_evalinstalled_check='echo "TODO"'
+chk_evalinstalled_eval='[ ! -z "$check_result" ]'
+chk_evalinstalled_issue="\
+  TODO"
+chk_evalinstalled_fix=\
+'echo "TODO"'
+chk_evalinstalled_reboot=1
+
+chk_hostsavail_name='BenchBot hosts available'
+chk_hostsavail_pass='Found'
+chk_hostsavail_fail='Not found'
+chk_hostsavail_check=\
+'getent hosts benchbot_ros benchbot_simulator benchbot_supervisor'
+chk_hostsavail_eval='[ $(echo "$check_result" | wc -l) -eq 3 ]'
+chk_hostsavail_issue="\
+  The hosts benchbot_ros, benchbot_simulator, & benchbot_supervisor were not
+  found on the host system. Only the following hosts were found (may be empty):
+
+"'$check_result'"
+
+  Having all hosts available to your system allows the BenchBot software stack
+  to communicate between each of the individual components. Please add the host
+  to your /etc/hosts file."
+chk_hostsavail_fix=\
+'echo -e "$hostnames_block" | sudo tee -a /etc/hosts'
+chk_hostsavail_reboot=1
+
+chk_symlinks_name='BenchBot symlinks available'
+chk_symlinks_pass='Found'
+chk_symlinks_fail='Not found'
+chk_symlinks_check=\
+'[ -e "'$PATH_SYMLINKS'/benchbot_install" ] && 
+  [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
+  ls -l "'$PATH_SYMLINKS'/benchbot_"* | cut -d " " -f 9-11'
+chk_symlinks_eval='[ ! -z "$check_result" ]'
+chk_symlinks_issue="\
+  Symbolic links for each of the 3 BenchBot scripts were not found. If you do 
+  not wish to add symbolic links, or would rather add the './bin/' directory to
+  your PATH, please skip this step."
+chk_symlinks_fix=\
+'sudo ln -svf '"$(dirname $abs_path)"'/* '"$PATH_SYMLINKS"
+chk_symlinks_reboot=1
 
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
 
-function install_component() {
-  name=$(basename "$1")
-  if [ ! -d "$1" ] ; then
-    echo -e "\n${colour_blue}INSTALLING ${name^^} ...${colour_nc}"
-    git clone "$2" "$1" 
+function handle_requirement() {
+  required=${2:-0}
+
+  # Dirtily pull all of the check-related values based from the input argument
+  name=$(eval 'echo "$chk_'$1'_name"')
+  pass=$(eval 'echo "$chk_'$1'_pass"')
+  fail=$(eval 'echo "$chk_'$1'_fail"')
+  check=$(eval 'echo "$chk_'$1'_check"')
+  evaluate=$(eval 'echo "$chk_'$1'_eval"')
+  issue=$(eval 'echo "$chk_'$1'_issue"')
+  fix=$(eval 'echo "$chk_'$1'_fix"')
+  reboot=$(eval 'echo "$chk_'$1'_reboot"')
+
+  # Perform the check, printing the result & resolving issues if possible
+  retval=0
+  printf "\t$name: "
+  check_result=$(eval "$check")
+  printf "\033[46G"
+  if $(eval $evaluate); then 
+    printf "${colour_green}%35s" "${pass//'$check_result'/$check_result}"
+    retval=0
+  else 
+    printf "${colour_yellow}%35s\n${colour_nc}" \
+      "${fail//'$check_result'/$check_result}"
+    printf "\n${colour_yellow}%s\n" "${issue//'$check_result'/$check_result}"
+    if [ -z "$fix" ]; then
+      printf "\n  No automatic fix is available.\n"
+      unresolved=1
+    else
+      printf "\n  The following commands can be run to try & fix the issue:\n"
+      printf "\n%s\n\n" "${fix//'$check_result'/$check_result}"
+      read -n 1 -r -p "  Would you like the above commands to be run (y/N)? " \
+        apply_fix
+      if [[ "$apply_fix" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+        printf "\n\n${colour_nc}"
+        eval "$fix"
+        unresolved=$?
+        printf "\n${colour_yellow}"
+        if [ "$reboot" -eq 0 ]; then
+          s="Please reboot your machine before re-running the install script." 
+          printf "\n  $s"
+          retval=1
+        elif [ $unresolved -eq 0 ] && [ $required -eq 0 ]; then
+          printf "\n  Restarting the installation script ..."
+          retval=2
+        fi
+      else
+        unresolved=1
+      fi
+    fi
+    if [ $unresolved -ne 0 ] && [ $required -eq 0 ]; then
+      s="Please manually resolve this issue, & re-run the install script."
+      printf "\n\n  $s"
+      retval=1
+    elif [ $required -ne 0 ]; then
+      printf "\n\n"
+    fi
   fi
-  echo -e "\n${colour_blue}UPDATING ${name^^} ...${colour_nc}"
-  pushd "$1"
-  git fetch --all
-  git checkout "$($3 $BRANCH_DEFAULT | latest_version_info | cut -d ' ' -f 1)"
-  if [ ! -z "$4" ]; then eval "$4"; fi
-  popd
-}
-
-function print_version() {
-  cs=($colour_green $colour_yellow $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$5]}%-15s" "$2";
-  printf "($3+ required, $4 recommended)${colour_nc}\n"
-}
-
-function print_free_space() {
-  cs=($colour_green $colour_yellow)
-  printf '%-25s' "$1"; printf "${cs[$4]}%-15s" "$2"; printf "($3 recommended)${colour_nc}\n"
-}
-
-function print_locate() {
-  cs=($colour_green $colour_red)
-  printf '%-25s' "$1"; printf "${cs[$3]}%-15s${colour_nc}\n" "$([ $3 -eq 0 ] && echo "$2" || echo "$not_found_text")";
+  printf "${colour_nc}\n"
+  return $retval
 }
 
 function uninstall_benchbot() {
@@ -311,77 +789,35 @@ if [ -z "$updates_skip" ]; then
   fi
 fi
 
-# PART 1: Report the current state of the system
+# PART 1: Ensuring the system state is compatible with BenchBot
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
-# Get all of your stats, & whether they are valid for proceeding with the install
-nvidia_driver_version=$(cat /proc/driver/nvidia/version 2>/dev/null | sed '/NVRM version/!d; s/.*Kernel Module *\([0-9.]*\).*/\1/')
-if [ -z ${nvidia_driver_version} ]; then nvidia_driver_version="$not_found_text"; fi
-cuda_version=$(apt list --installed 2>/dev/null | sed '/cuda-[0-9]*-[0-9]*/!d' | awk '{print $2}')
-if [ -z ${cuda_version} ]; then cuda_version="$not_found_text"; fi
-cuda_version_short=$(echo "$cuda_version" | grep -o '^[0-9]*\.[0-9]*' | tr . -)
-docker_version=$(docker --version 2>/dev/null | sed 's/Docker version \([^ ,]*\).*/\1/')
-if [ -z ${docker_version} ]; then docker_version="$not_found_text"; fi
-nvidia_container_version=$(apt list --installed 2>/dev/null | grep 'nvidia-container-toolkit' | awk '{print $2}')
-if [ -z ${nvidia_container_version} ]; then nvidia_container_version="$not_found_text"; fi
+# Iterate through the list of checks, doing some dirty string based variable
+# extraction in the handle_requirement() function...
+for c in "${checks_list_pre[@]}"; do
+  if [[ "$c" =~ :$ ]]; then
+    printf "\n${colour_blue}$c${colour_nc}\n"
+  else
+    handle_requirement "$c"
+    res=$?
+    if [ $res -eq 2 ]; then
+      echo "TODO restart the script"
+    elif [ $res -eq 1 ]; then
+      exit 1
+    fi
+  fi
+done
 
-nvidia_driver_valid=$(eval_version $nvidia_driver_version ${nvidia_driver_version_reqs[*]})
-cuda_valid=$(eval_version $cuda_version ${cuda_version_reqs[*]})
-docker_valid=$(eval_version $docker_version ${docker_version_reqs[*]})
-nvidia_container_valid=$(eval_version $nvidia_container_version ${nvidia_container_reqs[*]})
-
-free_space_drive=$(df | grep '% /$' | awk '{print $1}')
-free_space_human=$(df -H | grep '% /$' | awk '{print $4}')
-free_space_blocks=$(df | grep '% /$' | awk '{print $4}')
-
-[ $free_space_blocks -gt ${free_space_recs[1]} ]
-free_space_valid=$?
-
-sdk_file=$(realpath --relative-to="$PATH_ROOT" \
-  $(find_file "$PATH_ISAAC_SRCS" "${sdk_file_search[0]}" "${sdk_file_search[1]}"))
-[ $(eval_found "$sdk_file") -lt 1 ]
-sdk_file_valid=$?
-
-# Print out what we found & what we thought
-print_version "Nvidia driver version:" "$nvidia_driver_version" ${nvidia_driver_version_reqs[*]} $nvidia_driver_valid
-print_version "Cuda runtime version:" "$cuda_version" ${cuda_version_reqs[*]} $cuda_valid
-print_version "Docker version:" "$docker_version" ${docker_version_reqs[*]} $docker_valid
-print_version "Nvidia Docker version:" "$nvidia_container_version" ${nvidia_container_reqs[*]} $nvidia_container_valid
-printf "\n"
-print_free_space "Free space in '/':" "$free_space_human" ${free_space_recs[0]} $free_space_valid
-printf "\n"
-print_locate "Isaac SDK:" "$sdk_file" $sdk_file_valid
 printf "\n\n"
-
-# Either proceed or let them know why we won't be
-# (note ordering here is important!)
-err_string=""
-if [ $nvidia_driver_valid -gt 0 ]; then err_string+="ERROR:$nvidia_driver_err\n\n"; fi
-if [ $cuda_valid -gt 0 ]; then err_string+="ERROR:$cuda_err\n\n"; fi
-if [ $docker_valid -gt 0 ]; then err_string+="ERROR:$docker_err\n\n"; fi
-if [ $nvidia_container_valid -gt 0 ]; then err_string+="ERROR:$nvidia_container_err\n\n"; fi
-if [ $sdk_file_valid -gt 0 ]; then err_string+="ERROR:$sdk_file_err\n\n"; fi
-
-warn_string=""
-if [ $free_space_valid -gt 0 ]; then warn_string+="WARN:$free_space_warn\n\n"; fi
-
-if [ -n "$err_string" ]; then
-  echo -e "${colour_red}Installation will not proceed due to the following unmet requirements / dependencies:\n"
-  echo -e "${err_string}"
-  echo -e "Please address each of the above issues before installing BenchBot.${colour_nc}"
+read -n 1 -r -p \
+  "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
+  prompt
+printf "\n"
+if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+  printf "Proceeding with install ... \n\n"
+else
+  printf "Install aborted.\n\n"
   exit 1
-fi
-if [ -n "$warn_string" ]; then
-  echo -e "${colour_yellow}$warn_string${colour_nc}"
-fi
-if [ -z "$err_string" ]; then
-  read -p "All requirements & dependencies fulfilled; proceed with install (y/n)? " prompt
-      if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-        echo "Proceeding with install ..."
-      else
-        echo "Install aborted."
-        exit 1
-      fi
 fi
 
 echo ""
@@ -391,14 +827,18 @@ echo "TODO: Should we be enforcing 18.04?"
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-echo -e "\nFetching latest hash for Benchbot Simulator ... "
+echo -e "\nFetching latest hash for BenchBot Simulator ... "
 benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
   latest_version_info)
 echo -e "\t\t$benchbot_simulator_hash."
-echo "Fetching latest hash for Benchbot Supervisor ... "
+echo "Fetching latest hash for BenchBot Supervisor ... "
 benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
   latest_version_info)
 echo -e "\t\t$benchbot_supervisor_hash."
+echo "Fetching latest hash for BenchBot API ... "
+benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
+  latest_version_info)
+echo -e "\t\t$benchbot_api_hash."
 
 # Get md5sum of the latest from the provided envs_url
 echo -e "\nFetching md5sum & URL for latest version of environments ... "
@@ -421,11 +861,18 @@ echo -e "\t\tDone."
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
+# Get some useful variables from the host
+nvidia_driver_version=$(apt list --installed 2>/dev/null | \
+  grep "nvidia-driver-" | cut -d ' ' -f 2)
+cuda_version=$(apt list --installed 2>/dev/null | \
+  grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
+sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
+
+# Build the BenchBot Simulator Docker image
 docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" \
-  --build-arg CUDA_VERSION_SHORT="${cuda_version_short}" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
@@ -440,7 +887,10 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
-docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" $PATH_ROOT
+# Build the BenchBot Submission Docker image
+docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
+  --build-arg BENCHBOT_API_GIT="${GIT_API}" \
+  --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
@@ -448,49 +898,19 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
-# PART 4: Installing local componenets
-header_block "PART 4: INSTALLING LOCAL COMPONENTS" $colour_blue
+# PART 4: Running post build checks
+header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue
 
-install_component "$PATH_API" "$GIT_API" 'is_latest_benchbot_api' \
-  'pip install -e .'
-install_component "$PATH_EXAMPLES" "$GIT_EXAMPLES" \
-  'is_latest_benchbot_examples'
-# TODO
-# install_component "eval" 
-
-# PART 5: Run post build actions
-header_block "PART 5: RUNNING POST-INSTALL ACTIONS" $colour_blue
-
-# Adding Docker specific hostnames to /etc/hosts
-# TODO this detection should probably be done by 'getent hosts <name>'... 
-if ! grep -xq "$hostnames_header" /etc/hosts; then
-  echo -e "${colour_yellow}$hosts_prompt${colour_nc}"
-  read -p "Add the above hosts to '/etc/hosts' (sudo required) (y/n)? " prompt
-  if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-    echo -e "$hostnames_header\n$hostnames_list" | sudo tee -a /etc/hosts
-    echo "Done."
+for c in "${checks_list_post[@]}"; do
+  if [[ "$c" =~ :$ ]]; then
+    printf "\n${colour_blue}$c${colour_nc}\n"
   else
-    echo "Skipped."
+    handle_requirement "$c" 1
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
   fi
-fi
-
-# Install symlinks if they aren't found
-if [ ! -e "$PATH_SYMLINKS/benchbot_install" ] || \
-    [ ! -e "$PATH_SYMLINKS/benchbot_run" ] || \
-    [ ! -e "$PATH_SYMLINKS/benchbot_submit" ]; then
-  echo -e "${colour_yellow}$symlink_prompt${colour_nc}"
-  read -p "Add the symlinks by running the above command (sudo required) (y/n)? " prompt
-  if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-    eval $symlink_cmd
-    echo "Done."
-  else
-    echo "Skipped."
-  fi
-fi
-
-echo -e "\nAll post-install actions are complete."
-
-header_block "SUCCESSFULLY INSTALLED BENCHBOT ONTO YOUR HOST SYSTEM" $colour_green
+done
 
 # We are finally done...
 echo -e "\nFinished!"

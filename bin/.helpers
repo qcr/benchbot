@@ -12,7 +12,7 @@ DOCKER_NETWORK="benchbot_network"
 
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
-GIT_API="git@bitbucket.org:acrv/benchbot_api"
+GIT_API="https://bitbucket.org/acrv/benchbot_api"
 GIT_EVAL="git@bitbucket.org:acrv/benchbot_eval"
 GIT_EXAMPLES="git@bitbucket.org:acrv/benchbot_examples"
 GIT_BENCHBOT="git@bitbucket.org:acrv/benchbot"
@@ -23,6 +23,8 @@ HOSTNAME_ROS="benchbot_ros"
 HOSTNAME_SIMULATOR="benchbot_simulator"
 HOSTNAME_SUPERVISOR="benchbot_supervisor"
 
+MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
+
 PATH_ROOT=".."
 
 PATH_API="$PATH_ROOT/api"
@@ -32,6 +34,9 @@ PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
+
+PORT_SIMULATOR=10000
+PORT_SUPERVISOR=10000
 
 URL_DOCKER_SUBNET="172.20.0.0/24"
 URL_DOCKER_GATEWAY="172.20.0.254"
@@ -74,48 +79,19 @@ function header_block() {
 }
 
 ################################################################################
-################### Checking if dependencies exist / are met ###################
-################################################################################
-
-
-function eval_found() {
-  # $1 file: echos 0 if found, 1 if not found
-  # NOTE: this is a real frail check if the file is valid at the moment...
-  if [ -z "$1" ] || [ 1 != $(echo "$1" | wc -l) ]; then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
-function eval_version() {
-  # $1 = version, $2 = required, $3=recommended: echos 0 if >= recommended, 1 if >= required, 2 if below
-  if [ "$1" = "" ] || [[ ! "$1" == [0-9]* ]]; then
-    echo 2
-  elif [ "$1" = "$3" ] || [ "$3" = $(echo -e "$1\n$3" | sort -V | head -n 1) ]; then
-    echo 0
-  elif [ "$1" = "$2" ] || [ "$2" = $(echo -e "$1\n$2" | sort -V | head -n 1) ]; then
-    echo 1
-  else
-    echo 2
-  fi
-}
-
-function find_file() {
-  # $1 = directory, $2 = md5sum, $3 = file regex command: echos matching filename
-  md5_list=$(find "$1" -type f | xargs md5sum)
-  file_match=$(echo "$md5_list" | awk '{print $2}' | eval ${3})
-  md5_match=$([ -z "$2" ] && echo "" || echo "$md5_list" | grep "$2" | awk '{print $2}')
-  if [ ! -z "$file_match" ]; then
-    echo "$file_match"
-  elif [ ! -z "$md5_match" ]; then
-    echo "$md5_match"
-  fi
-}
-
-################################################################################
 ######################## Helpers for managing BenchBot #########################
 ################################################################################
+
+function eval_version() {
+  # $1 = version number, $2 = required version number
+  if [ -z "$1" ] || [[ ! "$1" == [0-9]* ]]; then
+    return 2  # Bad version text
+  elif [ "$1" = "$2" ] || [ "$2" = $(echo -e "$1\n$2" | sort -V | head -n 1) ]; then
+    return 0  # Passes requirement
+  else
+    return 1  # Did not pass requirement
+  fi
+}
 
 function kill_benchbot() {
   # TODO make this quieter when I am confident it works as expected...
@@ -215,8 +191,6 @@ function latest_version_info() {
 }
 
 # TODO:
-# benchbot_api
-# benchbot_examples
 # benchbot_eval
 
 function update_check() {

@@ -39,18 +39,19 @@ ADD ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 # TODO handle driver versions from graphics drivers PPA
 ARG NVIDIA_DRIVER_VERSION
 ARG CUDA_VERSION
-ARG CUDA_VERSION_SHORT
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,display,graphics,utility
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
+RUN add-apt-repository ppa:graphics-drivers && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
     mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub && \
     add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /" && \
+    CUDA_NAME="cuda-$(echo "${CUDA_VERSION}" | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1\.\2/')" && \
     apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
     "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" \
-    "cuda-${CUDA_VERSION_SHORT}=${CUDA_VERSION}" && \
-    ln -sv lib /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux/lib64 && \
-    ln -sv /usr/local/cuda-"$(echo ${CUDA_VERSION_SHORT} | tr - .)"/targets/x86_64-linux /usr/local/cuda
+    "$(echo "$CUDA_NAME" | sed 's/\./-/')=${CUDA_VERSION}" && \
+    ln -sv lib /usr/local/"${CUDA_NAME}"/targets/x86_64-linux/lib64 && \
+    ln -sv /usr/local/"${CUDA_NAME}"/targets/x86_64-linux /usr/local/cuda
 
 # Install Vulkan
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add - && \
@@ -87,6 +88,17 @@ RUN touch .ssh/known_hosts && ssh-keyscan bitbucket.org >> .ssh/known_hosts
 # TODO remove Ben's debugging toolset!
 RUN sudo apt update && sudo apt install -y vim ipython tmux iputils-ping
 
+# Install environments from a *.zip containing pre-compiled binaries
+ARG BENCHBOT_ENVS_MD5SUM
+ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
+ARG BENCHBOT_ENVS_URL
+ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
+RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
+    test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
+    echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
+    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
+ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
+
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH
@@ -101,17 +113,6 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
-
-# Install environments from a *.zip containing pre-compiled binaries
-ARG BENCHBOT_ENVS_MD5SUM
-ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
-ARG BENCHBOT_ENVS_URL
-ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
-RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
-    test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
-    echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
-    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
-ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
 
 # TODO Remove this SSH stuff...
 # RUN rm -rf .ssh 

@@ -120,7 +120,7 @@ function _env_data_full() {
   if [ -z "$_env_data_full_cached" ]; then
     _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash \
       -c 'find $BENCHBOT_ENVS_PATH/'$FILENAME_ENV_METADATA' -name "*.yaml"\
-      | while read env; do echo "$(realpath $env)"; cat $env; done')
+      | while read env; do echo "$(realpath $env)"; cat $env; echo ""; done')
   fi
   echo "$_env_data_full_cached"
 }
@@ -132,12 +132,12 @@ function _env_list() {
 
 function _env_map_path() {
   # Nested while... not quite ideal
-  echo "$(_env_data $1)" | sed -n 's/.*map_path: \(.*\)/\1/p' 
+  echo "$(_env_data $1)" | sed -n 's/.*map_path: \(.*\)/\1/p' | tr -d '[:space:]'
 }
 
 function _env_pose() {
   # Nested while... not quite ideal
-  echo "$(_env_data $1)" | sed -n 's/.*start_pose_local: \(.*\)/\1/p' 
+  echo "$(_env_data $1)" | sed -n 's/.*start_pose_local: \(.*\)/\1/p' | tr -d '[:space:]'
 }
 
 function opt_list_envs() {
@@ -169,24 +169,38 @@ The string is of the format TYPE:CONTROL_MODE:LOCALISATION_MODE.
 
 TYPE DETAILS:
         semantic_slam:
-            TODO 
+            SLAM with localisation and mapping performed with respect to
+            objects, not sensor data.
 
         scd:
-            TODO (semantic change detection)
+            Semantic Change Detection
+            Move through an environment multiple (two?) times and report changes
+            in the environment in terms of objects added or removed.
 
 CONTROL_MODE DETAILS:
         passive:
-            TODO
+            Control of the robot is limited to only being able to say
+            'move_next'. Robot moves from one target position to the next
+            automatically after being given this command.
 
         active:
-            TODO
-      
+            Control of the robot is not limited to moving along nodes on a path.
+            You can tell the robot to 'move_distance' or 'move_angle', and it
+            will do its best to move the specified amount. The robot will report
+            collisions and end movement early.
+
 LOCALISATION_MODE DETAILS:
         ground_truth:
-            TODO
+            All sensor data is perfect and represents the exact position and
+            orientation of the robot. All images are noiseless. Depth images
+            represent the exact depth from the camera to the objecs they see.
 
         dead_reckoning:
             TODO
+            Sensor data is not perfect. In particular, due to noise, the robot
+            position and orientation will drift off course the longer the robot
+            runs. Images have noise. Depth images have noise and will have
+            holes where no depth data can be retrieved.
   "
 }
 
@@ -303,7 +317,7 @@ echo -e "Created $DOCKER_NETWORK.\n"
 # Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root
 ros_master_host="benchbot_roscore"
-docker_run="docker run -t --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
+docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
             -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
             --network $DOCKER_NETWORK --name=\$name --hostname=\$name"
@@ -316,30 +330,20 @@ ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_SIMULATOR /bin/bash 
 
 name="benchbot_simulator"
 ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'sed -i "0,/\"pose\":/{s/\(\"pose\": \)\(.*\)/\1'"$selected_pose"'/g}" \
-  $ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full_config.json && \
-  cd $BENCHBOT_SIMULATOR_PATH && ./bazelros run //apps/benchbot_simulator & \
-  cd $BENCHBOT_ENVS_PATH && ./IsaacSimProject.sh '"$selected_map_path"' \
-  -isaac_sim_config_json="$ISAAC_SDK_PATH/apps/carter/carter_sim/bridge_config/carter_full.json" \
-  -windowed -ResX=1024 -ResY=720 -vulkan -game' # NOTE: these have been collapsed into the one 
-                                                # container as Isaac seems to have no useful
-                                                # tools for linking between separate hosts except
-                                                # for manually creating a *.json for every TcpPublisher
-                                                # in your system to change the target (not sure how
-                                                # this would even work if I had a topic with listeners
-                                                # on both computers A & B...). Combine that with no 
-                                                # useful tools for listing what topics currently exist 
-                                                # (e.g. 'rostopic list'), and the task of manually 
-                                                # going through 1 by 1 & specifying what should point
-                                                # where... is a no from me.
-                                                # Note removed -game flag
+  "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
+  --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
+  --path-envs $BENCHBOT_ENVS_PATH --path-isaac $ISAAC_SDK_PATH \
+  --path-simulator $BENCHBOT_SIMULATOR_PATH --port '"$PORT_SIMULATOR"' \
+  '"$selected_map_path"' '"$FILENAME_ENV_METADATA"' '"$selected_pose"
 
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor _task_name:="\
-  '"$SELECTED_TASK"'" _robot_file:="carter.yaml" _observations_file:="\
-  '"$selected_observations"'.yaml" _actions_file:="'"$selected_actions"'_control.yaml"\
-  _environment_file:='"$selected_env_file"''
+  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
+  _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter.yaml" \
+  _observations_file:="'"$selected_observations"'.yaml" \
+  _actions_file:="'"$selected_actions"'_control.yaml"\
+  _environment_file:='"$selected_env_file"' \
+  _simulator_address:='"${HOSTNAME_SIMULATOR}"':'"${PORT_SIMULATOR}"
 
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_SIMULATOR
