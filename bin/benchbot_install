@@ -442,7 +442,7 @@ chk_pip_reboot=1
 chk_pythontk_name='Tkinter for Python installed'
 chk_pythontk_pass='Found'
 chk_pythontk_fail='Not found'
-chk_pythontk_check='python -c "exec(\"try: import Tkinter as tk\nexcept: import tkinter as tk\"); print(tk.__file__)"'
+chk_pythontk_check='python -c "exec(\"try: import Tkinter as tk\nexcept: import tkinter as tk\"); print(tk.__file__)" 2>/dev/null'
 chk_pythontk_eval='[ ! -z "$check_result" ]'
 chk_pythontk_issue="\
   Python package pythontk was not found. It is required to use the
