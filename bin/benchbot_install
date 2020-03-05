@@ -841,7 +841,7 @@ for c in "${checks_list_pre[@]}"; do
     handle_requirement "$c"
     res=$?
     if [ $res -eq 2 ]; then
-      echo "TODO restart the script"
+      exec $0 $input --no-update
     elif [ $res -eq 1 ]; then
       exit 1
     fi
