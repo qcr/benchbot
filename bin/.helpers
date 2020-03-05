@@ -83,6 +83,10 @@ function header_block() {
 ################################################################################
 
 function eval_version() {
+  # TODO this refers to evaluating whether an arbitrary version number meets
+  # some arbitrary version requirement... it does not have anything to do with
+  # benchbot_eval (this should be renamed to avoid confusion)
+
   # $1 = version number, $2 = required version number
   if [ -z "$1" ] || [[ ! "$1" == [0-9]* ]]; then
     return 2  # Bad version text
@@ -137,11 +141,10 @@ function is_latest_benchbot_api() {
   return
 }
 
-# TODO enable the eval check
-# function is_latest_benchbot_eval() {
-#   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
-#   return
-# }
+function is_latest_benchbot_eval() {
+  _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
+  return
+}
 
 function is_latest_benchbot_examples() {
   _is_latest_local_git "$PATH_EXAMPLES" "$GIT_EXAMPLES" "$1" \
@@ -211,11 +214,10 @@ updates."
   is_latest_benchbot_api "$1" > /dev/null
   api_valid=$?
   [ $api_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  # TODO enable eval check
-  # echo -ne "Checking BenchBot Eval version ...\t\t"
-  # is_latest_benchbot_eval "$1" > /dev/null
-  # eval_valid=$?
-  # [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  echo -ne "Checking BenchBot Eval version ...\t\t"
+  is_latest_benchbot_eval "$1" > /dev/null
+  eval_valid=$?
+  [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Examples version ...\t\t"
   is_latest_benchbot_examples "$1" > /dev/null
   examples_valid=$?
@@ -234,8 +236,7 @@ updates."
   [ $environments_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \
-    # TODO add eval check: [ $eval_valid -eq 0 ] && [ $examples_valid -eq 0 ] && \
-    [ $examples_valid -eq 0 ] && \
+    [ $eval_valid -eq 0 ] && [ $examples_valid -eq 0 ] && \
     [ $simulator_valid -eq 0 ] && [ $supervisor_valid -eq 0 ] && \
     [ $environments_valid -eq 0 ]
   valid=$?

@@ -593,37 +593,56 @@ chk_examplesuptodate_fix=\
 git checkout $BRANCH_DEFAULT && git pull'
 chk_examplesuptodate_reboot=1
 
-chk_evalcloned_name='TODO BenchBot eval cloned'
+chk_evalcloned_name='BenchBot evaluation cloned'
 chk_evalcloned_pass='Yes'
 chk_evalcloned_fail='No'
-chk_evalcloned_check='echo "TODO"'
-chk_evalcloned_eval='[ ! -z "$check_result" ]'
+chk_evalcloned_check=\
+'git -C '"$PATH_EVAL"' rev-parse --show-toplevel 2>/dev/null'
+chk_evalcloned_eval='[ "$check_result" == "$(realpath '"$PATH_EVAL"')" ]'
 chk_evalcloned_issue="\
-  TODO"
+  The BenchBot evaluation python library is not cloned on the host system. Having it
+  installed allows you to evaluate the performance of your semantic scene
+  understanding algorithms directly from your machine."
 chk_evalcloned_fix=\
-'echo "TODO"'
+'rm -rf '"$PATH_EVAL"' && git clone '"$GIT_EVAL $PATH_EVAL"' &&
+pushd '"$PATH_EVAL"' && git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_evalcloned_reboot=1
 
-chk_evaluptodate_name='TODO BenchBot eval up-to-date'
+chk_evaluptodate_name='BenchBot evaluation up-to-date'
 chk_evaluptodate_pass='Up-to-date'
 chk_evaluptodate_fail='Outdated'
-chk_evaluptodate_check='echo "TODO"'
-chk_evaluptodate_eval='[ ! -z "$check_result" ]'
+chk_evaluptodate_check=\
+'git -C '"$PATH_EVAL"' rev-parse HEAD && 
+git ls-remote '"$GIT_EVAL"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_evaluptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_evaluptodate_issue="\
-  TODO"
+  The version of the BenchBot evaluation python library on the host system is
+  out of date. The current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
 chk_evaluptodate_fix=\
-'echo "TODO"'
+'pushd '"$PATH_EVAL"' && git fetch --all && 
+git checkout $BRANCH_DEFAULT && git pull'
 chk_evaluptodate_reboot=1
 
-chk_evalinstalled_name='TODO BenchBot eval installed'
+chk_evalinstalled_name='BenchBot evaluation installed'
 chk_evalinstalled_pass='Available'
 chk_evalinstalled_fail='Not found'
-chk_evalinstalled_check='echo "TODO"'
+chk_evalinstalled_check=\
+'python -c '"'"'import benchbot_eval; print(benchbot_eval.__file__);'"'"' \
+  2>/dev/null'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
-  TODO"
+  BenchBot evaluation was not found in python. It is either not installed, or
+  the current terminal is not correctly sourcing your installed python packages
+  (could be a virtual environment, conda, ROS, etc).
+
+  Please do not run the automatic fix if you intend to source a different python
+  environment before running BenchBot."
 chk_evalinstalled_fix=\
-'echo "TODO"'
+'pushd '"$PATH_EVAL"' && pip install -e .'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
