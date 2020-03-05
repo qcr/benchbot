@@ -394,11 +394,16 @@ chk_fsspace_fail='Insufficient space ($check_resultG)'
 chk_fsspace_check=\
 'dup_space=$(docker images --filter "reference='$DOCKER_TAG_SIMULATOR'" \
   --format "{{.Size}}") &&
-if [ -z "$dup_space" ]; then dup_space=0; 
-elif [ "${dup_space: -2}" == "GB" ]; then dup_space="${dup_space:0:-2}";
-else dup_space=0; fi &&
+if [ -z "$dup_space" ]; 
+  then dup_space=0; 
+elif [ "${dup_space: -2}" == "GB" ]; 
+  then dup_space=$(echo "${dup_space:0:-2}" | sed '"'"'s/\..*$//'"'"');
+else 
+  dup_space=0;
+fi &&
 space=$(df -Th /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
-echo "${space:0:-1}+$dup_space" | bc'
+space=$(echo "${space:0:-1}" | sed '"'"'s/\..*$//'"'"') &&
+echo "$space+$dup_space" | bc'
 chk_fsspace_eval='[ $check_result -gt 128 ]'
 chk_fsspace_issue="\
   The drive holding /var/lib/docker needs at least 128GB free. This check takes
