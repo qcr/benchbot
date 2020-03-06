@@ -770,7 +770,7 @@ function handle_requirement() {
           printf "\n  $s"
           retval=1
         elif [ $unresolved -eq 0 ] && [ $required -eq 0 ]; then
-          printf "\n  Restarting the installation script ..."
+          printf "\n  Restarting the installation script ...\n"
           retval=2
         fi
       else
@@ -780,10 +780,10 @@ function handle_requirement() {
     if [ $unresolved -ne 0 ] && [ $required -eq 0 ]; then
       s="Failed to solve issue. Please manually resolve, & re-run the "
       s+="install script."
-      printf "\n\n  $s"
+      printf "\n  $s"
       retval=1
     elif [ $required -ne 0 ]; then
-      printf "\n\n"
+      printf "\n"
     fi
   fi
   printf "${colour_nc}\n"
