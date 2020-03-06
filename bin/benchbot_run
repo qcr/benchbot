@@ -281,7 +281,7 @@ header_block "CHECKING FOR BENCHBOT SOFTWARE STACK UPDATES" ${colour_blue}
 
 if [ ! -z "$updates_skip" ]; then 
   echo -e "${colour_yellow}Skipping ...${colour_nc}"
-elif ! update_check "$(git rev-parse --abbrev-ref HEAD)"; then 
+elif ! update_check "$(git name-rev HEAD | sed 's/.*\/\(.*\)/\1/')"; then 
   exit 1; 
 fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
