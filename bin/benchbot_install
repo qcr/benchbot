@@ -560,9 +560,10 @@ chk_apiuptodate_name='BenchBot API up-to-date'
 chk_apiuptodate_pass='Up-to-date'
 chk_apiuptodate_fail='Outdated'
 chk_apiuptodate_check=\
-'git -C '"$PATH_API"' rev-parse HEAD && 
+'[ -d '"$PATH_API"' ] && git -C '"$PATH_API"' rev-parse HEAD && 
 git ls-remote '"$GIT_API"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_apiuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_apiuptodate_eval='[ ! -z "$check_result" ] && 
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_apiuptodate_issue="\
   The version of the BenchBot API python library on the host system is out of
   date. The current version hash & latest version hash respectively are:
@@ -612,9 +613,10 @@ chk_examplesuptodate_name='BenchBot examples up-to-date'
 chk_examplesuptodate_pass='Up-to-date'
 chk_examplesuptodate_fail='Outdated'
 chk_examplesuptodate_check=\
-'git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
+'[ -d '"$PATH_EXAMPLES"' ] && git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
 git ls-remote '"$GIT_EXAMPLES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_examplesuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_examplesuptodate_eval='[ ! -z "$check_result" ] &&
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_examplesuptodate_issue="\
   The version of the BenchBot examples python library on the host system is out
   of date. The current version hash & latest version hash respectively are:
@@ -646,9 +648,10 @@ chk_evaluptodate_name='BenchBot evaluation up-to-date'
 chk_evaluptodate_pass='Up-to-date'
 chk_evaluptodate_fail='Outdated'
 chk_evaluptodate_check=\
-'git -C '"$PATH_EVAL"' rev-parse HEAD && 
+'[ -d '"$PATH_EVAL"' ] && git -C '"$PATH_EVAL"' rev-parse HEAD && 
 git ls-remote '"$GIT_EVAL"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_evaluptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_evaluptodate_eval='[ ! -z "$check_result" ] &&
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_evaluptodate_issue="\
   The version of the BenchBot evaluation python library on the host system is
   out of date. The current version hash & latest version hash respectively are:
