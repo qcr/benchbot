@@ -707,7 +707,8 @@ chk_symlinks_fail='Not found'
 chk_symlinks_check=\
 '[ -e "'$PATH_SYMLINKS'/benchbot_install" ] && 
   [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
-  [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_submit" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_eval" ] &&
   ls -l "'$PATH_SYMLINKS'/benchbot_"* | cut -d " " -f 9-11'
 chk_symlinks_eval='[ ! -z "$check_result" ]'
 chk_symlinks_issue="\

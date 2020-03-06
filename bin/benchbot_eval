@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+################################################################################
+################### Load Helpers & Global BenchBot Settings ####################
+################################################################################
+
+abs_path=$(readlink -f $0)
+pushd $(dirname $abs_path) > /dev/null
+source .helpers
+popd > /dev/null
+
+
+################################################################################
+######################## Helper functions for commands #########################
+################################################################################
+
+usage_text="$(basename "$0") -- Script for evaluating the performance of your solution
+to the Scene Understanding Challenge against a running simulator. The script
+simply calls the 'benchbot_eval' python module with your provided results file.
+
+Note: results must be of the format specified TODO. The evaluation will error
+if missing any required fields (in particular the field describing task type).
+
+USAGE:
+
+    See this information about evaluation options:
+        $(basename "$0") [-h|--help]
+
+    Perform evaluation on results saved in 'my_results.json'
+        $(basename "$0") my_results.json
+
+OPTION DETAILS:
+
+    -h,--help             
+            Show this help menu.
+
+FURTHER DETAILS:
+
+    See the 'benchbot_examples' repository for example results (& solutions
+    which produce results) to test with this evaluation script.
+    
+    Please contact the authors of BenchBot for support or to report bugs:
+        b.talbot@qut.edu.au
+    "
+
+_invalid_location_err=\
+"ERROR: A valid argument denoting a results file is required. The argument
+provided ('%s') either does not exist, or is not a file. Please provide a valid
+results_file argument."
+
+################################################################################
+#################### Parse & handle command line arguments #####################
+################################################################################
+
+# Safely parse options input
+parse_out=$(getopt -o h --long help -n "$(basename "$0")" -- "$@")
+if [ $? != 0 ]; then exit 1; fi
+eval set -- "$parse_out"
+results_location=
+while true; do
+  case "$1" in
+    -h|--help)
+      echo "$usage_text" ; shift ; exit 0 ;;
+    --)
+      results_location="$2"; break ;;
+    *)
+      echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
+  esac
+done
+
+# Bail if we didn't get a valid results_location
+if [ ! -f "$results_location" ]; then
+  printf "${_invalid_location_err}\n" "$results_location"
+  exit 1
+fi
+
+################################################################################
+################# Run evaluation on the provided results file ##################
+################################################################################
+
+header_block "Running evaluation on '$results_location'" $colour_green
+
+python -c 'from benchbot_eval import Evaluator; \
+  Evaluator("'"$results_location"'").evaluate()'
+result=$?
+if [ $result -ne 0 ]; then
+  printf "${colour_red}\n%s: %d${colour_nc}\n" \
+    "Evaluation failed with result error code" "$result"
+fi
+exit $result
