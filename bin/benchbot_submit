@@ -13,7 +13,7 @@ popd > /dev/null
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-# empty
+SUBMISSION_CONTAINER_NAME="submission"
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -99,12 +99,31 @@ FURTHER DETAILS:
 SELECTED_MODE=
 SELECTED_OPTIONS=
 
-opt_select_mode() {
+function opt_select_mode() {
   if [ ! -z $SELECTED_MODE ]; then
     return 0
   fi
-  SELECTED_MODE="$1"; shift
+  case "$1" in
+    -n|--native)
+      SELECTED_MODE="native" ;;
+    -c|--containerised)
+      SELECTED_MODE="containerised" ;;
+    -s|--submission)
+      SELECTED_MODE="submission" ;;
+    *)
+      echo "$(basename "$0"): '$1' mode is unsupported" ; exit 1 ;;
+  esac
+  shift
   SELECTED_OPTIONS=( $(echo "$@" | sed 's/ --//') )
+}
+
+function remove_submission_container() {
+  # Cleanup containers if we ran in containerised mode
+  if [ "$SELECTED_MODE" == "containerised" ]; then
+    printf "\n"
+    header_block "Cleaning up user containers" ${colour_blue}
+    docker system prune -f  # TODO this is probably too brutal
+  fi
 }
 
 ################################################################################
@@ -112,16 +131,23 @@ opt_select_mode() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o hn:,c:,s: --long help,native:,containerised:,submission: \
+parse_out=$(getopt -o e,h,c:,n:,r:,s: --long \
+  evaluate-results,help,containerised:,native:,results-location:,submission: \
   -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+results_location=
+evaluate=
 while true; do
   case "$1" in
+    -e|--evaluate-results)
+      evaluate=true ; shift ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     -n|--native|-c|--containerised|-s|--submission)
       opt_select_mode "$@"; break ;;
+    -r|--results_location)
+      results_location="$2"; shift 2 ;;
     --)
       shift ; break ;;
     *)
@@ -133,13 +159,24 @@ if [ -z $SELECTED_MODE ]; then
 fi
 
 # Bail if we have received mode options we can't do anything with
+# TODO handle passing evaluate and / or results when running in submission mode
 case "$SELECTED_MODE" in
-  -c|--containerised|-s|--submission)
+  containerised|submission)
     if [ ! -d "${SELECTED_OPTIONS[0]}" ]; then
-      echo "$(basename "$0"): directory '${SELECTED_OPTIONS[0]}' provided with "\
-        "mode '$SELECTED_MODE' does not exist. Exiting..."
+      s="$(basename "$0"): directory '${SELECTED_OPTIONS[0]}' provided with "
+      s+="mode\n'$SELECTED_MODE' does not exist. Exiting..."
+      echo -e "$s"
       exit 1
-    fi ;;
+    fi ;;&
+  submission)
+    if [ -z "$evaluate" ] || [ -z "$results_location" ]; then
+      s="$(basename "$0"): cannot create results or perform evaluation from " 
+      s+="\nsubmission mode as no code is run. Please run again in a different "
+      s+="\nmode."
+      echo -e "$s"
+      exit 1
+    fi
+    ;;
 esac
 
 # We are going to submit; pull all useful data from selected settings out
@@ -148,11 +185,11 @@ selected_command=
 selected_code_dir=
 selected_out_location=
 case "$SELECTED_MODE" in
-  -n|--native)
+  native)
     selected_command="${SELECTED_OPTIONS[@]}" ;;
-  -c|--containerised|-s|--submission)
+  containerised|submission)
     selected_code_dir=$(realpath "${SELECTED_OPTIONS[0]}") ;;&
-  -s|--submission)
+  submission)
     if [ ${#SELECTED_OPTIONS[@]} -gt 1 ]; then
       selected_out_location=$(realpath "${SELECTED_OPTIONS[1]}")
     fi
@@ -173,7 +210,11 @@ esac
 ################## Submit your BenchBot solution as requested ##################
 ################################################################################
 
+trap remove_submission_container EXIT
+
 # Print some configuration information
+# TODO print some useful information about evaluation settings
+# TODO actually get the supervisor address...
 echo "Submitting to the BenchBot system with the following settings:
 
     BenchBot supervisor address: TODO
@@ -193,15 +234,20 @@ fi
 echo ""
 
 # Actually perform the submission
-if [ -n "$selected_command" ]; then
+header_block "Running submission in '$SELECTED_MODE' mode" ${colour_green}
+
+if [ "$SELECTED_MODE" == "native" ]; then
   # This is native submission mode
-  echo -e "Running submission natively:\n'$selected_command' ..."
+  echo -e \
+    "Running submission natively via command:\n\t'$selected_command' ...\n"
   eval "$selected_command"
-elif [ -n "$selected_out_location" ]; then
+  result=$?
+elif [ "$SELECTED_MODE" == "submission" ]; then
   # This is bundling up submission mode
   echo -e "Bundling up submission from '$selected_code_dir' ...\n"
   pushd "$selected_code_dir" >/dev/null
   tar -czvf "$selected_out_location" *
+  result=$?
   popd >/dev/null
   echo -e "\nSaved to: $selected_out_location"
 else
@@ -210,17 +256,54 @@ else
   pushd "$selected_code_dir" >/dev/null
   submission_tag="benchbot/submission:"$(echo "$(pwd)" | sha256sum | cut -c1-10)
   docker build -t "$submission_tag" .
-  build_ret=$?
-  if [ $build_ret -ne 0 ]; then
+  result=$?
+  if [ $result -ne 0 ]; then
     echo "Docker build returned a non-zero error code: $build_ret"
   else
-    name="submission"
     xhost +local:root
-    docker run --rm --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
-            --network "$DOCKER_NETWORK" --name="$name" --hostname="$name" \
-            -i -t "$submission_tag" 
+    docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
+            --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
+            --hostname="$name" -i -t "$submission_tag" 
     xhost -local:root
+    result=$?
   fi
   popd >/dev/null
 fi
+
+# Exit here if the submission failed
+if [ $result -ne 0 ]; then
+  printf "${colour_red}\n%s: %d${colour_nc}\n" \
+    "Submission failed with result error code" "$result"
+  exit $result
+fi
+
+# Perform any evaluation that may have been requested by the caller
+if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
+  header_block "Processing results" ${colour_blue}
+  results_src=$(python -c \
+    'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
+
+  # Pull the results out of the container if appropriate
+  if [ "$SELECTED_MODE" == "containerised" ]; then
+    docker cp "${SUBMISSION_CONTAINER_NAME}:${results_src}" "${results_src}"
+    printf "\nExtracted results from container '%s', to '%s'\n" \
+      "SUBMISSION_CONTAINER_NAME" "$results_location"
+  fi
+
+  # Copy results to a new location if requested
+  if [ ! -z "$results_location" ]; then
+    printf "\nCopying results from '%s' to '%s' ...\n" "$results_src" \
+      "$results_location"
+    rsync -avP "$results_src" "$results_location"
+  fi
+
+  # Run evaluation on the results if requested
+  if [ ! -z "$evaluate" ]; then
+    if [ -z "$results_location" ]; then results_location="$results_src"; fi
+    printf "\n\nRunning evaluation on results from '%s' ... \n" \
+      "$results_location"
+    benchbot_eval "$results_location"
+  fi
+fi
+
 exit 0
