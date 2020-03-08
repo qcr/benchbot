@@ -510,7 +510,7 @@ chk_cudadriverdep_check=\
   sed "/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/"), \
   CUDA: $(cat /usr/local/cuda/version.txt | cut -d " " -f 3)"'"'"' &&
 host=$(eval "$fn") && 
-bb=$(docker run --rm -t '$DOCKER_TAG_SIMULATOR' /bin/bash -c "$fn" | \
+bb=$(docker run --rm -t '$DOCKER_TAG_CORE' /bin/bash -c "$fn" | \
   sed '"'"'s/[[:space:]]*$//'"'"') &&
 eq=$([ "$host" == "$bb" ] && echo "==" || echo "!=") &&
 printf "%s\n%s\n%s" "Host: $host" "BenchBot: $bb" "Result: $eq"'
@@ -798,7 +798,7 @@ function uninstall_benchbot() {
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
 
-  rm -rf {"$PATH_API","$PATH_EXAMPLES"} # TODO add eval to this
+  rm -rf {"$PATH_API","$PATH_EXAMPLES", "$PATH_EVAL"}
 
   echo -e "\nFinished uninstalling!"
 }
@@ -946,11 +946,25 @@ cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
 sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 
-# Build the BenchBot Simulator Docker image
-docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
+# Build the BenchBot Core Docker image
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "BUILDING BENCHBOT CORE DOCKER IMAGE:"
+docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
-  --build-arg CUDA_VERSION="${cuda_version}" \
+  --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT
+build_ret=$?
+if [ $build_ret -ne 0 ]; then
+  printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+    "ERROR: Building BenchBot \"core\" returned a non-zero error code" \
+    "$build_ret"
+  exit 1
+fi
+
+# Build the BenchBot Simulator Docker image
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
+docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
@@ -960,21 +974,27 @@ docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo -e "\n$build_err${colour_nc}"
+  printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+    "ERROR: Building BenchBot \"simulator\" returned a non-zero error code" \
+    "$build_ret"
   exit 1
 fi
 
 # Build the BenchBot Submission Docker image
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "BUILDING BENCHBOT SUBMISSION DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo -e "\n$build_err${colour_nc}"
+  printf "\n${colour_red}%s: %d" \
+  printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+    "ERROR: Building BenchBot \"submission\" returned a non-zero error code" \
+    "$build_ret"
   exit 1
 fi
+
 
 # PART 4: Running post build checks
 header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue

@@ -6,6 +6,7 @@
 
 BRANCH_DEFAULT="master"
 
+DOCKER_TAG_CORE="benchbot/core:base"
 DOCKER_TAG_SIMULATOR="benchbot/simulator:base"
 DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
@@ -28,8 +29,9 @@ MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
 PATH_ROOT=".."
 
 PATH_API="$PATH_ROOT/api"
-PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/simulator.Dockerfile"
-PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/submission.Dockerfile"
+PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
+PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/docker/simulator.Dockerfile"
+PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
