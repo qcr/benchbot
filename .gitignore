@@ -5,3 +5,4 @@ id_rsa
 api/
 eval/
 examples/
+ground_truth/

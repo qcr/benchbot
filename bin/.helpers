@@ -11,6 +11,7 @@ DOCKER_TAG_SIMULATOR="benchbot/simulator:base"
 DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
 
+FILENAME_ENV_GROUND_TRUTH=".benchbot_object_maps"
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
 GIT_API="https://bitbucket.org/acrv/benchbot_api"
@@ -34,6 +35,7 @@ PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/docker/simulator.Dockerfile"
 PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
+PATH_GROUND_TRUTH="$PATH_ROOT/ground_truth"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
 
@@ -101,7 +103,9 @@ function eval_version() {
 
 function kill_benchbot() {
   # TODO make this quieter when I am confident it works as expected...
-  header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
+  if [ -z "$1" ]; then
+    header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
+  fi
 
   targets=$(docker ps -q -f name='benchbot*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then

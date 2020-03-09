@@ -983,6 +983,12 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
+# Pull out ground truth files from the simulator
+rm -rf "$PATH_GROUND_TRUTH"
+location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  'echo "$BENCHBOT_ENVS_PATH/'$FILENAME_ENV_GROUND_TRUTH'"')
+docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SUBMISSION DOCKER IMAGE:"
@@ -998,6 +1004,10 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
+# Cleanup any unnecessary / outdated BenchBot components still lying around
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "CLEANING UP OUTDATED BENCHBOT REMNANTS:"
+kill_benchbot "quiet"
 
 # PART 4: Running post build checks
 header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue
