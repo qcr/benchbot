@@ -224,7 +224,8 @@ chk_cudappa_name='CUDA is from the Nvidia PPA'
 chk_cudappa_pass='PPA is valid'
 chk_cudappa_fail='PPA is invalid'
 chk_cudappa_check=\
-'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9]*-[0-9]*"); \
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9].*$(cat \
+/usr/local/cuda/version.txt | cut -d " " -f 3)"); \
 apt download --print-uris $(echo $installed | sed '"'"'s/^\([^\/]*\).*/\1/'"'"')=\
 $(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
 cut -d'"'"' '"'"' -f1'
