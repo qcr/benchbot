@@ -19,7 +19,7 @@ to the Scene Understanding Challenge against a running simulator. The script
 simply calls the 'benchbot_eval' python module with your provided results file.
 
 Note: results must be of the format specified TODO. The evaluation will error
-if missing any required fields (in particular the field describing task type).
+if missing any required fields (in particular the fields describing task type).
 
 USAGE:
 
@@ -29,10 +29,16 @@ USAGE:
     Perform evaluation on results saved in 'my_results.json'
         $(basename "$0") my_results.json
 
+    Save scores for 'my_results.json' to 'my_scores.json'
+        $(basename "$0") -o my_scores.json my_results.json
+
 OPTION DETAILS:
 
     -h,--help             
             Show this help menu.
+
+    -o,--output-location
+            Change the location where the evaluation scores json is saved.
 
 FURTHER DETAILS:
 
@@ -45,24 +51,33 @@ FURTHER DETAILS:
 
 _invalid_location_err=\
 "ERROR: A valid argument denoting a results file is required. The argument
-provided ('%s') either does not exist, or is not a file. Please provide a valid
-results_file argument."
+provided ('%s') either does not exist, or is not a file. 
+Please provide a valid results_file argument."
+
+_ground_truth_err=\
+"ERROR: The script was unable to find ground truth files in the expected 
+location ('%s'). This should be created as part of the
+'benchbot_install' process. Please re-run the installer."
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o h --long help -n "$(basename "$0")" -- "$@")
+parse_out=$(getopt -o h,o: --long help,output-location: -n \
+  "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 results_location=
+scores_location='scores.json'
 while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    -o|--output-location)
+      scores_location="$2"; shift 2;;
     --)
-      results_location="$2"; break ;;
+      results_location="$2"; break;; 
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
@@ -74,6 +89,16 @@ if [ ! -f "$results_location" ]; then
   exit 1
 fi
 
+# Get an absolute path for ground truth (as everything else is relative to where
+# the script was run...)
+pushd "$(dirname $abs_path)" > /dev/null
+gt_abs=$(realpath "$PATH_GROUND_TRUTH")
+popd > /dev/null
+if [ ! -d "$gt_abs" ]; then
+  printf "${_ground_truth_err}\n" "$gt_abs"
+  exit 1
+fi
+
 ################################################################################
 ################# Run evaluation on the provided results file ##################
 ################################################################################
@@ -81,7 +106,8 @@ fi
 header_block "Running evaluation on '$results_location'" $colour_green
 
 python -c 'from benchbot_eval import Evaluator; \
-  Evaluator("'"$results_location"'").evaluate()'
+  Evaluator("'"$results_location"'", "'"$gt_abs"'", \
+  "'$scores_location'").evaluate()'
 result=$?
 if [ $result -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
