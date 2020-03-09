@@ -1,9 +1,6 @@
 # Extend the BenchBot Core image
 FROM benchbot/core:base
 
-# Set the default working directory
-WORKDIR /benchbot
-
 # Install ROS Melodic
 ENV ROS_WS_PATH /benchbot/ros_ws
 RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
@@ -11,11 +8,6 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
     C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
     apt update && apt install -y ros-melodic-desktop-full
-
-# Install Isaac (using local copies of licensed libraries)
-ARG ISAAC_SDK_TGZ
-ENV ISAAC_SDK_PATH /benchbot/isaac_sdk
-ADD ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 
 # Install Vulkan
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
@@ -27,11 +19,26 @@ RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
 RUN apt update && apt install -y git python-catkin-tools python-pip \
     python-rosinstall-generator python-wstool
 
+# Create a benchbot user with ownership of the benchbot software stack (Unreal
+# for some irritating reason will not accept being run by root...) 
+RUN useradd --create-home --password "" benchbot && passwd -d benchbot && \
+    apt update && apt install -yq sudo && usermod -aG sudo benchbot && \
+    usermod -aG root benchbot && mkdir /benchbot && \
+    chown benchbot:benchbot /benchbot
+USER benchbot
+WORKDIR /benchbot
+
+# Install Isaac (using local copies of licensed libraries)
+ARG ISAAC_SDK_TGZ
+ENV ISAAC_SDK_PATH /benchbot/isaac_sdk
+ADD --chown=benchbot:benchbot ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
+
 # Build ROS & Isaac
 RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd && \
     pushd "$ISAAC_SDK_PATH" && \
-    engine/build/scripts/install_dependencies.sh && bazel build ...
+    engine/build/scripts/install_dependencies.sh && bazel build ... && \
+    bazel build ...
 
 # Add SSH keys
 # TODO we CANNOT RELEASE THIS we way it is below. It takes my private SSH key
@@ -41,8 +48,9 @@ RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
 # release & things move to public repos (i.e. no key needed) but for now we
 # should probably create a dummy bitbucket account with a shared private key
 # in the "benchbot" (to keep install "just working" for anyone using the repo)
-ADD id_rsa /root/.ssh/id_rsa
-RUN touch /root/.ssh/known_hosts && ssh-keyscan bitbucket.org >> /root/.ssh/known_hosts 
+ADD --chown=benchbot:benchbot id_rsa /home/benchbot/.ssh/id_rsa
+RUN touch /home/benchbot/.ssh/known_hosts && \
+    ssh-keyscan bitbucket.org >> /home/benchbot/.ssh/known_hosts 
 
 # Install environments from a *.zip containing pre-compiled binaries
 ARG BENCHBOT_ENVS_MD5SUM
@@ -75,3 +83,4 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
 
 # TODO Remove this SSH stuff...
 # RUN rm -rf .ssh 
+
