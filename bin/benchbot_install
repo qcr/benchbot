@@ -254,7 +254,7 @@ chk_isaac_eval='[ ! -z "$check_result" ]'
 chk_isaac_issue="\
   "'$check_result'"
   Isaac SDK was not found in the folder:
-    $PATH_ISAAC_SRCS
+    $(realpath $PATH_ISAAC_SRCS)
 
   Due to licensing restrictions we cannot automatically download this file.
   Please sign up for an Nvidia developer account, download the *.zip for Isaac 
@@ -406,7 +406,7 @@ elif [ "${dup_space: -2}" == "GB" ];
 else 
   dup_space=0;
 fi &&
-space=$(df -Th /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
+space=$(df -Th -BG /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
 space=$(echo "${space:0:-1}" | sed '"'"'s/\..*$//'"'"') &&
 echo "$space+$dup_space" | bc'
 chk_fsspace_eval='[ $check_result -gt 128 ]'
@@ -945,7 +945,8 @@ header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
 cuda_version=$(apt list --installed 2>/dev/null | \
-  grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
+  grep "cuda-[0-9].*$(cat /usr/local/cuda/version.txt | cut -d ' ' -f 3)" | \
+  cut -d ' ' -f 2)
 sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 
 # Build the BenchBot Core Docker image
