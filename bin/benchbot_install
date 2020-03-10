@@ -114,9 +114,6 @@ checks_list_pre=(
   "Miscellaneous requirements:"
   "pip" # Is pip available? (required to install Python libraries)
   "pythontk" # Is python-tk installed (required for matplotlib...)
-  "Running TODELETE checks:"
-  "todeletersa"  # Is an id_rsa available?
-  "todeletepermission"  # Does the id_rsa give you permission to clone repos?
   )
   
 chk_nvidiacard_name='Nvidia GPU available'
@@ -456,37 +453,6 @@ chk_pythontk_fix=\
 sudo apt install -y python${v}-tk'
 chk_pythontk_reboot=1
 
-chk_todeletersa_name='SSH key available'
-chk_todeletersa_pass='Found ($check_result)'
-chk_todeletersa_fail='Not found'
-chk_todeletersa_check=\
-'key="$PATH_ROOT/id_rsa" && if [ -f "$key" ]; then echo "$key"; fi'
-chk_todeletersa_eval='[ ! -z "$check_result" ]'
-chk_todeletersa_issue="\
-  SSH key for accessing private BenchBot repositories was not found at location:
-  $PATH_ROOT/id_rsa
-
-  Please copy a private SSH key with access to the respositories to the above
-  location."
-chk_todeletersa_fix='cp ~/.ssh/id_rsa '"$PATH_ROOT"
-chk_todeletersa_reboot=1
-
-chk_todeletepermission_name='SSH key has permissions'
-chk_todeletepermission_pass='Successful'
-chk_todeletepermission_fail='Denied'
-chk_todeletepermission_check=\
-'ssh-agent bash -c '"'"'ssh-add '"$PATH_ROOT"'/id_rsa &>/dev/null; 
-rm -rf /tmp/benchbot && \
-git clone '"$GIT_BENCHBOT"' /tmp/benchbot &>/dev/null && \
-rm -rf /tmp/benchbot && echo "success"'"'"
-chk_todeletepermission_eval='[ ! -z "$check_result" ]'
-chk_todeletepermission_issue="\
-  The provided SSH key failed to clone the BenchBot software stack.
-
-  Are you sure it has permission? See Ben."
-chk_todeletepermission_fix=''
-chk_todeletepermission_reboot=1
-
 checks_list_post=(
   "Validating the build against the host system:"
   "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
@@ -796,7 +762,7 @@ function uninstall_benchbot() {
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
-  pip uninstall -y benchbot_api
+  pip uninstall -y benchbot_api benchbot_examples
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
 

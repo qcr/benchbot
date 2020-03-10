@@ -40,18 +40,6 @@ RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     engine/build/scripts/install_dependencies.sh && bazel build ... && \
     bazel build ...
 
-# Add SSH keys
-# TODO we CANNOT RELEASE THIS we way it is below. It takes my private SSH key
-# and adds it into the Docker image layers, exposing it to other areas of your
-# computer. While not disastrous, it is bad from a security standpoint to
-# do this with your private key. This problem will "go away" as we get to 
-# release & things move to public repos (i.e. no key needed) but for now we
-# should probably create a dummy bitbucket account with a shared private key
-# in the "benchbot" (to keep install "just working" for anyone using the repo)
-ADD --chown=benchbot:benchbot id_rsa /home/benchbot/.ssh/id_rsa
-RUN touch /home/benchbot/.ssh/known_hosts && \
-    ssh-keyscan bitbucket.org >> /home/benchbot/.ssh/known_hosts 
-
 # Install environments from a *.zip containing pre-compiled binaries
 ARG BENCHBOT_ENVS_MD5SUM
 ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
@@ -80,7 +68,4 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     pip install -r $BENCHBOT_SUPERVISOR_PATH/requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
-
-# TODO Remove this SSH stuff...
-# RUN rm -rf .ssh 
 
