@@ -52,6 +52,13 @@ OPTION DETAILS:
 
                     office:3
 
+            Two variation numbers must be specified for scene change detection
+            using the format \"ENVIRONMENT_NAME:VARIATION_ONE:VARIATION_TWO\".
+            For example detecting the changes in the third variation of the
+            office with respect to the first variation would be:
+
+                    office:1:3
+
             (Use --list-envs to see a list of available environments)
 
     -t, --task             
@@ -206,8 +213,10 @@ LOCALISATION_MODE DETAILS:
 function opt_select_env() {
   # Only update the SELECTED_ENV variable if it is in the list of envs
   for e in $(_env_list); do
-    if [ "$(echo "$e" | tr -d '[:space:]')" == "$1" ]; then
-      SELECTED_ENV="$(echo "$e" | tr -d '[:space:]')"
+    e=$(echo "$e" | tr -d '[:space:]')
+    # TODO the number range for 2nd variation should probably not be hardcoded...
+    if [[ "$1" =~ "$e"(:[1-5])?$ ]]; then 
+      SELECTED_ENV="$1"
       return 0
     fi
   done
@@ -269,6 +278,19 @@ if [ -z "$updates_exit" ] && [ -z "$SELECTED_ENV" ]; then
 fi
 if [ -z "$updates_exit" ] && [ -z "$SELECTED_TASK" ]; then 
   echo "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
+  exit 1
+fi
+
+# Ensure task & environment combo is valid
+if [[ "$SELECTED_TASK" =~ .*"semantic_slam".* ]] && \
+    [[ "$SELECTED_ENV" =~ ^[^:]+:[1-5]:[1-5]$ ]]; then
+  echo "ERROR: Can't run Semantic SLAM with two environment variations!"
+  exit 1
+elif [[ "$SELECTED_TASK" =~ .*"scd".* ]] && \
+    [[ "$SELECTED_ENV" =~ ^[^:]+:[1-5]$ ]]; then
+  s="ERROR: Can't run Scene Change Detection without "
+  s+="two environment variations!"
+  echo "$s"
   exit 1
 fi
 
