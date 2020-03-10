@@ -363,7 +363,8 @@ chk_fsext4_issue="\
 
   Please move '/var/lib/docker/' to an ext4 drive for best results."
 chk_fsext4_fix=\
-'read -p "New location for /var/lib/docker on an ext4 drive:" new_location
+'while read -r -t 0; do read -r; done;
+read -p "New location for /var/lib/docker on an ext4 drive:" new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -415,7 +416,8 @@ chk_fsspace_issue="\
   Please clear space from the drive, or run the following fix to move
   /var/lib/docker to a drive with more space."
 chk_fsspace_fix=\
-'read -p "New location for /var/lib/docker with 128GB free:" new_location
+'while read -r -t 0; do read -r; done;
+read -p "New location for /var/lib/docker with 128GB free:" new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -726,6 +728,7 @@ function handle_requirement() {
     else
       printf "\n  The following commands can be run to try & fix the issue:\n"
       printf "\n%s\n\n" "${fix//'$check_result'/$check_result}"
+      while read -r -t 0; do read -r; done
       read -n 1 -r -p "  Would you like the above commands to be run (y/N)? " \
         apply_fix
       if [[ "$apply_fix" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -759,6 +762,7 @@ function handle_requirement() {
 }
 
 function uninstall_benchbot() {
+  # TODO this needs to remove symlinks
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
@@ -855,6 +859,7 @@ for c in "${checks_list_pre[@]}"; do
 done
 
 printf "\n\n"
+while read -r -t 0; do read -r; done
 read -n 1 -r -p \
   "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
   prompt
