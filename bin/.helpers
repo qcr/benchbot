@@ -86,6 +86,10 @@ function header_block() {
 ######################## Helpers for managing BenchBot #########################
 ################################################################################
 
+function clear_stdin() {
+  read -t 0.1 -d '' -n 10000 discard
+}
+
 function eval_version() {
   # TODO this refers to evaluating whether an arbitrary version number meets
   # some arbitrary version requirement... it does not have anything to do with
