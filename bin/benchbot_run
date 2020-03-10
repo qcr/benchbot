@@ -137,14 +137,36 @@ function _env_list() {
     sed 's/.*: "\([^_]*\)_\([^"]*\).*/\1:\2/' | sort
 }
 
-function _env_map_path() {
-  # Nested while... not quite ideal
-  echo "$(_env_data $1)" | sed -n 's/.*map_path: \(.*\)/\1/p' | tr -d '[:space:]'
+function _env_map_paths() {
+  envs=($(_expand_envs $1))
+  ps=
+  for e in "${envs[@]}"; do
+    # Nested while... not quite ideal
+    ps+="$(_env_data $e | sed -n 's/.*map_path: \(.*\)/\1/p' | \
+      tr -d '[:space:]') "
+  done
+  echo "$ps" | sed -e 's/[[:space:]]*$//'
 }
 
-function _env_pose() {
-  # Nested while... not quite ideal
-  echo "$(_env_data $1)" | sed -n 's/.*start_pose_local: \(.*\)/\1/p' | tr -d '[:space:]'
+function _env_poses() {
+  envs=($(_expand_envs $1))
+  ps=
+  for e in "${envs[@]}"; do
+    # Nested while... not quite ideal
+    ps+="$(_env_data $e | sed -n 's/.*start_pose_local: \(.*\)/\1/p' | \
+      tr -d '[:space:]') "
+  done
+  echo "$ps" | sed -e 's/[[:space:]]*$//'
+}
+
+function _expand_envs() {
+  env_name=$(echo "$1" | sed 's/:.*//')
+  env_nums=($(echo "$1" | sed 's/[^:]*://; s/:/ /'))
+  es=
+  for e in "${env_nums[@]}"; do
+    es+="$env_name:$e "
+  done
+  echo "$es" | sed -e 's/[[:space:]]*$//'
 }
 
 function opt_list_envs() {
@@ -294,6 +316,17 @@ elif [[ "$SELECTED_TASK" =~ .*"scd".* ]] && \
   exit 1
 fi
 
+# es=($(_expand_envs $SELECTED_ENV))
+# ms=($(_env_map_paths $SELECTED_ENV))
+# ps=($(_env_poses $SELECTED_ENV))
+# echo "Environments (${#es[@]}):"
+# echo "${es[*]}"
+# echo "Maps (${#ms[@]}):"
+# echo "${ms[*]}"
+# echo "Poses (${#ps[@]}):"
+# echo "${ps[*]}"
+# exit
+
 ################################################################################
 ##################### Run the simulator & BenchBot backend #####################
 ################################################################################
@@ -313,8 +346,8 @@ trap kill_benchbot EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Pull out all useful data from the selected settings
-selected_pose=$(_env_pose "$SELECTED_ENV")
-selected_map_path=$(_env_map_path "$SELECTED_ENV")
+selected_poses=$(_env_poses "$SELECTED_ENV")
+selected_map_paths=$(_env_map_paths "$SELECTED_ENV")
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 selected_env_file=$(_env_file "$SELECTED_ENV")
