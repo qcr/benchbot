@@ -766,7 +766,7 @@ function uninstall_benchbot() {
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
 
-  rm -rf {"$PATH_API","$PATH_EXAMPLES", "$PATH_EVAL"}
+  rm -rfv ./{"$PATH_API","$PATH_EXAMPLES","$PATH_EVAL"}
 
   echo -e "\nFinished uninstalling!"
 }
