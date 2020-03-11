@@ -146,8 +146,8 @@ function remove_submission_container() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o e,h,c:,n:,r:,s: --long \
-  evaluate-results,help,containerised:,native:,results-location:,submission: \
+parse_out=$(getopt -o ehc:n:r:s:v --long \
+  evaluate-results,help,containerised:,native:,results-location:,submission:,version \
   -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -163,6 +163,8 @@ while true; do
       opt_select_mode "$@"; break ;;
     -r|--results_location)
       results_location="$2"; shift 2 ;;
+    -v|--version)
+      print_version_info; exit ;;
     --)
       shift ; break ;;
     *)

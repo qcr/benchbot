@@ -784,7 +784,8 @@ trap cleanup_terminal EXIT
 
 # Safely parse options input
 input=$@
-parse_out=$(getopt -o hb:e:fu --long help,branch:,envs-url:,force-clean,uninstall,no-update \
+parse_out=$(getopt -o hb:e:fuv \
+  --long help,branch:,envs-url:,force-clean,uninstall,no-update,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -805,6 +806,8 @@ while true; do
       uninstall_benchbot; shift ;;
     -u|--uninstall)
       uninstall_benchbot; exit ;;
+    -v|--version)
+      print_version_info; exit ;;
     --no-update)
       updates_skip=1; shift ;;
     --)

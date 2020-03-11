@@ -121,6 +121,19 @@ function kill_benchbot() {
   echo -e "\nFinished cleaning!"
 }
 
+function print_version_info() {
+  hash=$(git rev-parse HEAD)
+  version_name=$(git log --tags --no-walk --pretty='%H %D' | grep "$hash" | \
+    sed 's/^[^ ]* //; s/,[^:]*//g; s/tag: //g; s/: /, /g')
+  if [ -z "$version_name" ]; then
+    version_name="__unnamed__"
+  fi
+  printf "BenchBot Software Stack.\n"
+  printf "Version '%s', from branch '%s'\n" \
+    "$version_name" "$(git name-rev --name-only HEAD)"
+  printf "(%s)\n" "$hash"
+}
+
 
 ################################################################################
 ############### Checking if updates are available for components ###############

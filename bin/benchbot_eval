@@ -64,7 +64,7 @@ location ('%s'). This should be created as part of the
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o h,o: --long help,output-location: -n \
+parse_out=$(getopt -o ho:v --long help,output-location:,version -n \
   "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -76,6 +76,8 @@ while true; do
       echo "$usage_text" ; shift ; exit 0 ;;
     -o|--output-location)
       scores_location="$2"; shift 2;;
+    -v|--version)
+      print_version_info; exit ;;
     --)
       results_location="$2"; break;; 
     *)

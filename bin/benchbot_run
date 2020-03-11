@@ -273,7 +273,8 @@ function opt_select_task() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o he:t:fu --long help,env:,task:,list-envs,list-tasks,force-updateless,updates-check \
+parse_out=$(getopt -o he:t:fuv \
+  --long help,env:,task:,list-envs,list-tasks,force-updateless,updates-check,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -295,6 +296,8 @@ while true; do
       updates_skip=1 ; shift ;;
     -u|--updates-check)
       updates_exit=1 ; shift ;;
+    -v|--version)
+      print_version_info; exit ;;
     --)
       shift ; break ;;
     *)
