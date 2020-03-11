@@ -91,6 +91,10 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+_map_details_err=\
+"ERROR: Somehow there is a difference between the number of map paths (%d) & 
+map poses (%d) found. This should never happen; please contact the developers."
+
 SELECTED_ENV=
 SELECTED_TASK=
 
@@ -152,14 +156,12 @@ function _env_map_paths() {
 function _env_poses() {
   envs=($(_expand_envs $1))
   ps=
-  >&2 echo "getting poses"
   for e in "${envs[@]}"; do
     # Nested while... not quite ideal
     ps+="$(_env_data $e | sed -n 's/.*start_pose_local: \(.*\)/\1/p' | \
       tr -d '[:space:]') "
   done
   echo "$ps" | sed -e 's/[[:space:]]*$//'
-  >&2 echo "got poses"
 }
 
 function _expand_envs() {
@@ -342,22 +344,33 @@ header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 _env_data_get
 
 # Pull out all useful data from the selected settings
-selected_poses=$(_env_poses "$SELECTED_ENV")
-selected_map_paths=$(_env_map_paths "$SELECTED_ENV")
+selected_poses=($(_env_poses "$SELECTED_ENV"))
+selected_map_paths=($(_env_map_paths "$SELECTED_ENV"))
+if [ ${#selected_poses[@]} -ne ${#selected_map_paths[@]} ]; then
+  printf "$_map_details_err\n" "${#selected_map_paths[@]}" \
+    "${#selected_poses[@]}"
+fi
+
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 selected_env_file=$(_env_file "$SELECTED_ENV")
 
 # Print some configuration information
-echo "Running the BenchBot system with the following settings:
+echo -n "Running the BenchBot system with the following settings:
 
     Selected environment: $SELECTED_ENV
     Selected task:        $SELECTED_TASK
-    Map path:             $selected_map_path
-    Map start pose:       $selected_pose 
     Actions set:          $selected_actions
     Observations set:     $selected_observations
-"
+    Maps:                 "
+for i in "${!selected_map_paths[@]}"; do
+  if [ $i -ne 0 ]; then
+    printf "%*s" 26
+  fi
+  printf "%s\n" "${selected_map_paths[$i]}"
+  printf "%*s" 26
+  printf "(starting @ %s)\n" "${selected_poses[$i]}"
+done
 
 # Create the network for BenchBot software stack
 docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
@@ -384,7 +397,8 @@ ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin
   --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
   --path-envs $BENCHBOT_ENVS_PATH --path-isaac $ISAAC_SDK_PATH \
   --path-simulator $BENCHBOT_SIMULATOR_PATH --port '"$PORT_SIMULATOR"' \
-  '"$selected_map_path"' '"$FILENAME_ENV_METADATA"' '"$selected_pose"
+  '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
+  '"$( IFS=$':'; echo "${selected_map_paths[*]}")"
 
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
