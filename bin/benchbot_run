@@ -92,8 +92,9 @@ FURTHER DETAILS:
     "
 
 _map_details_err=\
-"ERROR: Somehow there is a difference between the number of map paths (%d) & 
-map poses (%d) found. This should never happen; please contact the developers."
+"ERROR: Somehow there is a difference between the number of map paths (%d), map
+poses (%d), & environment files (%d) found. This should never happen; please
+contact the developers."
 
 SELECTED_ENV=
 SELECTED_TASK=
@@ -108,8 +109,13 @@ _task_list=("semantic_slam:passive:ground_truth"
 
 _env_data_full_cached=
 
-function _env_file() {
-  echo "$(_env_data $1)" | head -1 | tr -d '[:space:]'
+function _env_files() {
+  envs=($(_expand_envs $1))
+  fs=
+  for e in "${envs[@]}"; do
+    fs+="$(_env_data $e | head -1 | tr -d '[:space:]') "
+  done
+  echo "$fs" | sed -e 's/[[:space:]]*$//'
 }
 
 function _env_data() {
@@ -143,14 +149,12 @@ function _env_list() {
 function _env_map_paths() {
   envs=($(_expand_envs $1))
   ps=
-  >&2 echo "getting maps"
   for e in "${envs[@]}"; do
     # Nested while... not quite ideal
     ps+="$(_env_data $e | sed -n 's/.*map_path: \(.*\)/\1/p' | \
       tr -d '[:space:]') "
   done
   echo "$ps" | sed -e 's/[[:space:]]*$//'
-  >&2 echo "got maps"
 }
 
 function _env_poses() {
@@ -346,14 +350,16 @@ _env_data_get
 # Pull out all useful data from the selected settings
 selected_poses=($(_env_poses "$SELECTED_ENV"))
 selected_map_paths=($(_env_map_paths "$SELECTED_ENV"))
-if [ ${#selected_poses[@]} -ne ${#selected_map_paths[@]} ]; then
+selected_env_files=($(_env_files "$SELECTED_ENV"))
+if [ ${#selected_poses[@]} -ne ${#selected_map_paths[@]} ] || \
+    [ ${#selected_map_paths[@]} -ne ${#selected_env_files[@]} ]; then
   printf "$_map_details_err\n" "${#selected_map_paths[@]}" \
-    "${#selected_poses[@]}"
+    "${#selected_poses[@]}" "${#selected_env_files[@]}"
+  exit 1
 fi
 
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
-selected_env_file=$(_env_file "$SELECTED_ENV")
 
 # Print some configuration information
 echo -n "Running the BenchBot system with the following settings:
@@ -406,7 +412,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bi
   _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter.yaml" \
   _observations_file:="'"$selected_observations"'.yaml" \
   _actions_file:="'"$selected_actions"'_control.yaml"\
-  _environment_file:='"$selected_env_file"' \
+  _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
   _simulator_address:='"${HOSTNAME_SIMULATOR}"':'"${PORT_SIMULATOR}"
 
 name="benchbot_debug"
