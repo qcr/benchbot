@@ -398,7 +398,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin
   --path-envs $BENCHBOT_ENVS_PATH --path-isaac $ISAAC_SDK_PATH \
   --path-simulator $BENCHBOT_SIMULATOR_PATH --port '"$PORT_SIMULATOR"' \
   '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
-  '"$( IFS=$':'; echo "${selected_map_paths[*]}")"
+  '"$( IFS=$':'; echo "${selected_poses[*]}")"
 
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
