@@ -110,53 +110,56 @@ function _env_file() {
 
 function _env_data() {
   while read -r line; do
-    if [ -z "$found" ] && echo "$line" | grep -q '^/.*'"${1/:/_}"'\.yaml'; then
+    if [ -z "$found" ] && [[ "$line" =~ ^/.*"${1/:/_}"\.yaml ]]; then
       found=true
       echo "$line"
-    elif [ ! -z "$found" ] && echo "$line" | grep -q '^/.*\.yaml'; then
+    elif [ ! -z "$found" ] && [[ "$line" =~ ^/.*\.yaml ]]; then
       return 0
     elif [ ! -z "$found" ]; then
       echo "$line"
     fi
-  done <<< "$(_env_data_full)"
+  done <<< "$_env_data_full_cached"
   return 1
 }
 
-function _env_data_full() {
-  # This is a little gross... sorry.
+function _env_data_get() {
   if [ -z "$_env_data_full_cached" ]; then
+    # This is a little gross... sorry.
     _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash \
       -c 'find $BENCHBOT_ENVS_PATH/'$FILENAME_ENV_METADATA' -name "*.yaml"\
       | while read env; do echo "$(realpath $env)"; cat $env; echo ""; done')
   fi
-  echo "$_env_data_full_cached"
 }
 
 function _env_list() {
-  echo "$(_env_data_full)" | grep "environment_name:" | \
+  echo "$_env_data_full_cached" | grep "environment_name:" | \
     sed 's/.*: "\([^_]*\)_\([^"]*\).*/\1:\2/' | sort
 }
 
 function _env_map_paths() {
   envs=($(_expand_envs $1))
   ps=
+  >&2 echo "getting maps"
   for e in "${envs[@]}"; do
     # Nested while... not quite ideal
     ps+="$(_env_data $e | sed -n 's/.*map_path: \(.*\)/\1/p' | \
       tr -d '[:space:]') "
   done
   echo "$ps" | sed -e 's/[[:space:]]*$//'
+  >&2 echo "got maps"
 }
 
 function _env_poses() {
   envs=($(_expand_envs $1))
   ps=
+  >&2 echo "getting poses"
   for e in "${envs[@]}"; do
     # Nested while... not quite ideal
     ps+="$(_env_data $e | sed -n 's/.*start_pose_local: \(.*\)/\1/p' | \
       tr -d '[:space:]') "
   done
   echo "$ps" | sed -e 's/[[:space:]]*$//'
+  >&2 echo "got poses"
 }
 
 function _expand_envs() {
@@ -275,11 +278,11 @@ while true; do
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
     --list-envs)
-      opt_list_envs ; exit 0 ;;
+      _env_data_get ; opt_list_envs ; exit 0 ;;
     --list-tasks)
       opt_list_tasks ; exit 0 ;;
     -e|--env)
-      opt_select_env "$2"; shift 2 ;;
+      _env_data_get ; opt_select_env "$2"; shift 2 ;;
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
     -f|--force-updateless)
@@ -316,17 +319,6 @@ elif [[ "$SELECTED_TASK" =~ .*"scd".* ]] && \
   exit 1
 fi
 
-# es=($(_expand_envs $SELECTED_ENV))
-# ms=($(_env_map_paths $SELECTED_ENV))
-# ps=($(_env_poses $SELECTED_ENV))
-# echo "Environments (${#es[@]}):"
-# echo "${es[*]}"
-# echo "Maps (${#ms[@]}):"
-# echo "${ms[*]}"
-# echo "Poses (${#ps[@]}):"
-# echo "${ps[*]}"
-# exit
-
 ################################################################################
 ##################### Run the simulator & BenchBot backend #####################
 ################################################################################
@@ -344,6 +336,10 @@ if [ ! -z "$updates_exit" ]; then exit 0; fi
 # Run the BenchBot software stack (kill whenever they exit)
 trap kill_benchbot EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
+
+# Cache environment data (digging into a docker to view files is expensive...
+# lets only do that to our users once)
+_env_data_get
 
 # Pull out all useful data from the selected settings
 selected_poses=$(_env_poses "$SELECTED_ENV")
