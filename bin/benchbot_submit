@@ -253,6 +253,15 @@ echo ""
 # Actually perform the submission
 header_block "Running submission in '$SELECTED_MODE' mode" ${colour_green}
 
+# Clear out any previous results in default location
+if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
+  results_src=$(python -c \
+    'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
+  rm -rf "$results_src"
+  printf "\nRemoved any existing cached results from: $results_src\n\n"
+fi
+
+# Handle the submission
 if [ "$SELECTED_MODE" == "native" ]; then
   # This is native submission mode
   echo -e \
@@ -281,8 +290,8 @@ else
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
             --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
             --hostname="$name" -i -t "$submission_tag" 
-    xhost -local:root
     result=$?
+    xhost -local:root
   fi
   popd >/dev/null
 fi
@@ -297,14 +306,24 @@ fi
 # Perform any evaluation that may have been requested by the caller
 if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
   header_block "Processing results" ${colour_blue}
-  results_src=$(python -c \
-    'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
 
   # Pull the results out of the container if appropriate
   if [ "$SELECTED_MODE" == "containerised" ]; then
-    docker cp "${SUBMISSION_CONTAINER_NAME}:${results_src}" "${results_src}"
-    printf "\nExtracted results from container '%s', to '%s'\n" \
+    if ! docker cp "${SUBMISSION_CONTAINER_NAME}:${results_src}"\
+      "${results_src}" 2>/dev/null; then
+      printf "${colour_red}\n%s%s${colour_nc}\n" \
+        "Failed to extract results from submission container; were there any?"
+      exit 1
+    fi
+    printf "\nExtracted results from container '%s', to '%s'.\n" \
       "$SUBMISSION_CONTAINER_NAME" "$results_src"
+  fi
+
+  # Bail if there are no results available
+  if [ ! -f "$results_src" ]; then
+    printf "\n${colour_red}%s\n  ${results_src}${colour_nc}\n" \
+      "Requested use of results, but the submission saved no results to: "
+    exit 1
   fi
 
   # Copy results to a new location if requested
@@ -317,7 +336,7 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
   # Run evaluation on the results if requested
   if [ ! -z "$evaluate" ]; then
     if [ -z "$results_location" ]; then results_location="$results_src"; fi
-    printf "\n\nRunning evaluation on results from '%s' ... \n" \
+    printf "\nRunning evaluation on results from '%s' ... \n" \
       "$results_location"
     benchbot_eval "$results_location"
   fi
