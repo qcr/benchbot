@@ -10,7 +10,7 @@ RUN apt update && apt install -y libsm6 libxext6 libxrender-dev python3 \
 ARG BENCHBOT_API_GIT
 ARG BENCHBOT_API_HASH
 RUN git clone $BENCHBOT_API_GIT && pushd benchbot_api && \
-    git checkout $BENCHBOT_API_HASH && pip install .
+    git checkout $BENCHBOT_API_HASH && pip3 install .
 
 # Making the working directory a submission folder
 WORKDIR /benchbot_submission
