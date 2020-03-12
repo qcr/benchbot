@@ -93,6 +93,8 @@ envs_err="\
 ################################################################################
 
 checks_list_pre=(
+  "Core host system checks:"
+  "ubuntu1804"
   "Running Nvidia related system checks:"
   "nvidiacard"  # Is a valid graphics card available?
   "nvidiadriver"  # Is the driver available?
@@ -115,6 +117,30 @@ checks_list_pre=(
   "pip" # Is pip available? (required to install Python libraries)
   "pythontk" # Is python-tk installed (required for matplotlib...)
   )
+
+chk_ubuntu1804_name='Ubuntu version >= 18.04'
+chk_ubuntu1804_pass='Passed ($check_result)'
+chk_ubuntu1804_fail='Failed'
+chk_ubuntu1804_check=\
+'[ -f /tmp/benchbot_chk_ubuntu1804 ] && echo "skipped" || lsb_release -r | \
+awk '"'"'{print $2}'"'"' 2>/dev/null'
+chk_ubuntu1804_eval=\
+'[ "$check_result" == "skipped" ] || eval_version "$check_result" "18.04"'
+chk_ubuntu1804_issue="\
+  The BenchBot Software Stack is designed to work with Ubuntu 18.04 & above.
+
+  There is a possibility it may work with other versions, & other
+  distributions, but it will probably involve manual installation of packages &
+  installing missing tools.
+
+  Given the complexity of the underlying system, it is strongly recommended to
+  move to a supported operating system.
+
+  If you would like to continue, & ignore this check, please say yes to the fix
+  below.
+  "
+chk_ubuntu1804_fix='touch /tmp/benchbot_chk_ubuntu1804'
+chk_ubuntu1804_reboot=1
   
 chk_nvidiacard_name='Nvidia GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
