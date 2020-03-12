@@ -93,6 +93,8 @@ envs_err="\
 ################################################################################
 
 checks_list_pre=(
+  "Core host system checks:"
+  "ubuntu1804"
   "Running Nvidia related system checks:"
   "nvidiacard"  # Is a valid graphics card available?
   "nvidiadriver"  # Is the driver available?
@@ -111,20 +113,45 @@ checks_list_pre=(
   "fsext4"  # Is /var/lib/docker on an ext4 filesystem?
   "fsnosuid"  # Is /var/lib/docker on a filesystem WITHOUT nosuid?
   "fsspace"  # Is /var/lib/docker on a filesystem with enough space?
-  "Running TODELETE checks:"
-  "todeletersa"  # Is an id_rsa available?
-  "todeletepermission"  # Does the id_rsa give you permission to clone repos?
+  "Miscellaneous requirements:"
+  "pip" # Is pip available? (required to install Python libraries)
+  "pythontk" # Is python-tk installed (required for matplotlib...)
   )
+
+chk_ubuntu1804_name='Ubuntu version >= 18.04'
+chk_ubuntu1804_pass='Passed ($check_result)'
+chk_ubuntu1804_fail='Failed'
+chk_ubuntu1804_check=\
+'[ -f /tmp/benchbot_chk_ubuntu1804 ] && echo "skipped" || lsb_release -r | \
+awk '"'"'{print $2}'"'"' 2>/dev/null'
+chk_ubuntu1804_eval=\
+'[ "$check_result" == "skipped" ] || eval_version "$check_result" "18.04"'
+chk_ubuntu1804_issue="\
+  The BenchBot Software Stack is designed to work with Ubuntu 18.04 & above.
+
+  There is a possibility it may work with other versions, & other
+  distributions, but it will probably involve manual installation of packages &
+  installing missing tools.
+
+  Given the complexity of the underlying system, it is strongly recommended to
+  move to a supported operating system.
+
+  If you would like to continue, & ignore this check, please say yes to the fix
+  below.
+  "
+chk_ubuntu1804_fix='touch /tmp/benchbot_chk_ubuntu1804'
+chk_ubuntu1804_reboot=1
   
 chk_nvidiacard_name='Nvidia GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
-chk_nvidiacard_check='lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | '\
-'sed -E '\''s/.*(10de:[0-9a-f]{4}).*/\1/'\'
+chk_nvidiacard_check=\
+'lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | \
+sed -E '"'"'s/.*(10de:[0-9a-f]{4}).*/\1/'"'"' | head -n 1'
 chk_nvidiacard_eval='[ ! -z "$check_result" ]'
 chk_nvidiacard_issue="\
   No Nvidia Graphics Card was detected. If there is a card available on your 
-  host system, then it should be visible with 'lcpci -nn | grep VGA' with a ID 
+  host system, then it should be visible in 'lspci -nn | grep VGA' with an ID
   of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
 chk_nvidiacard_fix=''
 chk_nvidiacard_reboot=0
@@ -139,13 +166,13 @@ chk_nvidiadriver_issue="\
   visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
 chk_nvidiadriver_fix=\
 'v=$(. /etc/os-release; echo "$VERSION_ID" | sed "s/\.//") &&
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${v}/\
-  x86_64/cuda-ubuntu${v}.pin &&
+wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${v}/\
+x86_64/cuda-ubuntu${v}.pin" &&
 sudo mv cuda-ubuntu${v}.pin /etc/apt/preferences.d/cuda-repository-pin-600 &&
-sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/\
-  cuda/repos/ubuntu1804/x86_64/7fa2af80.pub &&
+sudo apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/\
+cuda/repos/ubuntu1804/x86_64/7fa2af80.pub" &&
 sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/\
-  cuda/repos/ubuntu${v}/x86_64/ /" &&
+cuda/repos/ubuntu${v}/x86_64/ /" &&
 sudo apt-get update && sudo apt-get -y install nvidia-driver-440'
 chk_nvidiadriver_reboot=0
 
@@ -220,7 +247,8 @@ chk_cudappa_name='CUDA is from the Nvidia PPA'
 chk_cudappa_pass='PPA is valid'
 chk_cudappa_fail='PPA is invalid'
 chk_cudappa_check=\
-'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9]*-[0-9]*"); \
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9].*$(cat \
+/usr/local/cuda/version.txt | cut -d " " -f 3)"); \
 apt download --print-uris $(echo $installed | sed '"'"'s/^\([^\/]*\).*/\1/'"'"')=\
 $(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
 cut -d'"'"' '"'"' -f1'
@@ -249,12 +277,12 @@ chk_isaac_eval='[ ! -z "$check_result" ]'
 chk_isaac_issue="\
   "'$check_result'"
   Isaac SDK was not found in the folder:
-    $PATH_ISAAC_SRCS
+    $(realpath $PATH_ISAAC_SRCS)
 
   Due to licensing restrictions we cannot automatically download this file.
   Please sign up for an Nvidia developer account, download the *.zip for Isaac 
   2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
-  in the isaac folder of benchbot (mentioned above). The 2019.2 version of 
+  in the 'isaac' folder of BenchBot (mentioned above). The 2019.2 version of
   Isaac is hidden under the 'Archive' section of the downloads page.
 
   This check will only pass when a file is found with the following MD5SUM:
@@ -271,7 +299,7 @@ chk_dockeravailable_issue="\
   Docker was not detected on the host system ('docker --version' did not return
   a version).
 
-  Please ensure Docker Engine - Community edition is installed on the system."
+  Please ensure Docker Engine - Community Edition is installed on the system."
 chk_dockeravailable_fix=\
 'sudo apt install -y apt-transport-https ca-certificates curl \
   software-properties-common &&
@@ -280,7 +308,7 @@ sudo add-apt-repository "deb [arch=amd64] \
   https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
 sudo apt update &&
 sudo apt install -y docker-ce &&
-sudo groupadd docker &&
+sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockeravailable_reboot=0
 
@@ -305,7 +333,7 @@ sudo add-apt-repository "deb [arch=amd64] \
   https://download.docker.com/linux/ubuntu '"$(lsb_release -cs)"' stable" &&
 sudo apt update &&
 sudo apt install -y docker-ce &&
-sudo groupadd docker &&
+sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockerversion_reboot=0
 
@@ -322,8 +350,8 @@ chk_dockernct_issue="\
   Please install the toolkit from https://github.com/NVIDIA/nvidia-docker"
 chk_dockernct_fix=\
 'curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - &&
-curl -s -L https://nvidia.github.io/nvidia-docker/\
-  '"$(. /etc/os-release;echo $ID$VERSION_ID)"'/nvidia-docker.list | \
+curl -s -L "https://nvidia.github.io/nvidia-docker/\
+'"$(. /etc/os-release;echo $ID$VERSION_ID)"'/nvidia-docker.list" | \
   sudo tee /etc/apt/sources.list.d/nvidia-docker.list &&
 sudo apt update && 
 sudo apt install -y nvidia-container-toolkit &&
@@ -333,7 +361,7 @@ chk_dockernct_reboot=1
 chk_dockerroot_name='Docker runs without root'
 chk_dockerroot_pass='Passed'
 chk_dockerroot_fail='Failed'
-chk_dockerroot_check='docker run hello-world &>/dev/null && echo $?'
+chk_dockerroot_check='docker run hello-world &>/dev/null; echo $?'
 chk_dockerroot_eval='[ $check_result -eq 0 ]'
 chk_dockerroot_issue="\
   Docker failed to run the hello-world test.
@@ -343,7 +371,7 @@ chk_dockerroot_issue="\
   changing groups), please run 'docker run hello-world' & resolve any issues
   that occur."
 chk_dockerroot_fix=\
-'sudo groupadd docker &&
+'sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockerroot_reboot=0
 
@@ -361,7 +389,8 @@ chk_fsext4_issue="\
 
   Please move '/var/lib/docker/' to an ext4 drive for best results."
 chk_fsext4_fix=\
-'read -p "New location for /var/lib/docker on an ext4 drive:" new_location
+'clear_stdin
+read -p "New location for /var/lib/docker on an ext4 drive:" new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -389,54 +418,68 @@ sudo systemct daemon-reload'
 chk_fsnosuid_reboot=1
 
 chk_fsspace_name='/var/lib/docker driver space check'
-chk_fsspace_pass='Sufficient space ($check_result)'
-chk_fsspace_fail='Insufficient space ($check_result)'
+chk_fsspace_pass='Sufficient space ($check_resultG)'
+chk_fsspace_fail='Insufficient space ($check_resultG)'
 chk_fsspace_check=\
-'space=$(df -Th /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
-if [ "${space: -1}" == "G" ] && [ ${space::-1} -ge 128 ]; then echo "$space"; fi'
-chk_fsspace_eval='[ ! -z "$check_result" ]'
+'dup_space=$(docker images --filter "reference='$DOCKER_TAG_SIMULATOR'" \
+  --format "{{.Size}}") &&
+if [ -z "$dup_space" ]; 
+  then dup_space=0; 
+elif [ "${dup_space: -2}" == "GB" ]; 
+  then dup_space=$(echo "${dup_space:0:-2}" | sed '"'"'s/\..*$//'"'"');
+else 
+  dup_space=0;
+fi &&
+space=$(df -Th -BG /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
+space=$(echo "${space:0:-1}" | sed '"'"'s/\..*$//'"'"') &&
+echo "$space+$dup_space" | bc'
+chk_fsspace_eval='[ $check_result -gt 128 ]'
 chk_fsspace_issue="\
-  The drive holding /var/lib/docker needs at least 128GB free. Please clear
-  space from the drive, or run the following fix to move /var/lib/docker to a 
-  drive with more space."
+  The drive holding /var/lib/docker needs at least 128GB free. This check takes
+  into account if you already have BenchBot installed (it will add the size of
+  the Docker image to your \"available space\").
+
+  Please clear space from the drive, or run the following fix to move
+  /var/lib/docker to a drive with more space."
 chk_fsspace_fix=\
-'read -p "New location for /var/lib/docker with 128GB free:" new_location
+'clear_stdin
+read -p "New location for /var/lib/docker with 128GB free:" new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
 sudo systemctl start docker'
 chk_fsspace_reboot=1
 
-chk_todeletersa_name='SSH key available'
-chk_todeletersa_pass='Found ($check_result)'
-chk_todeletersa_fail='Not found'
-chk_todeletersa_check=\
-'key="$PATH_ROOT/id_rsa" && if [ -f "$key" ]; then echo "$key"; fi'
-chk_todeletersa_eval='[ ! -z "$check_result" ]'
-chk_todeletersa_issue="\
-  SSH key for accessing private BenchBot repositories was not found at locstion:
-  $PATH_ROOT/id_rsa
+chk_pip_name='Pip python package manager available'
+chk_pip_pass='Found ($check_result)'
+chk_pip_fail='Not found'
+chk_pip_check=\
+'pip --version 2>/dev/null | cut -d " " -f 2'
+chk_pip_eval='[ ! -z "$check_result" ]'
+chk_pip_issue="\
+  Python package manager pip was not found. It is required for installation of
+  BenchBot python modules. Please either restart the install script with pip
+  available, or install it."
+chk_pip_fix=\
+'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
+  sed "/2/d")
+sudo apt install -y python${v}-pip'
+chk_pip_reboot=1
 
-  Please copy a private SSH key with access to the respositories to the above
-  location."
-chk_todeletersa_fix='cp ~/.ssh/id_rsa '"$PATH_ROOT"
-chk_todeletersa_reboot=1
-
-chk_todeletepermission_name='SSH key has permissions'
-chk_todeletepermission_pass='Successful'
-chk_todeletepermission_fail='Denied'
-chk_todeletepermission_check=\
-'ssh-agent bash -c '"'"'ssh-add '"$PATH_ROOT"'/id_rsa &>/dev/null; 
-rm -rf /tmp/benchbot && \
-git clone '"$GIT_BENCHBOT"' /tmp/benchbot &>/dev/null && \
-rm -rf /tmp/benchbot && echo "success"'"'"
-chk_todeletepermission_eval='[ ! -z "$check_result" ]'
-chk_todeletepermission_issue="\
-  The provided SSH key failed to clone the BenchBot software stack.
-
-  Are you sure it has permission? See Ben."
-chk_todeletepermission_fix=''
-chk_todeletepermission_reboot=1
+chk_pythontk_name='Tkinter for Python installed'
+chk_pythontk_pass='Found'
+chk_pythontk_fail='Not found'
+chk_pythontk_check='python -c "exec(\"try: import Tkinter as tk\nexcept: import tkinter as tk\"); print(tk.__file__)" 2>/dev/null'
+chk_pythontk_eval='[ ! -z "$check_result" ]'
+chk_pythontk_issue="\
+  Python package pythontk was not found. It is required to use the
+  visualisation tools available with the BenchBot API. Please install it via
+  package manager. "
+chk_pythontk_fix=\
+'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
+  sed "/2/d")
+sudo apt install -y python${v}-tk'
+chk_pythontk_reboot=1
 
 checks_list_post=(
   "Validating the build against the host system:"
@@ -463,7 +506,7 @@ chk_cudadriverdep_check=\
   sed "/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/"), \
   CUDA: $(cat /usr/local/cuda/version.txt | cut -d " " -f 3)"'"'"' &&
 host=$(eval "$fn") && 
-bb=$(docker run --rm -t '$DOCKER_TAG_SIMULATOR' /bin/bash -c "$fn" | \
+bb=$(docker run --rm -t '$DOCKER_TAG_CORE' /bin/bash -c "$fn" | \
   sed '"'"'s/[[:space:]]*$//'"'"') &&
 eq=$([ "$host" == "$bb" ] && echo "==" || echo "!=") &&
 printf "%s\n%s\n%s" "Host: $host" "BenchBot: $bb" "Result: $eq"'
@@ -513,9 +556,10 @@ chk_apiuptodate_name='BenchBot API up-to-date'
 chk_apiuptodate_pass='Up-to-date'
 chk_apiuptodate_fail='Outdated'
 chk_apiuptodate_check=\
-'git -C '"$PATH_API"' rev-parse HEAD && 
+'[ -d '"$PATH_API"' ] && git -C '"$PATH_API"' rev-parse HEAD && 
 git ls-remote '"$GIT_API"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_apiuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_apiuptodate_eval='[ ! -z "$check_result" ] && 
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_apiuptodate_issue="\
   The version of the BenchBot API python library on the host system is out of
   date. The current version hash & latest version hash respectively are:
@@ -565,9 +609,10 @@ chk_examplesuptodate_name='BenchBot examples up-to-date'
 chk_examplesuptodate_pass='Up-to-date'
 chk_examplesuptodate_fail='Outdated'
 chk_examplesuptodate_check=\
-'git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
+'[ -d '"$PATH_EXAMPLES"' ] && git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
 git ls-remote '"$GIT_EXAMPLES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_examplesuptodate_eval='[ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_examplesuptodate_eval='[ ! -z "$check_result" ] &&
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_examplesuptodate_issue="\
   The version of the BenchBot examples python library on the host system is out
   of date. The current version hash & latest version hash respectively are:
@@ -576,41 +621,61 @@ chk_examplesuptodate_issue="\
 
   Please move to the latest version."
 chk_examplesuptodate_fix=\
-'pushd '"$PATH_EXAMPLES"' && git fetch --all 
-&& git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_EXAMPLES"' && git fetch --all && 
+git checkout $BRANCH_DEFAULT && git pull'
 chk_examplesuptodate_reboot=1
 
-chk_evalcloned_name='TODO BenchBot eval cloned'
+chk_evalcloned_name='BenchBot evaluation cloned'
 chk_evalcloned_pass='Yes'
 chk_evalcloned_fail='No'
-chk_evalcloned_check='echo "TODO"'
-chk_evalcloned_eval='[ ! -z "$check_result" ]'
+chk_evalcloned_check=\
+'git -C '"$PATH_EVAL"' rev-parse --show-toplevel 2>/dev/null'
+chk_evalcloned_eval='[ "$check_result" == "$(realpath '"$PATH_EVAL"')" ]'
 chk_evalcloned_issue="\
-  TODO"
+  The BenchBot evaluation python library is not cloned on the host system. Having it
+  installed allows you to evaluate the performance of your semantic scene
+  understanding algorithms directly from your machine."
 chk_evalcloned_fix=\
-'echo "TODO"'
+'rm -rf '"$PATH_EVAL"' && git clone '"$GIT_EVAL $PATH_EVAL"' &&
+pushd '"$PATH_EVAL"' && git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_evalcloned_reboot=1
 
-chk_evaluptodate_name='TODO BenchBot eval up-to-date'
+chk_evaluptodate_name='BenchBot evaluation up-to-date'
 chk_evaluptodate_pass='Up-to-date'
 chk_evaluptodate_fail='Outdated'
-chk_evaluptodate_check='echo "TODO"'
-chk_evaluptodate_eval='[ ! -z "$check_result" ]'
+chk_evaluptodate_check=\
+'[ -d '"$PATH_EVAL"' ] && git -C '"$PATH_EVAL"' rev-parse HEAD && 
+git ls-remote '"$GIT_EVAL"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_evaluptodate_eval='[ ! -z "$check_result" ] &&
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_evaluptodate_issue="\
-  TODO"
+  The version of the BenchBot evaluation python library on the host system is
+  out of date. The current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
 chk_evaluptodate_fix=\
-'echo "TODO"'
+'pushd '"$PATH_EVAL"' && git fetch --all && 
+git checkout $BRANCH_DEFAULT && git pull'
 chk_evaluptodate_reboot=1
 
-chk_evalinstalled_name='TODO BenchBot eval installed'
+chk_evalinstalled_name='BenchBot evaluation installed'
 chk_evalinstalled_pass='Available'
 chk_evalinstalled_fail='Not found'
-chk_evalinstalled_check='echo "TODO"'
+chk_evalinstalled_check=\
+'python -c '"'"'import benchbot_eval; print(benchbot_eval.__file__);'"'"' \
+  2>/dev/null'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
-  TODO"
+  BenchBot evaluation was not found in python. It is either not installed, or
+  the current terminal is not correctly sourcing your installed python packages
+  (could be a virtual environment, conda, ROS, etc).
+
+  Please do not run the automatic fix if you intend to source a different python
+  environment before running BenchBot."
 chk_evalinstalled_fix=\
-'echo "TODO"'
+'pushd '"$PATH_EVAL"' && pip install -e .'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
@@ -638,7 +703,8 @@ chk_symlinks_fail='Not found'
 chk_symlinks_check=\
 '[ -e "'$PATH_SYMLINKS'/benchbot_install" ] && 
   [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
-  [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_submit" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_eval" ] &&
   ls -l "'$PATH_SYMLINKS'/benchbot_"* | cut -d " " -f 9-11'
 chk_symlinks_eval='[ ! -z "$check_result" ]'
 chk_symlinks_issue="\
@@ -652,6 +718,10 @@ chk_symlinks_reboot=1
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
+
+function cleanup_terminal() {
+  printf "${colour_nc}"
+}
 
 function handle_requirement() {
   required=${2:-0}
@@ -684,6 +754,7 @@ function handle_requirement() {
     else
       printf "\n  The following commands can be run to try & fix the issue:\n"
       printf "\n%s\n\n" "${fix//'$check_result'/$check_result}"
+      clear_stdin
       read -n 1 -r -p "  Would you like the above commands to be run (y/N)? " \
         apply_fix
       if [[ "$apply_fix" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -691,12 +762,12 @@ function handle_requirement() {
         eval "$fix"
         unresolved=$?
         printf "\n${colour_yellow}"
-        if [ "$reboot" -eq 0 ]; then
+        if [ "$reboot" -eq 0 ] && [ $unresolved -eq 0 ]; then
           s="Please reboot your machine before re-running the install script." 
           printf "\n  $s"
           retval=1
         elif [ $unresolved -eq 0 ] && [ $required -eq 0 ]; then
-          printf "\n  Restarting the installation script ..."
+          printf "\n  Restarting the installation script ...\n"
           retval=2
         fi
       else
@@ -704,11 +775,12 @@ function handle_requirement() {
       fi
     fi
     if [ $unresolved -ne 0 ] && [ $required -eq 0 ]; then
-      s="Please manually resolve this issue, & re-run the install script."
-      printf "\n\n  $s"
+      s="Failed to solve issue. Please manually resolve, & re-run the "
+      s+="install script."
+      printf "\n  $s"
       retval=1
     elif [ $required -ne 0 ]; then
-      printf "\n\n"
+      printf "\n"
     fi
   fi
   printf "${colour_nc}\n"
@@ -716,14 +788,15 @@ function handle_requirement() {
 }
 
 function uninstall_benchbot() {
+  # TODO this needs to remove symlinks
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
-  pip uninstall -y benchbot_api
+  pip uninstall -y benchbot_api benchbot_examples
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
 
-  rm -rf {"$PATH_API","$PATH_EXAMPLES"} # TODO add eval to this
+  rm -rfv ./{"$PATH_API","$PATH_EXAMPLES","$PATH_EVAL"}
 
   echo -e "\nFinished uninstalling!"
 }
@@ -732,9 +805,13 @@ function uninstall_benchbot() {
 ############################# Installation process #############################
 ################################################################################
 
+# Cleanup terminal colours whenever exiting
+trap cleanup_terminal EXIT
+
 # Safely parse options input
 input=$@
-parse_out=$(getopt -o hb:e:fu --long help,branch:,envs-url:,force-clean,uninstall,no-update \
+parse_out=$(getopt -o hb:e:fuv \
+  --long help,branch:,envs-url:,force-clean,uninstall,no-update,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -755,6 +832,8 @@ while true; do
       uninstall_benchbot; shift ;;
     -u|--uninstall)
       uninstall_benchbot; exit ;;
+    -v|--version)
+      print_version_info; exit ;;
     --no-update)
       updates_skip=1; shift ;;
     --)
@@ -782,7 +861,7 @@ if [ -z "$updates_skip" ]; then
       "restarting install script ...\n${colour_nc}"
     git fetch --all && git stash && git checkout "$benchbot_latest_hash"
     echo -e "\n${colour_yellow}Done.${colour_nc}"
-    exec $0 $input --no-update
+    popd > /dev/null && exec $0 $input --no-update
   else
     echo -e "$_benchbot_info"
     exit 1
@@ -801,7 +880,7 @@ for c in "${checks_list_pre[@]}"; do
     handle_requirement "$c"
     res=$?
     if [ $res -eq 2 ]; then
-      echo "TODO restart the script"
+      popd > /dev/null && exec $0 $input --no-update
     elif [ $res -eq 1 ]; then
       exit 1
     fi
@@ -809,6 +888,7 @@ for c in "${checks_list_pre[@]}"; do
 done
 
 printf "\n\n"
+clear_stdin
 read -n 1 -r -p \
   "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
   prompt
@@ -865,14 +945,29 @@ header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
 cuda_version=$(apt list --installed 2>/dev/null | \
-  grep "cuda-[0-9]*-[0-9]*" | cut -d ' ' -f 2)
+  grep "cuda-[0-9].*$(cat /usr/local/cuda/version.txt | cut -d ' ' -f 3)" | \
+  cut -d ' ' -f 2)
 sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 
-# Build the BenchBot Simulator Docker image
-docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
+# Build the BenchBot Core Docker image
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "BUILDING BENCHBOT CORE DOCKER IMAGE:"
+docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
-  --build-arg CUDA_VERSION="${cuda_version}" \
+  --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT
+build_ret=$?
+if [ $build_ret -ne 0 ]; then
+  printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+    "ERROR: Building BenchBot \"core\" returned a non-zero error code" \
+    "$build_ret"
+  exit 1
+fi
+
+# Build the BenchBot Simulator Docker image
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
+docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
   --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
@@ -882,21 +977,37 @@ docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo -e "\n$build_err${colour_nc}"
+  printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+    "ERROR: Building BenchBot \"simulator\" returned a non-zero error code" \
+    "$build_ret"
   exit 1
 fi
 
+# Pull out ground truth files from the simulator
+rm -rf "$PATH_GROUND_TRUTH"
+location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  'echo "$BENCHBOT_ENVS_PATH/'$FILENAME_ENV_GROUND_TRUTH'"')
+docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+
 # Build the BenchBot Submission Docker image
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "BUILDING BENCHBOT SUBMISSION DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  echo -e "\n${colour_red}ERROR: Building \"simulator\" returned a non-zero error code: $build_ret"
-  echo -e "\n$build_err${colour_nc}"
+  printf "\n${colour_red}%s: %d" \
+  printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+    "ERROR: Building BenchBot \"submission\" returned a non-zero error code" \
+    "$build_ret"
   exit 1
 fi
+
+# Cleanup any unnecessary / outdated BenchBot components still lying around
+printf "\n${colour_blue}%s${colour_nc}\n" \
+  "CLEANING UP OUTDATED BENCHBOT REMNANTS:"
+kill_benchbot "quiet"
 
 # PART 4: Running post build checks
 header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue

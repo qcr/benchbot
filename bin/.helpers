@@ -6,18 +6,20 @@
 
 BRANCH_DEFAULT="master"
 
+DOCKER_TAG_CORE="benchbot/core:base"
 DOCKER_TAG_SIMULATOR="benchbot/simulator:base"
 DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
 
+FILENAME_ENV_GROUND_TRUTH=".benchbot_object_maps"
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
-GIT_API="https://bitbucket.org/acrv/benchbot_api"
-GIT_EVAL="git@bitbucket.org:acrv/benchbot_eval"
-GIT_EXAMPLES="git@bitbucket.org:acrv/benchbot_examples"
-GIT_BENCHBOT="git@bitbucket.org:acrv/benchbot"
-GIT_SIMULATOR="git@bitbucket.org:acrv/benchbot_simulator"
-GIT_SUPERVISOR="git@bitbucket.org:acrv/benchbot_supervisor"
+GIT_API="https://github.com/RoboticVisionOrg/benchbot_api"
+GIT_EVAL="https://github.com/RoboticVisionOrg/benchbot_eval"
+GIT_EXAMPLES="https://github.com/RoboticVisionOrg/benchbot_examples"
+GIT_BENCHBOT="https://github.com/RoboticVisionOrg/benchbot"
+GIT_SIMULATOR="https://github.com/RoboticVisionOrg/benchbot_simulator"
+GIT_SUPERVISOR="https://github.com/RoboticVisionOrg/benchbot_supervisor"
 
 HOSTNAME_ROS="benchbot_ros"
 HOSTNAME_SIMULATOR="benchbot_simulator"
@@ -28,10 +30,12 @@ MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
 PATH_ROOT=".."
 
 PATH_API="$PATH_ROOT/api"
-PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/simulator.Dockerfile"
-PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/submission.Dockerfile"
+PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
+PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/docker/simulator.Dockerfile"
+PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
+PATH_GROUND_TRUTH="$PATH_ROOT/ground_truth"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
 
@@ -82,7 +86,15 @@ function header_block() {
 ######################## Helpers for managing BenchBot #########################
 ################################################################################
 
+function clear_stdin() {
+  read -t 0.1 -d '' -n 10000 discard
+}
+
 function eval_version() {
+  # TODO this refers to evaluating whether an arbitrary version number meets
+  # some arbitrary version requirement... it does not have anything to do with
+  # benchbot_eval (this should be renamed to avoid confusion)
+
   # $1 = version number, $2 = required version number
   if [ -z "$1" ] || [[ ! "$1" == [0-9]* ]]; then
     return 2  # Bad version text
@@ -95,7 +107,9 @@ function eval_version() {
 
 function kill_benchbot() {
   # TODO make this quieter when I am confident it works as expected...
-  header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
+  if [ -z "$1" ]; then
+    header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
+  fi
 
   targets=$(docker ps -q -f name='benchbot*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then
@@ -105,6 +119,19 @@ function kill_benchbot() {
   echo -e "\nDeleted the following containers:"
   docker system prune -f  # TODO this is still maybe a little too aggressive
   echo -e "\nFinished cleaning!"
+}
+
+function print_version_info() {
+  hash=$(git rev-parse HEAD)
+  version_name=$(git log --tags --no-walk --pretty='%H %D' | grep "$hash" | \
+    sed 's/^[^ ]* //; s/,[^:]*//g; s/tag: //g; s/: /, /g')
+  if [ -z "$version_name" ]; then
+    version_name="__unnamed__"
+  fi
+  printf "BenchBot Software Stack.\n"
+  printf "Version '%s', from branch '%s'\n" \
+    "$version_name" "$(git name-rev --name-only HEAD)"
+  printf "(%s)\n" "$hash"
 }
 
 
@@ -137,11 +164,10 @@ function is_latest_benchbot_api() {
   return
 }
 
-# TODO enable the eval check
-# function is_latest_benchbot_eval() {
-#   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
-#   return
-# }
+function is_latest_benchbot_eval() {
+  _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
+  return
+}
 
 function is_latest_benchbot_examples() {
   _is_latest_local_git "$PATH_EXAMPLES" "$GIT_EXAMPLES" "$1" \
@@ -211,11 +237,10 @@ updates."
   is_latest_benchbot_api "$1" > /dev/null
   api_valid=$?
   [ $api_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  # TODO enable eval check
-  # echo -ne "Checking BenchBot Eval version ...\t\t"
-  # is_latest_benchbot_eval "$1" > /dev/null
-  # eval_valid=$?
-  # [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  echo -ne "Checking BenchBot Eval version ...\t\t"
+  is_latest_benchbot_eval "$1" > /dev/null
+  eval_valid=$?
+  [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Examples version ...\t\t"
   is_latest_benchbot_examples "$1" > /dev/null
   examples_valid=$?
@@ -234,8 +259,7 @@ updates."
   [ $environments_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \
-    # TODO add eval check: [ $eval_valid -eq 0 ] && [ $examples_valid -eq 0 ] && \
-    [ $examples_valid -eq 0 ] && \
+    [ $eval_valid -eq 0 ] && [ $examples_valid -eq 0 ] && \
     [ $simulator_valid -eq 0 ] && [ $supervisor_valid -eq 0 ] && \
     [ $environments_valid -eq 0 ]
   valid=$?
