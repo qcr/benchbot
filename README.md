@@ -24,12 +24,6 @@ Downloaded files (again, installation script will guide you through how to get t
 
 ## Getting Started
 
-**NOTE: Repositories are not yet public as we are still in the development stages. This means you need to have an SSH key setup with the ACRV Bitbucket, be a member of the "BenchBot" user group in the ACRV Bitbucket team, & run the following command to copy your SSH key into the root of this repository before starting installation (ask Ben or Steve for help getting added to the Bitbucket team / group):**
-
-```bash
-cp -v ~/.ssh/id_rsa <ROOT_FOLDER_OF_THIS_REPOSITORY>
-```
-
 Getting a solution up & running with BenchBot is as simple as 1,2,3:
 
 1. Install the BenchBot Software Stack via the install script (the script will examine your system, & provide you with suggestions for how to install / download / fix any missing components):
