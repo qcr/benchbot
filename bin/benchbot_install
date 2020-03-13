@@ -100,6 +100,9 @@ checks_list_pre=(
   "nvidiadriver"  # Is the driver available?
   "nvidiaversion"  # Is the driver version valid?
   "nvidiappa"  # Does the driver come from a supported PPA?
+  "cudadriversavailable" # Is cuda-drivers package available?
+  "cudadriversversion"  # Is cuda-drivers version valid?
+  "cudadriversppa"  # Is cuda-drivers from the Nvidia PPA?
   "cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
   "cudappa"  # Is cuda from the Nvidia PPA?
@@ -216,6 +219,60 @@ chk_nvidiappa_fix=\
 "$chk_nvidiadriver_fix"
 chk_nvidiappa_reboot=0
 
+chk_cudadriversavailable_name='CUDA drivers installed'
+chk_cudadriversavailable_pass='Drivers found'
+chk_cudadriversavailable_fail='Drivers not found'
+chk_cudadriversavailable_check='apt list --installed 2>/dev/null | grep -E '\
+'"cuda-drivers/" | awk '"'"'{print $2}'"'"
+chk_cudadriversavailable_eval='[ ! -z "$check_result" ]'
+chk_cudadriversavailable_issue="\
+  No version of CUDA drivers detected. Our Docker only supports CUDA drivers 
+  installations from the official Nvidia repository. Please add the Nvidia 
+  repository, & install 'cuda-drivers' through apt."
+chk_cudadriversavailable_fix=\
+"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
+chk_cudadriversavailable_reboot=1
+
+chk_cudadriversversion_name='CUDA version valid'
+chk_cudadriversversion_pass='Valid ($check_result)'
+chk_cudadriversversion_fail='Invalid'
+chk_cudadriversversion_check='apt list --installed 2>/dev/null | grep -E '\
+'"cuda-drivers/" | awk '"'"'{print $2}'"'"
+chk_cudadriversversion_eval='eval_version "$check_result" 418'
+chk_cudadriversversion_issue="\
+  The version of CUDA drivers detected ("'$check_result'") is incompatible with 
+  BenchBot which requires CUDA drivers 418+ for the Isaac SDK.
+
+  Please install a more recent version of the CUDA drivers from the Nvidia 
+  repository."
+chk_cudadriversversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}
+chk_cudadriversversion_reboot=1
+
+chk_cudadriversppa_name='CUDA is from the Nvidia PPA'
+chk_cudadriversppa_pass='PPA is valid'
+chk_cudadriversppa_fail='PPA is invalid'
+chk_cudadriversppa_check=\
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-drivers/" | \
+awk '"'"'{print $2}'"'"'); \
+apt download --print-uris cuda-drivers=\
+$(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
+cut -d'"'"' '"'"' -f1'
+chk_cudadriversppa_eval=\
+'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
+chk_cudadriversppa_issue="\
+  CUDA drivers were detected to have come from somewhere other than the Nvidia 
+  PPAs. The CUDA drivers were sourced from:
+    "'$check_result'"
+
+  Our Docker container only supports official CUDA installs, & GPUs only work
+  in containers if the CUDA drivers version exactly matches the version of the
+  host.  Please install CUDA drivers from the official Nvidia repository:
+    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
+chk_cudadriversppa_fix=\
+'sudo apt remove -y cuda-drivers && '\
+"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
+chk_cudadriversppa_reboot=1
+
 chk_cudaavailable_name='CUDA is installed'
 chk_cudaavailable_pass='CUDA found'
 chk_cudaavailable_fail='CUDA not found'
@@ -256,7 +313,7 @@ chk_cudappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudappa_issue="\
   CUDA was detected to have come from somewhere other than the Nvidia PPAs. The 
-  driver was sourced from:
+  CUDA package was sourced from:
     "'$check_result'"
 
   Our Docker container only supports official CUDA installs, & GPUs only work in 
@@ -517,20 +574,14 @@ chk_cudadriverdep_issue="\
 
 "'$check_result'"
 
-  During development we ran into a situation where it was impossible for the
-  Dockerfile to reproduce the CUDA version / Nvidia driver pairing of the host,
-  even while using exactly the same PPAs / repos as the host system. From what
-  we found, it seemed the Nvidia driver dependencies for the latest CUDA in apt
-  had been updated WITHOUT changing version number (effectively deleting the
-  old version from existence in apt).
+  This can sometimes happen due to the way CUDA / Nvidia driver pairings are
+  passed through the apt dependency tree (cuda -> cuda-drivers ->
+  nvidia-driver)
 
-  Consequence: all machines setup with the 'old' CUDA / Nvidia pairing were in
-  zombie states that could not be reproduced by apt (and they would not upgrade
-  automatically as apt could see no version change).
-
-  Solution: the best solution we could find was to remove the existing CUDA
-  install on the host machine & reinstall. Please do this if we have identified
-  this issue with your host system setup."
+  BenchBot needs these to match between host & docker, so the best solution 
+  available at this point is remove the existing CUDA install on the host 
+  machine & reinstall. Please do this if we have identified this issue with your 
+  host system setup."
 chk_cudadriverdep_fix=\
 'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
 if [ -z "$v" ]; then v="cuda-10-1"; fi &&
