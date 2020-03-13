@@ -995,6 +995,8 @@ header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 # Get some useful variables from the host
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
+cuda_drivers_version=$(apt list --installed 2>/dev/null | \
+  grep "cuda-drivers/" | cut -d ' ' -f 2)
 cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-[0-9].*$(cat /usr/local/cuda/version.txt | cut -d ' ' -f 3)" | \
   cut -d ' ' -f 2)
@@ -1006,6 +1008,7 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
 docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
+  --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then

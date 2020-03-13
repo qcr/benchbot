@@ -11,6 +11,7 @@ RUN echo "$TZ" > /etc/timezone && ln -s /usr/share/zoneinfo/"$TZ" \
 
 # Install Nvidia software (Cuda & drivers)
 ARG NVIDIA_DRIVER_VERSION
+ARG CUDA_DRIVERS_VERSION
 ARG CUDA_VERSION
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,display,graphics,utility
@@ -22,7 +23,7 @@ RUN add-apt-repository ppa:graphics-drivers && \
     CUDA_NAME="cuda-$(echo "${CUDA_VERSION}" | sed 's/\([0-9]*\)\.\([0-9]*\).*/\1\.\2/')" && \
     apt update && DEBIAN_FRONTEND=noninteractive apt install -yq \
     "nvidia-driver-$(echo "${NVIDIA_DRIVER_VERSION}" | sed 's/\(^[0-9]*\).*/\1/')=${NVIDIA_DRIVER_VERSION}*" \
-    "$(echo "$CUDA_NAME" | sed 's/\./-/')=${CUDA_VERSION}" && \
+    cuda-drivers="$CUDA_DRIVERS_VERSION" "$(echo "$CUDA_NAME" | sed 's/\./-/')=${CUDA_VERSION}" && \
     ln -sv lib /usr/local/"${CUDA_NAME}"/targets/x86_64-linux/lib64 && \
     ln -sv /usr/local/"${CUDA_NAME}"/targets/x86_64-linux /usr/local/cuda
 
