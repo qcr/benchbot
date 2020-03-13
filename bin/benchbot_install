@@ -233,7 +233,7 @@ chk_cudadriversavailable_fix=\
 "${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
 chk_cudadriversavailable_reboot=1
 
-chk_cudadriversversion_name='CUDA version valid'
+chk_cudadriversversion_name='CUDA drivers version valid'
 chk_cudadriversversion_pass='Valid ($check_result)'
 chk_cudadriversversion_fail='Invalid'
 chk_cudadriversversion_check='apt list --installed 2>/dev/null | grep -E '\
@@ -248,7 +248,7 @@ chk_cudadriversversion_issue="\
 chk_cudadriversversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}
 chk_cudadriversversion_reboot=1
 
-chk_cudadriversppa_name='CUDA is from the Nvidia PPA'
+chk_cudadriversppa_name='CUDA drivers from the Nvidia PPA'
 chk_cudadriversppa_pass='PPA is valid'
 chk_cudadriversppa_fail='PPA is invalid'
 chk_cudadriversppa_check=\
