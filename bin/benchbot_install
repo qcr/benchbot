@@ -951,9 +951,6 @@ else
   exit 1
 fi
 
-echo ""
-echo "TODO: Should we be enforcing 18.04?"
-
 # PART 2: Fetching information about latest benchbot versions
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
