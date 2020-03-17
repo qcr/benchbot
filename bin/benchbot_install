@@ -215,7 +215,7 @@ chk_nvidiappa_issue="\
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
     http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
 chk_nvidiappa_fix=\
-'sudo apt remove -y nvidia-driver-* && '\
+'sudo apt remove -y nvidia-driver-* && sudo apt -y autoremove; '\
 "$chk_nvidiadriver_fix"
 chk_nvidiappa_reboot=0
 
@@ -269,7 +269,7 @@ chk_cudadriversppa_issue="\
   host.  Please install CUDA drivers from the official Nvidia repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudadriversppa_fix=\
-'sudo apt remove -y cuda-drivers && '\
+'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
 "${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
 chk_cudadriversppa_reboot=1
 
@@ -321,7 +321,7 @@ chk_cudappa_issue="\
   Please install CUDA from the official Nvidia repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudappa_fix=\
-'sudo apt remove -y cuda-10-1 && '\
+'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
 "${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
 chk_cudappa_reboot=1
 
@@ -382,7 +382,7 @@ chk_dockerversion_issue="\
 
   Please install a more recent version of Docker Engine - Community Edition."
 chk_dockerversion_fix=\
-'sudo apt remove docker*;
+'sudo apt remove -y docker* && sudo apt -y autoremove;
 sudo apt-get install apt-transport-https ca-certificates curl \
   software-properties-common &&
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
@@ -447,7 +447,7 @@ chk_fsext4_issue="\
   Please move '/var/lib/docker/' to an ext4 drive for best results."
 chk_fsext4_fix=\
 'clear_stdin
-read -p "New location for /var/lib/docker on an ext4 drive:" new_location
+read -p "New location for /var/lib/docker on an ext4 drive: " new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -500,7 +500,7 @@ chk_fsspace_issue="\
   /var/lib/docker to a drive with more space."
 chk_fsspace_fix=\
 'clear_stdin
-read -p "New location for /var/lib/docker with 128GB free:" new_location
+read -p "New location for /var/lib/docker with 128GB free: " new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -585,7 +585,7 @@ chk_cudadriverdep_issue="\
 chk_cudadriverdep_fix=\
 'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
 if [ -z "$v" ]; then v="cuda-10-1"; fi &&
-sudo apt remove -y "$v" && sudo apt install -y "$v"'
+sudo apt remove -y "$v" && sudo apt -y autoremove && sudo apt install -y "$v"'
 chk_cudadriverdep_reboot=1
 
 chk_apicloned_name='BenchBot API cloned'
