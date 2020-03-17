@@ -4,9 +4,9 @@
 
 The BenchBot Software Stack is a collection of software packages that allow end users to control robots in real or simulated environments with a simple python API. It leverages the simple "observe, act, repeat" approach to robot problems prevalent in reinforcement learning communities ([OpenAI Gym](https://gym.openai.com/) will find the BenchBot interface extremely familiar).
 
-DETAILS ABOUT SEMANTIC SCENE UNDERSTANDING / CHALLENGE.
+BenchBot has been created primarily as a tool to broach the research challenges faced by the Semantic Scene Understanding community (both in understanding a scene in simulation, & transferring algorithms to real world systems). The "bench" in "BenchBot" refers to benchmarking, with our goal to provide a system that makes it easy to benchmark the performance of novel algorithms in realistic 3D simulation & on real robot platforms. Users performing tasks other than Semantic Scene Understanding (like object detection, 3D mapping, RGB to depth reconstruction, active vision, etc.) will also find elements of the BenchBot Software Stack useful. 
 
-This repository contains the software stack needed to develop solutions for BenchBot challenges on your local machine. It builds a mammoth Docker image (~190GB) that contains all of the software components needed to perform benchmarking in realistic 3D simulation, with all of the interfacing & configuration done for you. 
+This repository contains the software stack needed to develop solutions for BenchBot challenges on your local machine. It installs & configures a significant amount of software for you, wraps software in stable Docker images (~120GB), and provides simple interaction with the stack through 4 basic scripts: `benchbot_install`, `benchbot_run`, `benchbot_submit`, & `benchbot_eval`.
 
 ## System recommendations & requirements
 
@@ -80,10 +80,10 @@ See [benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples) f
 
 ## Components of the BenchBot Software Stack
 
-The BenchBot Software Stack is split into a number of standalone components, each with their Github repository & documentation. This repository glues them all together for you into a working system. The components of the stack are:
+The BenchBot Software Stack is split into a number of standalone components, each with their own Github repository & documentation. This repository glues them all together for you into a working system. The components of the stack are:
 
-- **[benchbot_simulator](https://github.com/RoboticVisionOrg/benchbot_simulator):** TODO
-- **[benchbot_supervisor](https://github.com/RoboticVisionOrg/benchbot_supervisor):** TODO
-- **[benchbot_api](https://github.com/RoboticVisionOrg/benchbot_api):** TODO
-- **[benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples):** TODO
-- **[benchbot_eval](https://github.com/RoboticVisionOrg/benchbot_eval):** TODO
+- **[benchbot_simulator](https://github.com/RoboticVisionOrg/benchbot_simulator):** realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
+- **[benchbot_supervisor](https://github.com/RoboticVisionOrg/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces & the low-level ROS components of a simulator or real robot
+- **[benchbot_api](https://github.com/RoboticVisionOrg/benchbot_api):** user-facing Python interface to the BenchBot system, allowing the user to control simulated or real robots in simulated or real world environments through simple commands
+- **[benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples):** a series of example submissions that use the API to drive a robot interactively, autonomously step through environments, evaluate dummy results, attempt semantic slam, & more
+- **[benchbot_eval](https://github.com/RoboticVisionOrg/benchbot_eval):** Python library for evaluating the performance in a task based on the results produced by a submission
