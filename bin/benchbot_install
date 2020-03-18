@@ -599,8 +599,10 @@ chk_apicloned_issue="\
   installed significantly improves the development experience, & allows you to
   run your submissions natively without containerisation."
 chk_apicloned_fix=\
-'rm -rf '"$PATH_API"' && git clone '"$GIT_API $PATH_API"' &&
-pushd '"$PATH_API"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+'rm -rf '"$PATH_API"' && 
+git clone '"$GIT_API $PATH_API"' &&
+pushd '"$PATH_API"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
@@ -619,8 +621,8 @@ chk_apiuptodate_issue="\
 
   Please move to the latest version."
 chk_apiuptodate_fix=\
-'pushd '"$PATH_API"' && git fetch --all && 
-git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_API"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
 chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
@@ -638,7 +640,8 @@ chk_apiinstalled_issue="\
   Please do not run the automatic fix if you intend to source a different python
   environment before running BenchBot."
 chk_apiinstalled_fix=\
-'pushd '"$PATH_API"' && pip install -e .'
+'pushd '"$PATH_API"' && 
+pip install -e .'
 chk_apiinstalled_reboot=1
 
 chk_examplescloned_name='BenchBot examples cloned'
@@ -652,8 +655,10 @@ chk_examplescloned_issue="\
   it installed provides hands on examples to get up & running with the BenchBot
   system, including introductions to all of the different challenge modes."
 chk_examplescloned_fix=\
-'rm -rf '"$PATH_EXAMPLES"' && git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
-pushd '"$PATH_EXAMPLES"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+'rm -rf '"$PATH_EXAMPLES"' && 
+git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
+pushd '"$PATH_EXAMPLES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_examplescloned_reboot=1
 
 chk_examplesuptodate_name='BenchBot examples up-to-date'
@@ -672,8 +677,8 @@ chk_examplesuptodate_issue="\
 
   Please move to the latest version."
 chk_examplesuptodate_fix=\
-'pushd '"$PATH_EXAMPLES"' && git fetch --all && 
-git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_EXAMPLES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
 chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
@@ -687,8 +692,10 @@ chk_evalcloned_issue="\
   installed allows you to evaluate the performance of your semantic scene
   understanding algorithms directly from your machine."
 chk_evalcloned_fix=\
-'rm -rf '"$PATH_EVAL"' && git clone '"$GIT_EVAL $PATH_EVAL"' &&
-pushd '"$PATH_EVAL"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+'rm -rf '"$PATH_EVAL"' && 
+git clone '"$GIT_EVAL $PATH_EVAL"' &&
+pushd '"$PATH_EVAL"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='BenchBot evaluation up-to-date'
@@ -707,8 +714,8 @@ chk_evaluptodate_issue="\
 
   Please move to the latest version."
 chk_evaluptodate_fix=\
-'pushd '"$PATH_EVAL"' && git fetch --all && 
-git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_EVAL"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
 chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='BenchBot evaluation installed'
@@ -726,7 +733,8 @@ chk_evalinstalled_issue="\
   Please do not run the automatic fix if you intend to source a different python
   environment before running BenchBot."
 chk_evalinstalled_fix=\
-'pushd '"$PATH_EVAL"' && pip install -e .'
+'pushd '"$PATH_EVAL"' && 
+pip install -e .'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
