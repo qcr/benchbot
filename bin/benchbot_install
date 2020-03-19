@@ -511,31 +511,25 @@ chk_pip_name='Pip python package manager available'
 chk_pip_pass='Found ($check_result)'
 chk_pip_fail='Not found'
 chk_pip_check=\
-'pip --version 2>/dev/null | cut -d " " -f 2'
+'pip3 --version 2>/dev/null | cut -d " " -f 2'
 chk_pip_eval='[ ! -z "$check_result" ]'
 chk_pip_issue="\
   Python package manager pip was not found. It is required for installation of
   BenchBot python modules. Please either restart the install script with pip
   available, or install it."
-chk_pip_fix=\
-'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
-  sed "/2/d")
-sudo apt install -y python${v}-pip'
+chk_pip_fix='sudo apt install -y python3-pip'
 chk_pip_reboot=1
 
 chk_pythontk_name='Tkinter for Python installed'
 chk_pythontk_pass='Found'
 chk_pythontk_fail='Not found'
-chk_pythontk_check='python -c "exec(\"try: import Tkinter as tk\nexcept: import tkinter as tk\"); print(tk.__file__)" 2>/dev/null'
+chk_pythontk_check='python3 -c "import tkinter as tk; print(tk.__file__)" 2>/dev/null'
 chk_pythontk_eval='[ ! -z "$check_result" ]'
 chk_pythontk_issue="\
   Python package pythontk was not found. It is required to use the
   visualisation tools available with the BenchBot API. Please install it via
   package manager. "
-chk_pythontk_fix=\
-'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
-  sed "/2/d")
-sudo apt install -y python${v}-tk'
+chk_pythontk_fix='sudo apt install -y python3-tk'
 chk_pythontk_reboot=1
 
 checks_list_post=(
@@ -629,7 +623,7 @@ chk_apiinstalled_name='BenchBot API installed'
 chk_apiinstalled_pass='Available'
 chk_apiinstalled_fail='Not found'
 chk_apiinstalled_check=\
-'python -c '"'"'import benchbot_api; print(benchbot_api.__file__);'"'"' \
+'python3 -c '"'"'import benchbot_api; print(benchbot_api.__file__);'"'"' \
   2>/dev/null'
 chk_apiinstalled_eval='[ ! -z "$check_result" ]'
 chk_apiinstalled_issue="\
@@ -641,7 +635,7 @@ chk_apiinstalled_issue="\
   environment before running BenchBot."
 chk_apiinstalled_fix=\
 'pushd '"$PATH_API"' && 
-pip install -e .'
+pip3 install -e .'
 chk_apiinstalled_reboot=1
 
 chk_examplescloned_name='BenchBot examples cloned'
@@ -722,7 +716,7 @@ chk_evalinstalled_name='BenchBot evaluation installed'
 chk_evalinstalled_pass='Available'
 chk_evalinstalled_fail='Not found'
 chk_evalinstalled_check=\
-'python -c '"'"'import benchbot_eval; print(benchbot_eval.__file__);'"'"' \
+'python3 -c '"'"'import benchbot_eval; print(benchbot_eval.__file__);'"'"' \
   2>/dev/null'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
@@ -734,7 +728,7 @@ chk_evalinstalled_issue="\
   environment before running BenchBot."
 chk_evalinstalled_fix=\
 'pushd '"$PATH_EVAL"' && 
-pip install -e .'
+pip3 install -e .'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
@@ -851,7 +845,7 @@ function uninstall_benchbot() {
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
-  pip uninstall -y benchbot_api benchbot_eval
+  pip3 uninstall -y benchbot_api benchbot_eval
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ ! -z "$targets" ] ; then docker rmi $targets; fi
 
