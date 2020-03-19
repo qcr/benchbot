@@ -853,7 +853,7 @@ function uninstall_benchbot() {
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
   pip uninstall -y benchbot_api benchbot_eval
   targets=$(docker images -q -f reference='benchbot/*:*')
-  if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
+  if [ ! -z "$targets" ] ; then docker rmi $targets; fi
 
   rm -rfv ./{"$PATH_API","$PATH_EXAMPLES","$PATH_EVAL"}
 
