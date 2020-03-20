@@ -471,7 +471,7 @@ chk_fsnosuid_issue="\
 chk_fsnosuid_fix=\
 'sudo sed -E -n '"'"'s|(^[^#]*'"'"'$check_result'"'"' .*)nosuid|\1|p; s/,,/,/p; \
    s/ ,/ /p; s/, / /p'"'"' /etc/fstab &&
-sudo systemct daemon-reload'
+sudo systemctl daemon-reload'
 chk_fsnosuid_reboot=1
 
 chk_fsspace_name='/var/lib/docker driver space check'
