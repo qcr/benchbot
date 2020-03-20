@@ -27,7 +27,7 @@ HOSTNAME_SUPERVISOR="benchbot_supervisor"
 
 MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
 
-PATH_ROOT=".."
+PATH_ROOT="$(realpath ..)"
 
 PATH_API="$PATH_ROOT/api"
 PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"

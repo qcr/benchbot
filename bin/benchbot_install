@@ -100,6 +100,9 @@ checks_list_pre=(
   "nvidiadriver"  # Is the driver available?
   "nvidiaversion"  # Is the driver version valid?
   "nvidiappa"  # Does the driver come from a supported PPA?
+  "cudadriversavailable" # Is cuda-drivers package available?
+  "cudadriversversion"  # Is cuda-drivers version valid?
+  "cudadriversppa"  # Is cuda-drivers from the Nvidia PPA?
   "cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
   "cudappa"  # Is cuda from the Nvidia PPA?
@@ -212,9 +215,63 @@ chk_nvidiappa_issue="\
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
     http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
 chk_nvidiappa_fix=\
-'sudo apt remove -y nvidia-driver-* && '\
+'sudo apt remove -y nvidia-driver-* && sudo apt -y autoremove; '\
 "$chk_nvidiadriver_fix"
 chk_nvidiappa_reboot=0
+
+chk_cudadriversavailable_name='CUDA drivers installed'
+chk_cudadriversavailable_pass='Drivers found'
+chk_cudadriversavailable_fail='Drivers not found'
+chk_cudadriversavailable_check='apt list --installed 2>/dev/null | grep -E '\
+'"cuda-drivers/" | awk '"'"'{print $2}'"'"
+chk_cudadriversavailable_eval='[ ! -z "$check_result" ]'
+chk_cudadriversavailable_issue="\
+  No version of CUDA drivers detected. Our Docker only supports CUDA drivers 
+  installations from the official Nvidia repository. Please add the Nvidia 
+  repository, & install 'cuda-drivers' through apt."
+chk_cudadriversavailable_fix=\
+"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
+chk_cudadriversavailable_reboot=1
+
+chk_cudadriversversion_name='CUDA drivers version valid'
+chk_cudadriversversion_pass='Valid ($check_result)'
+chk_cudadriversversion_fail='Invalid'
+chk_cudadriversversion_check='apt list --installed 2>/dev/null | grep -E '\
+'"cuda-drivers/" | awk '"'"'{print $2}'"'"
+chk_cudadriversversion_eval='eval_version "$check_result" 418'
+chk_cudadriversversion_issue="\
+  The version of CUDA drivers detected ("'$check_result'") is incompatible with 
+  BenchBot which requires CUDA drivers 418+ for the Isaac SDK.
+
+  Please install a more recent version of the CUDA drivers from the Nvidia 
+  repository."
+chk_cudadriversversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}
+chk_cudadriversversion_reboot=1
+
+chk_cudadriversppa_name='CUDA drivers from the Nvidia PPA'
+chk_cudadriversppa_pass='PPA is valid'
+chk_cudadriversppa_fail='PPA is invalid'
+chk_cudadriversppa_check=\
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-drivers/" | \
+awk '"'"'{print $2}'"'"'); \
+apt download --print-uris cuda-drivers=\
+$(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
+cut -d'"'"' '"'"' -f1'
+chk_cudadriversppa_eval=\
+'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
+chk_cudadriversppa_issue="\
+  CUDA drivers were detected to have come from somewhere other than the Nvidia 
+  PPAs. The CUDA drivers were sourced from:
+    "'$check_result'"
+
+  Our Docker container only supports official CUDA installs, & GPUs only work
+  in containers if the CUDA drivers version exactly matches the version of the
+  host.  Please install CUDA drivers from the official Nvidia repository:
+    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
+chk_cudadriversppa_fix=\
+'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
+"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
+chk_cudadriversppa_reboot=1
 
 chk_cudaavailable_name='CUDA is installed'
 chk_cudaavailable_pass='CUDA found'
@@ -256,7 +313,7 @@ chk_cudappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudappa_issue="\
   CUDA was detected to have come from somewhere other than the Nvidia PPAs. The 
-  driver was sourced from:
+  CUDA package was sourced from:
     "'$check_result'"
 
   Our Docker container only supports official CUDA installs, & GPUs only work in 
@@ -264,7 +321,7 @@ chk_cudappa_issue="\
   Please install CUDA from the official Nvidia repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudappa_fix=\
-'sudo apt remove -y cuda-10-1 && '\
+'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
 "${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
 chk_cudappa_reboot=1
 
@@ -325,7 +382,7 @@ chk_dockerversion_issue="\
 
   Please install a more recent version of Docker Engine - Community Edition."
 chk_dockerversion_fix=\
-'sudo apt remove docker*;
+'sudo apt remove -y docker* && sudo apt -y autoremove;
 sudo apt-get install apt-transport-https ca-certificates curl \
   software-properties-common &&
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
@@ -390,7 +447,7 @@ chk_fsext4_issue="\
   Please move '/var/lib/docker/' to an ext4 drive for best results."
 chk_fsext4_fix=\
 'clear_stdin
-read -p "New location for /var/lib/docker on an ext4 drive:" new_location
+read -p "New location for /var/lib/docker on an ext4 drive: " new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -443,7 +500,7 @@ chk_fsspace_issue="\
   /var/lib/docker to a drive with more space."
 chk_fsspace_fix=\
 'clear_stdin
-read -p "New location for /var/lib/docker with 128GB free:" new_location
+read -p "New location for /var/lib/docker with 128GB free: " new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -454,31 +511,25 @@ chk_pip_name='Pip python package manager available'
 chk_pip_pass='Found ($check_result)'
 chk_pip_fail='Not found'
 chk_pip_check=\
-'pip --version 2>/dev/null | cut -d " " -f 2'
+'pip3 --version 2>/dev/null | cut -d " " -f 2'
 chk_pip_eval='[ ! -z "$check_result" ]'
 chk_pip_issue="\
   Python package manager pip was not found. It is required for installation of
   BenchBot python modules. Please either restart the install script with pip
   available, or install it."
-chk_pip_fix=\
-'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
-  sed "/2/d")
-sudo apt install -y python${v}-pip'
+chk_pip_fix='sudo apt install -y python3-pip'
 chk_pip_reboot=1
 
 chk_pythontk_name='Tkinter for Python installed'
 chk_pythontk_pass='Found'
 chk_pythontk_fail='Not found'
-chk_pythontk_check='python -c "exec(\"try: import Tkinter as tk\nexcept: import tkinter as tk\"); print(tk.__file__)" 2>/dev/null'
+chk_pythontk_check='python3 -c "import tkinter as tk; print(tk.__file__)" 2>/dev/null'
 chk_pythontk_eval='[ ! -z "$check_result" ]'
 chk_pythontk_issue="\
   Python package pythontk was not found. It is required to use the
   visualisation tools available with the BenchBot API. Please install it via
   package manager. "
-chk_pythontk_fix=\
-'v=$(python -c "import sys; print(sys.version_info[0])" 2>/dev/null | \
-  sed "/2/d")
-sudo apt install -y python${v}-tk'
+chk_pythontk_fix='sudo apt install -y python3-tk'
 chk_pythontk_reboot=1
 
 checks_list_post=(
@@ -517,24 +568,18 @@ chk_cudadriverdep_issue="\
 
 "'$check_result'"
 
-  During development we ran into a situation where it was impossible for the
-  Dockerfile to reproduce the CUDA version / Nvidia driver pairing of the host,
-  even while using exactly the same PPAs / repos as the host system. From what
-  we found, it seemed the Nvidia driver dependencies for the latest CUDA in apt
-  had been updated WITHOUT changing version number (effectively deleting the
-  old version from existence in apt).
+  This can sometimes happen due to the way CUDA / Nvidia driver pairings are
+  passed through the apt dependency tree (cuda -> cuda-drivers ->
+  nvidia-driver)
 
-  Consequence: all machines setup with the 'old' CUDA / Nvidia pairing were in
-  zombie states that could not be reproduced by apt (and they would not upgrade
-  automatically as apt could see no version change).
-
-  Solution: the best solution we could find was to remove the existing CUDA
-  install on the host machine & reinstall. Please do this if we have identified
-  this issue with your host system setup."
+  BenchBot needs these to match between host & docker, so the best solution 
+  available at this point is remove the existing CUDA install on the host 
+  machine & reinstall. Please do this if we have identified this issue with your 
+  host system setup."
 chk_cudadriverdep_fix=\
 'v=$(apt list --installed 2>/dev/null | grep "cuda-[0-9]*-[0-9]*") &&
 if [ -z "$v" ]; then v="cuda-10-1"; fi &&
-sudo apt remove -y "$v" && sudo apt install -y "$v"'
+sudo apt remove -y "$v" && sudo apt -y autoremove && sudo apt install -y "$v"'
 chk_cudadriverdep_reboot=1
 
 chk_apicloned_name='BenchBot API cloned'
@@ -548,8 +593,10 @@ chk_apicloned_issue="\
   installed significantly improves the development experience, & allows you to
   run your submissions natively without containerisation."
 chk_apicloned_fix=\
-'rm -rf '"$PATH_API"' && git clone '"$GIT_API $PATH_API"' &&
-pushd '"$PATH_API"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+'rm -rf '"$PATH_API"' && 
+git clone '"$GIT_API $PATH_API"' &&
+pushd '"$PATH_API"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
@@ -568,15 +615,15 @@ chk_apiuptodate_issue="\
 
   Please move to the latest version."
 chk_apiuptodate_fix=\
-'pushd '"$PATH_API"' && git fetch --all && 
-git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_API"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
 chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
 chk_apiinstalled_pass='Available'
 chk_apiinstalled_fail='Not found'
 chk_apiinstalled_check=\
-'python -c '"'"'import benchbot_api; print(benchbot_api.__file__);'"'"' \
+'python3 -c '"'"'import benchbot_api; print(benchbot_api.__file__);'"'"' \
   2>/dev/null'
 chk_apiinstalled_eval='[ ! -z "$check_result" ]'
 chk_apiinstalled_issue="\
@@ -587,7 +634,8 @@ chk_apiinstalled_issue="\
   Please do not run the automatic fix if you intend to source a different python
   environment before running BenchBot."
 chk_apiinstalled_fix=\
-'pushd '"$PATH_API"' && pip install -e .'
+'pushd '"$PATH_API"' && 
+pip3 install -e .'
 chk_apiinstalled_reboot=1
 
 chk_examplescloned_name='BenchBot examples cloned'
@@ -601,8 +649,10 @@ chk_examplescloned_issue="\
   it installed provides hands on examples to get up & running with the BenchBot
   system, including introductions to all of the different challenge modes."
 chk_examplescloned_fix=\
-'rm -rf '"$PATH_EXAMPLES"' && git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
-pushd '"$PATH_EXAMPLES"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+'rm -rf '"$PATH_EXAMPLES"' && 
+git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
+pushd '"$PATH_EXAMPLES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_examplescloned_reboot=1
 
 chk_examplesuptodate_name='BenchBot examples up-to-date'
@@ -621,8 +671,8 @@ chk_examplesuptodate_issue="\
 
   Please move to the latest version."
 chk_examplesuptodate_fix=\
-'pushd '"$PATH_EXAMPLES"' && git fetch --all && 
-git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_EXAMPLES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
 chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
@@ -636,8 +686,10 @@ chk_evalcloned_issue="\
   installed allows you to evaluate the performance of your semantic scene
   understanding algorithms directly from your machine."
 chk_evalcloned_fix=\
-'rm -rf '"$PATH_EVAL"' && git clone '"$GIT_EVAL $PATH_EVAL"' &&
-pushd '"$PATH_EVAL"' && git fetch --all && git checkout $BRANCH_DEFAULT'
+'rm -rf '"$PATH_EVAL"' && 
+git clone '"$GIT_EVAL $PATH_EVAL"' &&
+pushd '"$PATH_EVAL"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT'
 chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='BenchBot evaluation up-to-date'
@@ -656,15 +708,15 @@ chk_evaluptodate_issue="\
 
   Please move to the latest version."
 chk_evaluptodate_fix=\
-'pushd '"$PATH_EVAL"' && git fetch --all && 
-git checkout $BRANCH_DEFAULT && git pull'
+'pushd '"$PATH_EVAL"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
 chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='BenchBot evaluation installed'
 chk_evalinstalled_pass='Available'
 chk_evalinstalled_fail='Not found'
 chk_evalinstalled_check=\
-'python -c '"'"'import benchbot_eval; print(benchbot_eval.__file__);'"'"' \
+'python3 -c '"'"'import benchbot_eval; print(benchbot_eval.__file__);'"'"' \
   2>/dev/null'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
@@ -675,7 +727,8 @@ chk_evalinstalled_issue="\
   Please do not run the automatic fix if you intend to source a different python
   environment before running BenchBot."
 chk_evalinstalled_fix=\
-'pushd '"$PATH_EVAL"' && pip install -e .'
+'pushd '"$PATH_EVAL"' && 
+pip3 install -e .'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
@@ -792,9 +845,9 @@ function uninstall_benchbot() {
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
-  pip uninstall -y benchbot_api benchbot_examples
+  pip3 uninstall -y benchbot_api benchbot_eval
   targets=$(docker images -q -f reference='benchbot/*:*')
-  if [ $(echo -n "$targets" | wc -l) -gt 0 ] ; then docker rmi $targets; fi
+  if [ ! -z "$targets" ] ; then docker rmi $targets; fi
 
   rm -rfv ./{"$PATH_API","$PATH_EXAMPLES","$PATH_EVAL"}
 
@@ -900,9 +953,6 @@ else
   exit 1
 fi
 
-echo ""
-echo "TODO: Should we be enforcing 18.04?"
-
 # PART 2: Fetching information about latest benchbot versions
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
@@ -944,6 +994,8 @@ header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 # Get some useful variables from the host
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
+cuda_drivers_version=$(apt list --installed 2>/dev/null | \
+  grep "cuda-drivers/" | cut -d ' ' -f 2)
 cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-[0-9].*$(cat /usr/local/cuda/version.txt | cut -d ' ' -f 3)" | \
   cut -d ' ' -f 2)
@@ -955,6 +1007,7 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
 docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
+  --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
   --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
