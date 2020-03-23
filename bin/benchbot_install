@@ -511,7 +511,7 @@ chk_pip_name='Pip python package manager available'
 chk_pip_pass='Found ($check_result)'
 chk_pip_fail='Not found'
 chk_pip_check=\
-'pip3 --version 2>/dev/null | cut -d " " -f 2'
+'python3 -m pip --version 2>/dev/null | cut -d " " -f 2'
 chk_pip_eval='[ ! -z "$check_result" ]'
 chk_pip_issue="\
   Python package manager pip was not found. It is required for installation of
@@ -596,7 +596,7 @@ chk_apicloned_fix=\
 'rm -rf '"$PATH_API"' && 
 git clone '"$GIT_API $PATH_API"' &&
 pushd '"$PATH_API"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT'
+git fetch --all && git checkout $BRANCH_DEFAULT && popd'
 chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
@@ -616,7 +616,7 @@ chk_apiuptodate_issue="\
   Please move to the latest version."
 chk_apiuptodate_fix=\
 'pushd '"$PATH_API"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
 chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
@@ -634,8 +634,8 @@ chk_apiinstalled_issue="\
   Please do not run the automatic fix if you intend to source a different python
   environment before running BenchBot."
 chk_apiinstalled_fix=\
-'pushd '"$PATH_API"' && 
-pip3 install -e .'
+'pushd '"$PATH_API"' &&  
+python3 -m pip install -e . && popd'
 chk_apiinstalled_reboot=1
 
 chk_examplescloned_name='BenchBot examples cloned'
@@ -652,7 +652,7 @@ chk_examplescloned_fix=\
 'rm -rf '"$PATH_EXAMPLES"' && 
 git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
 pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT'
+git fetch --all && git checkout $BRANCH_DEFAULT && popd'
 chk_examplescloned_reboot=1
 
 chk_examplesuptodate_name='BenchBot examples up-to-date'
@@ -672,7 +672,7 @@ chk_examplesuptodate_issue="\
   Please move to the latest version."
 chk_examplesuptodate_fix=\
 'pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
 chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
@@ -689,7 +689,7 @@ chk_evalcloned_fix=\
 'rm -rf '"$PATH_EVAL"' && 
 git clone '"$GIT_EVAL $PATH_EVAL"' &&
 pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT'
+git fetch --all && git checkout $BRANCH_DEFAULT && popd'
 chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='BenchBot evaluation up-to-date'
@@ -709,7 +709,7 @@ chk_evaluptodate_issue="\
   Please move to the latest version."
 chk_evaluptodate_fix=\
 'pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull'
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
 chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='BenchBot evaluation installed'
@@ -728,7 +728,7 @@ chk_evalinstalled_issue="\
   environment before running BenchBot."
 chk_evalinstalled_fix=\
 'pushd '"$PATH_EVAL"' && 
-pip3 install -e .'
+python3 -m pip install -e . && popd'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
@@ -845,11 +845,34 @@ function uninstall_benchbot() {
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
-  pip3 uninstall -y benchbot_api benchbot_eval
-  targets=$(docker images -q -f reference='benchbot/*:*')
-  if [ ! -z "$targets" ] ; then docker rmi $targets; fi
 
-  rm -rfv ./{"$PATH_API","$PATH_EXAMPLES","$PATH_EVAL"}
+  pkgs=$(python3 -m pip freeze | grep benchbot)
+  if [ ! -z "$pkgs" ]; then
+    echo "$pkgs" | sed 's/.*egg=\(.*\)/\1/' | xargs python3 -m pip uninstall -y
+  fi
+  sitepkgs=($(python3 -c 'import site; \
+    print(" ".join(site.getsitepackages() + [site.getusersitepackages()]))' \
+    2>/dev/null))
+  if [ ! -z "$sitepkgs" ] ; then 
+    echo "Manually removing eggs from pip ..."
+    # This fix is needed as apparently Ubuntu patches broke pip uninstall...
+    # See: https://github.com/pypa/pip/issues/4438
+    for l in "${sitepkgs[@]}"; do
+      # The loop below is WAY TOO AGGRESSIVE... but I can't do anything else
+      # due to the bug above, & inconsistency of where this file will be saved
+      # between raw python install, virtualenvs, conda, etc etc
+      find "$l" -regex '.*benchbot-\(api\|eval\).*' -print -delete 2>/dev/null
+    done
+  fi
+
+  targets=$(docker images -q -f reference='benchbot/*:*')
+  if [ ! -z "$targets" ] ; then 
+    echo "Removing BenchBot Docker resources ..."
+    docker rmi $targets; 
+  fi
+
+  rm -rfv "$PATH_API" "$PATH_EXAMPLES" "$PATH_EVAL" 2>/dev/null
+  sudo rm -v "$PATH_SYMLINKS"/benchbot* 2>/dev/null
 
   echo -e "\nFinished uninstalling!"
 }
