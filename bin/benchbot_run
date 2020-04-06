@@ -34,14 +34,6 @@ OPTION DETAILS:
     -h,--help             
             Show this help menu.
 
-    --list-envs
-            Search for & list all installed environments. The listed
-            environment names are in the format needed for the --env option.
-
-    --list-tasks   
-            Lists all supported task combinations. The listed tasks are printed
-            in the format needed for the --task option.
-
     -e, --env             
             Select an environment to launch in the simulator (this must be
             called with the --task option). Environments are identified via
@@ -61,6 +53,21 @@ OPTION DETAILS:
 
             (Use --list-envs to see a list of available environments)
 
+    -f, --force-updateless
+            BenchBot will exit if it detects updates to the software stack. Set
+            this flag to continue using outdated software temporarily. Note that
+            limited support is available for outdated software stacks, and the
+            challenge will run on the latest software stack. You should only use
+            this flag when it is inconvenient to update immediately.
+
+    --list-envs
+            Search for & list all installed environments. The listed
+            environment names are in the format needed for the --env option.
+
+    --list-tasks   
+            Lists all supported task combinations. The listed tasks are printed
+            in the format needed for the --task option.
+
     -t, --task             
             Configure BenchBot for a specific task style (this must be called
             with the --env option). A task is specified through the format
@@ -74,16 +81,12 @@ OPTION DETAILS:
 
             (Use --list-tasks to see a list of supported task options)
 
-    -f, --force-updateless
-            BenchBot will exit if it detects updates to the software stack. Set
-            this flag to continue using outdated software temporarily. Note that
-            limited support is available for outdated software stacks, and the
-            challenge will run on the latest software stack. You should only use
-            this flag when it is inconvenient to update immediately.
-
     -u,--update-check
             Check for available updates to the BenchBot software stack and exit
             immediately.
+
+    -v,--version
+            Print version info for current installation.
 
 FURTHER DETAILS:
     
@@ -207,37 +210,56 @@ The string is of the format TYPE:CONTROL_MODE:LOCALISATION_MODE.
 
 TYPE DETAILS:
         semantic_slam:
-            SLAM with localisation and mapping performed with respect to
-            objects, not sensor data.
+            Use a semantic SLAM algorithm to build an object-based semantic
+            map. An object-based semantic map specifies a set of objects, where
+            each object is described by:
+            - a suggested label (or distribution over possible labels) 
+            - a global axis-aligned 3D bounding box (cuboid) describing the
+            location of the object in 3D space.
 
         scd:
-            Semantic Change Detection
-            Move through an environment multiple (two?) times and report changes
-            in the environment in terms of objects added or removed.
+            Apply a semantic SLAM algorithm to perform scene change detection
+            (SCD) between two scenes of the same environment. The two scenes
+            will have a number of objects either added or removed with respect
+            to each other. 
+
+            Successful SCD produces an object-based semantic map as described
+            above, with one key addition to each object description:
+            - a suggested state change (either added, removed, or unchanged) or
+            probability distribution over possible state changes.
 
 CONTROL_MODE DETAILS:
         passive:
-            Control of the robot is limited to only being able to say
-            'move_next'. Robot moves from one target position to the next
-            automatically after being given this command.
+            Control of the robot is passive; 'move_next' is the only actuation
+            modality provided to the user. The 'move_next' action automatically
+            moves the robot from one target pose to the next.
+
+            All further action of the robot will be disabled once the robot has
+            traversed all possiible poses.
 
         active:
-            Control of the robot is not limited to moving along nodes on a path.
-            You can tell the robot to 'move_distance' or 'move_angle', and it
-            will do its best to move the specified amount. The robot will report
-            collisions and end movement early.
+            Control of the robot is active'; the user can command the robot to
+            either rotate on the spot with 'move_angle', or move forwards /
+            backwards with 'move_distance'. Positive angles are anti-clockwise,
+            & positive distances denote move forwards. Negative values perform
+            the inverse for both actuation modalities.
+
+            All further actuation of the robot will be disabled if a collision
+            is detected with the environment. The task must be started again if
+            this occurs.
 
 LOCALISATION_MODE DETAILS:
         ground_truth:
-            All sensor data is perfect and represents the exact position and
-            orientation of the robot. All images are noiseless. Depth images
-            represent the exact depth from the camera to the objecs they see.
+            All localisation data is perfect, representing the exact position &
+            orientation of the robot in the environment. Poses in robot
+            observations can be considered correct without a need for
+            localisation.
 
         dead_reckoning:
-            Sensor data is not perfect. In particular, due to noise, the robot
-            position and orientation will drift off course the longer the robot
-            runs. Images have noise. Depth images have noise and will have
-            holes where no depth data can be retrieved.
+            Error in the robot's odometry measurements are not corrected. Poses
+            in robot observations will accumulate this error over time, & must
+            be corrected with a localisation process to enable the construction
+            of accurate maps.
   "
 }
 

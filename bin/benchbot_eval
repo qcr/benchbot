@@ -15,18 +15,21 @@ popd > /dev/null
 ################################################################################
 
 usage_text="$(basename "$0") -- Script for evaluating the performance of your solution
-to the Scene Understanding Challenge against a running simulator. The script
+to a Scene Understanding Challenge against a running simulator. The script
 simply calls the 'benchbot_eval' python module with your provided results file.
 
-Note: results must be of the format specified TODO. The evaluation will error
-if missing any required fields (in particular the fields describing task type).
+Note: results must be of the format specified in the README here:
+    https://github.com/RoboticVisionOrg/benchbot_eval/tree/develop#the-results-format
+The evaluation will error if missing any required fields (in particular the
+fields describing task type).
 
 USAGE:
 
     See this information about evaluation options:
         $(basename "$0") [-h|--help]
 
-    Perform evaluation on results saved in 'my_results.json'
+    Perform evaluation on results saved in 'my_results.json', & save the
+    results to 'scores.json':
         $(basename "$0") my_results.json
 
     Save scores for 'my_results.json' to 'my_scores.json'
@@ -38,7 +41,12 @@ OPTION DETAILS:
             Show this help menu.
 
     -o,--output-location
-            Change the location where the evaluation scores json is saved.
+            Change the location where the evaluation scores json is saved. If
+            not provided, results are saved as 'scores.json' in the current
+            directory.
+
+    -v,--version
+            Print version info for current installation.
 
 FURTHER DETAILS:
 
