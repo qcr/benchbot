@@ -216,9 +216,6 @@ function latest_version_info() {
     sed 's/\s*$//'
 }
 
-# TODO:
-# benchbot_eval
-
 function update_check() {
   # TODO: function could be implemented much more concisely...
   _valid_str="Up-to-date"

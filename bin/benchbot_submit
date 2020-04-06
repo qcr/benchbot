@@ -205,10 +205,10 @@ case "$SELECTED_MODE" in
   native)
     selected_command="${SELECTED_OPTIONS[@]}" ;;
   containerised|submission)
-    selected_code_dir=$(realpath "${SELECTED_OPTIONS[0]}") ;;&
+    selected_code_dir="${SELECTED_OPTIONS[0]}" ;;&
   submission)
     if [ ${#SELECTED_OPTIONS[@]} -gt 1 ]; then
-      selected_out_location=$(realpath "${SELECTED_OPTIONS[1]}")
+      selected_out_location="${SELECTED_OPTIONS[1]}"
     fi
     abs_path=$(realpath "$selected_code_dir")
     if [ -z "$selected_out_location" ]; then
@@ -230,11 +230,8 @@ esac
 trap remove_submission_container EXIT
 
 # Print some configuration information
-# TODO print some useful information about evaluation settings
-# TODO actually get the supervisor address...
 echo "Submitting to the BenchBot system with the following settings:
 
-    BenchBot supervisor address: TODO
     Submission mode:             $SELECTED_MODE"
 if [ -n "$selected_command" ]; then
   echo \
@@ -247,6 +244,13 @@ fi
 if [ -n "$selected_out_location" ]; then
   echo \
 "    Bundling output filename:    $selected_out_location"
+fi
+echo \
+"    Perform evaluation:          "\
+"$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
+if [ -n "$results_location" ]; then
+  echo \
+"    Results save location:       $results_location"
 fi
 echo ""
 

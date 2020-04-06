@@ -841,7 +841,6 @@ function handle_requirement() {
 }
 
 function uninstall_benchbot() {
-  # TODO this needs to remove symlinks
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
