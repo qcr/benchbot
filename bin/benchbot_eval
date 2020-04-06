@@ -19,7 +19,7 @@ to a Scene Understanding Challenge against a running simulator. The script
 simply calls the 'benchbot_eval' python module with your provided results file.
 
 Note: results must be of the format specified in the README here:
-    https://github.com/RoboticVisionOrg/benchbot_eval/tree/develop#the-results-format
+    https://github.com/RoboticVisionOrg/benchbot_eval#the-results-format
 The evaluation will error if missing any required fields (in particular the
 fields describing task type).
 
