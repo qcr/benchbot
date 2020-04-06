@@ -269,7 +269,7 @@ header_block "Running submission in '$SELECTED_MODE' mode" ${colour_green}
 
 # Clear out any previous results in default location
 if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
-  results_src=$(python -c \
+  results_src=$(python3 -c \
     'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
   rm -rf "$results_src"
   printf "\nRemoved any existing cached results from: $results_src\n\n"

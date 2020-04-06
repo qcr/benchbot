@@ -115,7 +115,7 @@ fi
 
 header_block "Running evaluation on '$results_location'" $colour_green
 
-python -c 'from benchbot_eval import Evaluator; \
+python3 -c 'from benchbot_eval import Evaluator; \
   Evaluator("'"$results_location"'", "'"$gt_abs"'", \
   "'$scores_location'").evaluate()'
 result=$?
