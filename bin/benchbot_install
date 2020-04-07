@@ -43,6 +43,11 @@ OPTION DETAILS:
     -h,--help
             Show this help menu.
 
+    -b,--branch
+            Specify a branch other than master to install. The only use for
+            this flag is active development. The general user will never need
+            to use this flag.
+
     -e,--envs-url
             Specify a custom URL to look for an \"environment information file\".
             An \"environment information file\" is a single line file with space-
@@ -63,6 +68,9 @@ OPTION DETAILS:
             related Docker images will be removed from the system, the API 
             removed from pip, & downloaded files removed from the BenchBot
             install. This flag is incompatible with all other flags.
+
+    -v,--version
+            Print version info for current installation.
 
 FURTHER DETAILS:
     
@@ -841,7 +849,6 @@ function handle_requirement() {
 }
 
 function uninstall_benchbot() {
-  # TODO this needs to remove symlinks
   kill_benchbot
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}

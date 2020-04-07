@@ -35,8 +35,9 @@ modes of submission:
        simulator.
 
     3. submission: 
-       Bundles up your code and saves a *.tgz ready for submission to the Scene
-       Understanding Challenge.
+       Bundles up your code and saves a *.tgz ready for submission to a
+       challenge (not currently in use due to code being run locally on your
+       machine)
 
 USAGE:
 
@@ -53,19 +54,16 @@ USAGE:
     Bundle up your solution into a *.tgz ready for submssion to the challenge:
         $(basename "$0") [-s|--submission] DIRECTORY_FOR_SUBMISSION
 
+    Submit, compile into a containerised environment, run the container on your
+    machine, & evaluate the results which are also saved to 'my_results.json':
+        $(basename "$0") [-e|--evaluate-results] \
+          [-r|--results-location] 'my_results.json' \
+          [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+ 
 OPTION DETAILS:
 
     -h,--help             
             Show this help menu.
-
-    -n, --native
-            Runs your solution directly on your system without applying any 
-            containerisation (useful when you are developing & testing your 
-            solution). Everything after this flag is treated as the command used
-            to run your solution (required). For example, if your solution is a
-            Python script called 'solution.py':
-
-                    $(basename "$0") -n python solution.py
 
     -c, --containerised
             Uses the Dockerfile provided with your solution to start a Docker
@@ -78,6 +76,30 @@ OPTION DETAILS:
 
                     $(basename "$0") -c .
 
+    -e, --evaluate-results
+            Evaluate the results produced by the provided submission after it
+            has finished running. This will assume that your submission saves
+            results to the location referenced by 'benchbot_api.RESULT_LOCATION'
+            (currently '/tmp/benchbot_result'). Evaluation will not work as
+            expected if the submission saves results in any other location.
+
+    -n, --native
+            Runs your solution directly on your system without applying any 
+            containerisation (useful when you are developing & testing your 
+            solution). Everything after this flag is treated as the command used
+            to run your solution (required). For example, if your solution is a
+            Python script called 'solution.py':
+
+                    $(basename "$0") -n python solution.py
+
+    -r, --results-location
+            Copy results produced by the submission to another location. Note:
+            this does not change where '-e' looks for results, it merely
+            specifies another location where the user can view the results of
+            their submission. Like '-e', this flag will not work as expected if
+            the submission does not save results in the expected location
+            ('benchbot_api.RESULT_LOCATION').
+
     -s, --submission
             Bundles up your solution into a *.tgz ready for submission. The 
             directory where your solution exists is a required extra parameter.
@@ -87,20 +109,8 @@ OPTION DETAILS:
 
                     $(basename "$0") -s . \$HOME/Desktop
 
-    -e, --evaluate-results
-            Evaluate the results produced by the provided submission after it
-            has finished running. This will assume that your submission saves
-            results to the location referenced by 'benchbot_api.RESULT_LOCATION'
-            (currently '/tmp/benchbot_result'). Hence, evaluation will not work
-            as expected if the submission saves results in any other location.
-
-    -r, --results-location
-            Copy results produced by the submission to another location. Note:
-            this does not change where '-e' looks for results, it merely
-            specifies another location where the user can view the results of
-            their submission. Like '-e', this flag will not work as expected if
-            the submission does not save results in the expected location
-            ('benchbot_api.RESULT_LOCATION').
+    -v,--version
+            Print version info for current installation.
 
 FURTHER DETAILS:
 
@@ -161,7 +171,7 @@ while true; do
       echo "$usage_text" ; shift ; exit 0 ;;
     -n|--native|-c|--containerised|-s|--submission)
       opt_select_mode "$@"; break ;;
-    -r|--results_location)
+    -r|--results-location)
       results_location="$2"; shift 2 ;;
     -v|--version)
       print_version_info; exit ;;
@@ -205,10 +215,10 @@ case "$SELECTED_MODE" in
   native)
     selected_command="${SELECTED_OPTIONS[@]}" ;;
   containerised|submission)
-    selected_code_dir=$(realpath "${SELECTED_OPTIONS[0]}") ;;&
+    selected_code_dir="${SELECTED_OPTIONS[0]}" ;;&
   submission)
     if [ ${#SELECTED_OPTIONS[@]} -gt 1 ]; then
-      selected_out_location=$(realpath "${SELECTED_OPTIONS[1]}")
+      selected_out_location="${SELECTED_OPTIONS[1]}"
     fi
     abs_path=$(realpath "$selected_code_dir")
     if [ -z "$selected_out_location" ]; then
@@ -230,11 +240,8 @@ esac
 trap remove_submission_container EXIT
 
 # Print some configuration information
-# TODO print some useful information about evaluation settings
-# TODO actually get the supervisor address...
 echo "Submitting to the BenchBot system with the following settings:
 
-    BenchBot supervisor address: TODO
     Submission mode:             $SELECTED_MODE"
 if [ -n "$selected_command" ]; then
   echo \
@@ -248,6 +255,13 @@ if [ -n "$selected_out_location" ]; then
   echo \
 "    Bundling output filename:    $selected_out_location"
 fi
+echo \
+"    Perform evaluation:          "\
+"$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
+if [ -n "$results_location" ]; then
+  echo \
+"    Results save location:       $results_location"
+fi
 echo ""
 
 # Actually perform the submission
@@ -255,7 +269,7 @@ header_block "Running submission in '$SELECTED_MODE' mode" ${colour_green}
 
 # Clear out any previous results in default location
 if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
-  results_src=$(python -c \
+  results_src=$(python3 -c \
     'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
   rm -rf "$results_src"
   printf "\nRemoved any existing cached results from: $results_src\n\n"
