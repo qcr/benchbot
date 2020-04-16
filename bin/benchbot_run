@@ -137,16 +137,16 @@ function _env_data() {
 
 function _env_data_get() {
   if [ -z "$_env_data_full_cached" ]; then
-    # This is a little gross... sorry.
+    # A little hacky, but docker runs are costly so this gets everything in 1 go
     _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash \
-      -c 'find $BENCHBOT_ENVS_PATH/'$FILENAME_ENV_METADATA' -name "*.yaml"\
+      -c 'find $BENCHBOT_ENVS_PATH/*/'$FILENAME_ENV_METADATA' -name "*.yaml"\
       | while read env; do echo "$(realpath $env)"; cat $env; echo ""; done')
   fi
 }
 
 function _env_list() {
   echo "$_env_data_full_cached" | grep "environment_name:" | \
-    sed 's/.*: "\([^_]*\)_\([^"]*\).*/\1:\2/' | sort
+    sed 's/.*: "\([^_]*\)_\([^"]*\).*/\1:\2/' | sort -u
 }
 
 function _env_map_paths() {

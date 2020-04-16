@@ -58,8 +58,6 @@ RUN _urls=($BENCHBOT_ENVS_URLS) && _md5s=($BENCHBOT_ENVS_MD5SUMS) && \
         mv LinuxNoEditor "$i"; \
     done
 
-RUN exit 1
-
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH

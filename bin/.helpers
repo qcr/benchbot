@@ -182,8 +182,10 @@ function is_latest_benchbot_envs() {
   # TODO this should loudly error if there are any URL failures!
   current=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
-    'echo -n "${BENCHBOT_ENVS_MD5SUM['$2']} ${BENCHBOT_ENVS_URL['$2']}"')
+    '_md5s=($BENCHBOT_ENVS_MD5SUMS) && _urls=($BENCHBOT_ENVS_URLS) && \
+    echo -n "${_md5s['$2']} ${_urls['$2']}"')
   latest=$(wget -qO- "$1" | cut -d ' ' -f 1,2)
+  echo "$2"
   echo "Current BenchBot Environments: $current"
   echo "Latest BenchBot Environments: $latest"
   [ "$current" == "$latest" ]
@@ -260,7 +262,6 @@ updates."
     environments_valid=1
   else
     environments_valid=0
-    _urls=($_urls)
     for i in "${!_urls[@]}"; do
       if [ $environments_valid -eq 0 ]; then
         is_latest_benchbot_envs "${_urls[$i]}" "$i" > /dev/null
