@@ -160,6 +160,12 @@ function _env_map_paths() {
   echo "$ps" | sed -e 's/[[:space:]]*$//'
 }
 
+function _env_path() {
+  envs=($(_expand_envs $1))
+  echo "$_env_data_full_cached" | \
+    grep -m 1 "^\/.*$(echo "${envs[${2:-0}]}" | tr ':' '_')" 
+}
+
 function _env_poses() {
   envs=($(_expand_envs $1))
   ps=
@@ -426,8 +432,9 @@ name="benchbot_simulator"
 ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
   --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
-  --path-envs $BENCHBOT_ENVS_PATH --path-isaac $ISAAC_SDK_PATH \
-  --path-simulator $BENCHBOT_SIMULATOR_PATH --port '"$PORT_SIMULATOR"' \
+  --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
+  --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
+  --port '"$PORT_SIMULATOR"' \
   '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
   '"$( IFS=$':'; echo "${selected_poses[*]}")"
 
