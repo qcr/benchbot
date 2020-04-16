@@ -1071,9 +1071,9 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-  --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums}" \
-  --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls}" \
-  --build-arg BENCHBOT_ENVS_SRCS="${envs_urls}" \
+  --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
+  --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
+  --build-arg BENCHBOT_ENVS_SRCS="${envs_urls[*]}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
