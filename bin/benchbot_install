@@ -55,6 +55,10 @@ OPTION DETAILS:
             to the environments *.zip, & plaintext version details. A general
             user should never need this flag.
 
+            Multiple sets of environments can be installed by providing this
+            flag multiple times:
+                benchbot_install -e https://envs1.com -e https://envs2.com
+
     -f,--force-clean
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
@@ -899,7 +903,7 @@ parse_out=$(getopt -o hb:e:fuv \
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_skip=
-envs_url=$URL_ENVS_INFO_DEFAULT
+envs_urls=()
 while true; do
   case "$1" in
     -h|--help)
@@ -909,8 +913,7 @@ while true; do
       BRANCH_DEFAULT="$2"; shift 2
       echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -e|--envs-url)
-      envs_url="$2"; echo "TODO envs_url untested & password unimplemented..."
-      shift 2 ;;
+      envs_urls+=("$2"); shift 2 ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
     -u|--uninstall)
@@ -925,6 +928,13 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+
+# Use the default environments URL if none was provided, & sort them so some of
+# our Docker caching & env checking later on has an easier time
+if [ -z "$envs_urls" ]; then
+  envs_urls="$URLS_ENVS_INFO_DEFAULT"
+fi
+envs_urls=($(echo "${envs_urls[*]}" | tr ' ' '\n' | sort | tr '\n' ' '))
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1002,21 +1012,30 @@ echo -e "\t\t$benchbot_api_hash."
 
 # Get md5sum of the latest from the provided envs_url
 echo -e "\nFetching md5sum & URL for latest version of environments ... "
-_envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
-benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
-benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
-if [ -z "$benchbot_envs_md5sum" ] || \
-    [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-  echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
-  echo "${envs_err/'$envs_url'/$envs_url}"
-  exit 1
-elif [ -z "$benchbot_envs_url" ] || \
-    [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-  echo -e "\n\nERROR: Failed to fetch valid URL for environments"
-  echo "${envs_err/'$envs_url'/$envs_url}"
-  exit 1
-fi
-echo -e "\t\tDone."
+benchbot_envs_md5sums=()
+benchbot_envs_urls=()
+for i in "${!envs_urls[@]}"; do
+  u="${envs_urls[$i]}"
+  echo -e "\t$u ... "
+
+  _info=$(is_latest_benchbot_envs "$u" "$i" | latest_version_info)
+  _md5sum=$(echo "$_info" | cut -d ' ' -f1)
+  _url=$(echo "$_info" | cut -d ' ' -f2)
+  if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
+    echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
+    echo "${envs_err/'$envs_url'/$u}"
+    exit 1
+  elif [ -z "$_url" ] || \
+      [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
+    echo -e "\n\nERROR: Failed to fetch valid URL for environments"
+    echo "${envs_err/'$envs_url'/$u}"
+    exit 1
+  fi
+
+  benchbot_envs_md5sums+=("$_md5sum")
+  benchbot_envs_urls+=("$_url")
+  echo -e "\t\tDone."
+done
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
@@ -1052,8 +1071,8 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-  --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
-  --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
+  --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums}" \
+  --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \

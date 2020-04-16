@@ -41,16 +41,19 @@ RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     bazel build ...
 
 # Install environments from a *.zip containing pre-compiled binaries
-ARG BENCHBOT_ENVS_MD5SUM
-ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
-ARG BENCHBOT_ENVS_URL
-ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
+ARG BENCHBOT_ENVS_MD5SUMS
+ENV BENCHBOT_ENVS_MD5SUMS=${BENCHBOT_ENVS_MD5SUMS}
+ARG BENCHBOT_ENVS_URLS
+ENV BENCHBOT_ENVS_URLS=${BENCHBOT_ENVS_URLS}
 ENV BENCHBOT_ENVS_PATH /benchbot/benchbot_envs
-RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
-    test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
-    echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
-    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
-ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
+RUN mkdir benchbot_envs && pushd benchbot_envs && \
+    for i in "${!BENCHBOT_ENVS_URLS[@]}"; do \
+        echo "Installing environments from ${BENCHBOT_ENVS_URLS[$i]}:" && \
+        echo "Downloading ... " && wget -q "${BENCHBOT_ENVS_URLS[$i]}" -O "$i".zip && \
+        test "$BENCHBOT_ENVS_MD5SUMS[$i]" = $(md5sum "$i".zip | cut -d ' ' -f1) && \
+        echo "Extracting ... " && unzip -q "$i".zip && rm -v "$i".zip && \
+        mv LinuxNoEditor "$i"; \
+    done
 
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SIMULATOR_GIT
