@@ -48,7 +48,7 @@ ENV BENCHBOT_ENVS_URLS=${BENCHBOT_ENVS_URLS}
 ENV BENCHBOT_ENVS_PATH /benchbot/benchbot_envs
 RUN mkdir benchbot_envs && pushd benchbot_envs && \
     for i in "${!BENCHBOT_ENVS_URLS[@]}"; do \
-        echo "Installing environments from ${BENCHBOT_ENVS_URLS[$i]}:" && \
+        echo "Installing environments from '${BENCHBOT_ENVS_URLS[$i]}':" && \
         echo "Downloading ... " && wget -q "${BENCHBOT_ENVS_URLS[$i]}" -O "$i".zip && \
         test "$BENCHBOT_ENVS_MD5SUMS[$i]" = $(md5sum "$i".zip | cut -d ' ' -f1) && \
         echo "Extracting ... " && unzip -q "$i".zip && rm -v "$i".zip && \

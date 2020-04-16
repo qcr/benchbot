@@ -253,8 +253,20 @@ updates."
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Environments version ...\t"
-  is_latest_benchbot_envs > /dev/null
-  environments_valid=$?
+  _urls=($(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+    'echo -n "${BENCHBOT_ENVS_SRCS[*]}"'))
+  if [ -z "$urls" ]; then
+    environments_valid=1
+  else
+    environments_valid=0
+    for i in "${!_urls[@]}"; do
+      if [ $environments_valid -eq 0 ]; then
+        is_latest_benchbot_envs "${_urls[$i]}" "$i" > /dev/null
+        environments_valid=$?
+      fi
+    done
+  fi
   [ $environments_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \
