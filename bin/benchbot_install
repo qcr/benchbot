@@ -932,9 +932,9 @@ done
 # Use the default environments URL if none was provided, & sort them so some of
 # our Docker caching & env checking later on has an easier time
 if [ -z "$envs_urls" ]; then
-  envs_urls="$URLS_ENVS_INFO_DEFAULT"
+  envs_urls=("${URLS_ENVS_INFO_DEFAULT[@]}")
 fi
-envs_urls=($(echo "${envs_urls[*]}" | tr ' ' '\n' | sort | tr '\n' ' '))
+envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
