@@ -19,9 +19,6 @@ $URL_ROS $HOSTNAME_ROS
 $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
-# Command for install symlinks
-symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$PATH_SYMLINKS"
-
 ################################################################################
 ########################### Definitions for messages ###########################
 ################################################################################
@@ -770,10 +767,11 @@ chk_symlinks_check=\
   [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
   [ -e "'$PATH_SYMLINKS'/benchbot_submit" ] &&
   [ -e "'$PATH_SYMLINKS'/benchbot_eval" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_batch" ] &&
   ls -l "'$PATH_SYMLINKS'/benchbot_"* | cut -d " " -f 9-11'
 chk_symlinks_eval='[ ! -z "$check_result" ]'
 chk_symlinks_issue="\
-  Symbolic links for each of the 3 BenchBot scripts were not found. If you do 
+  Symbolic links for each of the 5 BenchBot scripts were not found. If you do 
   not wish to add symbolic links, or would rather add the './bin/' directory to
   your PATH, please skip this step."
 chk_symlinks_fix=\
