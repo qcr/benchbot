@@ -151,8 +151,7 @@ eval set -- "$parse_out"
 evaluate=
 envs_str=
 envs_list=
-cont_args=
-native_args=
+submit_args=
 prefix="$DEFAULT_PREFIX"
 task=
 zip=
@@ -164,10 +163,8 @@ while true; do
       envs_file="$2" ; shift 2 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
-    -n|--native)
-      native_args="$@"; break ;;
-    -c|--containerised)  # Done here to force native to take precedence
-      cont_args="$@"; break ;;
+    -n|--native|-c|--containerised)
+      submit_args="$@"; break ;;
     -p|--prefix)
       prefix="$2"; shift 2 ;;
     -s|--score-results)
@@ -196,13 +193,21 @@ elif [ ! -z "$envs_file" ]; then
   envs_list=($(cat "$envs_file" | tr '\n' ' ' | sed 's/[[:space:]]*$//'))
 fi
 
+################################################################################
+####################### Print settings prior to running ########################
+################################################################################
+
+header_block "Dumping settings before running batch" $colour_magenta
+
 _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
 printf "$_ind%-25s%s\n$_ind" "Selected task:" "${task:-None}"
-if [ -z "$native_args" ]; then
-  printf "%-25s%s\n" "Dockerfile to build:" "$cont_args/Dockerfile"
+if [[ $submit_args == "-c"* ]]; then
+  printf "%-25s%s\n" "Dockerfile to build:" \
+    "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
 else
-  printf "%-25s%s\n" "Command to execute:" "$native_args"
+  printf "%-25s%s\n" "Command to execute:" \
+    "$(echo "$submit_args" | awk '{for (i=2; i<=NF; i++) printf $i " "}')"
 fi
 
 printf "\nIterating through the following environment list:\n$_ind"
@@ -215,7 +220,7 @@ fi
 printf "\nPerforming the following after all environments have been run:\n"
 printf "$_ind%-25s%s\n" "Create results *.zip:" \
   "$([ -z "$zip" ] && echo "No" || echo "Yes")"
-printf "$_ind%-25s%s\n" "Evalute results batch:" \
+printf "$_ind%-25s%s\n\n" "Evalute results batch:" \
   "$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
 
 
@@ -231,6 +236,8 @@ fi
 for i in "${!envs_list[@]}"; do
   header_block "Gathering results for environment: ${envs_list[$i]}" \
     $colour_magenta
+  # benchbot_run -t "$task" -e "${envs_list[$i]}" -f
+  # benchbot_submit -r "${prefix}_$i.json" 
   touch "${prefix}_$i.json"
 done
 
