@@ -121,6 +121,9 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+mode_selection_err="ERROR: No valid submission mode was selected (-n|-c|-s). Please see 
+'benchbot_submit --help' for further details."
+
 SELECTED_MODE=
 SELECTED_OPTIONS=
 
@@ -182,7 +185,8 @@ while true; do
   esac
 done
 if [ -z $SELECTED_MODE ]; then
-  echo "$usage_text"; exit 0
+  echo "$mode_selection_err"
+  exit 1
 fi
 
 # Bail if we have received mode options we can't do anything with
