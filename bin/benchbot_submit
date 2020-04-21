@@ -56,8 +56,8 @@ USAGE:
 
     Submit, compile into a containerised environment, run the container on your
     machine, & evaluate the results which are also saved to 'my_results.json':
-        $(basename "$0") [-e|--evaluate-results] \
-          [-r|--results-location] 'my_results.json' \
+        $(basename "$0") [-e|--evaluate-results] \\
+          [-r|--results-location] 'my_results.json' \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
  
 OPTION DETAILS:

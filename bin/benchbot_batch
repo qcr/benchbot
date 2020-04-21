@@ -48,16 +48,16 @@ USAGE:
     Run a submission natively for the task semantic_slam:passive:ground_truth
     in each of the available house scenes, saving the results with the default
     prefix '$DEFAULT_PREFIX':
-        $(basename "$0") [-t|--task] semantic_slam:passive:ground_truth \
-          [-e|--envs] house:1,house:2,house:3,house:4,house:5 \
+        $(basename "$0") [-t|--task] semantic_slam:passive:ground_truth \\
+          [-e|--envs] house:1,house:2,house:3,house:4,house:5 \\
           [-n|--native] COMMAND_TO_RUN
 
     Run a submission for the scd:active:dead_reckoning task in a containerised
     environment, for a list of scenes specified in a file called 'my/env_mix',
     saving the results with the prefix 'mix'. Then evaluate the results to
     produce a final score:
-        $(basename "$0") [-t|--task] scd:active:dead_reckoning \
-          [-E|--envs-file] my/env_mix [-p|--prefix] mix [-s|--score-results] \
+        $(basename "$0") [-t|--task] scd:active:dead_reckoning \\
+          [-E|--envs-file] my/env_mix [-p|--prefix] mix [-s|--score-results] \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
 
         ... (contents of 'my/env_mix') ...
@@ -132,7 +132,7 @@ FURTHER DETAILS:
 
     See the README of this repository for further details. For further details
     on each of the individual components ('benchbot_run', 'benchbot_submit',
-    'benchbot_eval'), see their individaul help documentation & READMEs.
+    'benchbot_eval'), see their individual help documentation & READMEs.
     
     Please contact the authors of BenchBot for support or to report bugs:
         b.talbot@qut.edu.au
@@ -223,16 +223,14 @@ printf "$_ind%-25s%s\n" "Evalute results batch:" \
 ############### Iterate over each of the requested environments ################
 ################################################################################
 
-header_block "Iteratatively gathering results from each requested environment" \
-  $colour_magenta
-
 if [ -z "$envs_list" ]; then
   echo "No environments provided; exiting."
   exit 0
 fi
 
 for i in "${!envs_list[@]}"; do
-  echo "Running environment '${envs_list[$i]}' ..."
+  header_block "Gathering results for environment: ${envs_list[$i]}" \
+    $colour_magenta
   touch "${prefix}_$i.json"
 done
 
