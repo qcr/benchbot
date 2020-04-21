@@ -16,7 +16,23 @@ popd > /dev/null
 
 usage_text="$(basename "$0") -- Script for evaluating the performance of your solution
 to a Scene Understanding Challenge against a running simulator. The script
-simply calls the 'benchbot_eval' python module with your provided results file.
+simply calls the 'benchbot_eval' python module with your provided results
+file/s.
+
+Evaluation is performed on a set of results which are gathered from a set of
+environments. For example, you can evaluate your algorithm just in house:1, or
+evaluate the performance wholistically in all 5 of the house scenes. As such,
+the following modes are supported by benchbot_eval:
+
+    - Providing a single JSON results file (the score in this environment will
+    simply be returned as your final score)
+
+    - Providing a list of JSON results files (the final score returned will be
+    the average of the scores for each individual results file)
+
+    - Providing a *.zip file containing JSON results (the final score returned
+    will be the same as above, across all JSON files found in the *.zip
+    archive)
 
 Note: results must be of the format specified in the README here:
     https://github.com/RoboticVisionOrg/benchbot_eval#the-results-format
@@ -32,8 +48,13 @@ USAGE:
     results to 'scores.json':
         $(basename "$0") my_results.json
 
-    Save scores for 'my_results.json' to 'my_scores.json'
-        $(basename "$0") -o my_scores.json my_results.json
+    Get an overall score for all JSON results files that match the prefix
+    'my_results_[0-9]*':
+        $(basename "$0") my_results_[0-9]*
+
+    Save an overall score for all JSON results in 'my_results.zip' to
+    'my_scores.json':
+        $(basename "$0") -o my_scores.json my_results.zip
 
 OPTION DETAILS:
 
@@ -58,9 +79,12 @@ FURTHER DETAILS:
     "
 
 _invalid_location_err=\
-"ERROR: A valid argument denoting a results file is required. The argument
-provided ('%s') either does not exist, or is not a file. 
-Please provide a valid results_file argument."
+"ERROR: The provided results file '%s' either does not exist, or is not a file. 
+Please ensure all provided results files are valid."
+
+_missing_results_err=\
+"ERROR: No results file was provided. Please run again with a valid results
+file as input."
 
 _ground_truth_err=\
 "ERROR: The script was unable to find ground truth files in the expected 
@@ -76,7 +100,7 @@ parse_out=$(getopt -o ho:v --long help,output-location:,version -n \
   "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
-results_location=
+results_files=
 scores_location='scores.json'
 while true; do
   case "$1" in
@@ -87,23 +111,28 @@ while true; do
     -v|--version)
       print_version_info; exit ;;
     --)
-      results_location="$2"; break;; 
+      shift ; results_files=("$@"); break;; 
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
 
-# Bail if we didn't get a valid results_location
-if [ ! -f "$results_location" ]; then
-  printf "${_invalid_location_err}\n" "$results_location"
+# Bail if any of the results files don't exist, or we got no results files
+if [ -z "$results_files" ]; then
+  printf "${_missing_results_err}\n"
   exit 1
+else
+  for r in "${results_files[@]}"; do
+    if [ ! -f "$r" ]; then
+      printf "${_invalid_location_err}\n" "$r"
+      exit 1
+    fi
+  done
 fi
 
 # Get an absolute path for ground truth (as everything else is relative to where
 # the script was run...)
-pushd "$(dirname $abs_path)" > /dev/null
 gt_abs=$(realpath "$PATH_GROUND_TRUTH")
-popd > /dev/null
 if [ ! -d "$gt_abs" ]; then
   printf "${_ground_truth_err}\n" "$gt_abs"
   exit 1
@@ -116,8 +145,8 @@ fi
 header_block "Running evaluation on '$results_location'" $colour_green
 
 python3 -c 'from benchbot_eval import Evaluator; \
-  Evaluator("'"$results_location"'", "'"$gt_abs"'", \
-  "'$scores_location'").evaluate()'
+  Evaluator(["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"], \
+  "'"$gt_abs"'", "'$scores_location'").evaluate()'
 result=$?
 if [ $result -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
