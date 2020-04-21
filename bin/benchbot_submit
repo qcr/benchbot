@@ -249,7 +249,7 @@ if [ -n "$selected_command" ]; then
 fi
 if [ -n "$selected_code_dir" ]; then
   echo \
-"    Directory of solution:       $selected_code_dir"
+"    Dockerfile to build:         $selected_code_dir/Dockerfile"
 fi
 if [ -n "$selected_out_location" ]; then
   echo \

@@ -68,6 +68,7 @@ colour_red='\033[0;31m'
 colour_green='\033[0;32m'
 colour_yellow='\033[0;33m'
 colour_blue='\033[0;34m'
+colour_magenta='\033[0;35m'
 colour_nc='\033[0m'
 
 function header_block() {

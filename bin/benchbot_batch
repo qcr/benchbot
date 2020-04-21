@@ -149,7 +149,7 @@ parse_out=$(getopt -o e:E:c:hn:p:st:vz --long \
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 evaluate=
-envs_file=
+envs_str=
 envs_list=
 cont_args=
 native_args=
@@ -159,7 +159,7 @@ zip=
 while true; do
   case "$1" in
     -e|--envs)
-      envs_list="$2" ; shift 2 ;;
+      envs_str="$2" ; shift 2 ;;
     -E|--envs-file)
       envs_file="$2" ; shift 2 ;;
     -h|--help)
@@ -185,17 +185,68 @@ while true; do
   esac
 done
 
-# Process envs & envs-file here (defer all other argument to the appropriate
-# scripts which use the values)
+# Process envs & envs-file here (defer all other argument evaluation to the
+# appropriate scripts which use the values)
+if [ ! -z "$envs_str" ] && [ ! -z "$envs_file" ]; then
+  echo "ERROR: Both '--envs' && '--envs-file' provided; please only proved 1!"
+  exit 1
+elif [ ! -z "$envs_str" ]; then
+  envs_list=(${envs_str//,/ })
+elif [ ! -z "$envs_file" ]; then
+  envs_list=($(cat "$envs_file" | tr '\n' ' ' | sed 's/[[:space:]]*$//'))
+fi
 
-printf "Received the following:\n"
-printf "\tevaluate: $evaluate\n"
-printf "\tenvs_file: $envs_file\n"
-printf "\tenvs_list: $envs_list\n"
-printf "\tcont_args: $cont_args\n"
-printf "\tnative_args: $native_args\n"
-printf "\tprefix: $prefix\n"
-printf "\ttask: $task\n"
-printf "\tzip: $zip\n"
+_ind="$(printf "%0.s " {1..8})"
+printf "\nUsing the following static settings for each environment:\n"
+printf "$_ind%-25s%s\n$_ind" "Selected task:" "${task:-None}"
+if [ -z "$native_args" ]; then
+  printf "%-25s%s\n" "Dockerfile to build:" "$cont_args/Dockerfile"
+else
+  printf "%-25s%s\n" "Command to execute:" "$native_args"
+fi
 
-printf "\n\nTODO the rest...\n"
+printf "\nIterating through the following environment list:\n$_ind"
+if [ -z "$envs_list" ]; then
+  printf "None\n"
+else
+  echo "${envs_list[@]}" | sed "s/ /\n$_ind/g" 
+fi
+
+printf "\nPerforming the following after all environments have been run:\n"
+printf "$_ind%-25s%s\n" "Create results *.zip:" \
+  "$([ -z "$zip" ] && echo "No" || echo "Yes")"
+printf "$_ind%-25s%s\n" "Evalute results batch:" \
+  "$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
+
+
+################################################################################
+############### Iterate over each of the requested environments ################
+################################################################################
+
+header_block "Iteratatively gathering results from each requested environment" \
+  $colour_magenta
+
+if [ -z "$envs_list" ]; then
+  echo "No environments provided; exiting."
+  exit 0
+fi
+
+for i in "${!envs_list[@]}"; do
+  echo "Running environment '${envs_list[$i]}' ..."
+  touch "${prefix}_$i.json"
+done
+
+################################################################################
+############################ Processing of results #############################
+################################################################################
+
+header_block "Processing results from batch" $colour_magenta
+
+if [ ! -z "$zip" ]; then
+  echo "Zipping up results ..."
+  touch "${prefix}_scores.zip"
+fi
+
+if [ ! -z "$evaluate" ]; then
+  echo "Evaluating results..."
+fi
