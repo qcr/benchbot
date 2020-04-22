@@ -142,7 +142,8 @@ fi
 ################# Run evaluation on the provided results file ##################
 ################################################################################
 
-header_block "Running evaluation on '$results_location'" $colour_green
+header_block "Running evaluation over ${#results_files[@]} input files" \
+  $colour_green
 
 python3 -c 'from benchbot_eval import Evaluator; \
   Evaluator(["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"], \
