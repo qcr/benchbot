@@ -199,8 +199,8 @@ function opt_list_envs() {
   done
   echo "
 The string is of the format ENV_NAME:VARIATION_NUMBER. Note when running the
-semantic change detection tasks you will have to specifiy a second variation
-using the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
+scene change detection tasks you will have to specifiy a second variation using
+the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
   "
 }
 
