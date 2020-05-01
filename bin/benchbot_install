@@ -607,7 +607,7 @@ chk_apicloned_fix=\
 'rm -rf '"$PATH_API"' && 
 git clone '"$GIT_API $PATH_API"' &&
 pushd '"$PATH_API"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
@@ -663,7 +663,7 @@ chk_examplescloned_fix=\
 'rm -rf '"$PATH_EXAMPLES"' && 
 git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
 pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_examplescloned_reboot=1
 
 chk_examplesuptodate_name='BenchBot examples up-to-date'
@@ -700,7 +700,7 @@ chk_evalcloned_fix=\
 'rm -rf '"$PATH_EVAL"' && 
 git clone '"$GIT_EVAL $PATH_EVAL"' &&
 pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='BenchBot evaluation up-to-date'
@@ -756,7 +756,7 @@ chk_batchcloned_fix=\
 'rm -rf '"$PATH_BATCHES"' && 
 git clone '"$GIT_BATCHES $PATH_BATCHES"' &&
 pushd '"$PATH_BATCHES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_batchcloned_reboot=1
 
 chk_batchuptodate_name='BenchBot batches up-to-date'
