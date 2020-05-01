@@ -553,6 +553,8 @@ checks_list_post=(
   "evalcloned"
   "evaluptodate"
   "evalinstalled"
+  "batchcloned"
+  "batchuptodate"
   "Integrating BenchBot with the host system:"
   "hostsavail"
   "symlinks"
@@ -739,6 +741,43 @@ chk_evalinstalled_fix=\
 'pushd '"$PATH_EVAL"' && 
 python3 -m pip install -e . && popd'
 chk_evalinstalled_reboot=1
+
+chk_batchcloned_name='BenchBot batches cloned'
+chk_batchcloned_pass='Yes'
+chk_batchcloned_fail='No'
+chk_batchcloned_check=\
+'git -C '"$PATH_BATCHES"' rev-parse --show-toplevel 2>/dev/null'
+chk_batchcloned_eval='[ "$check_result" == "$(realpath '"$PATH_BATCHES"')" ]'
+chk_batchcloned_issue="\
+  The BenchBot batches library contains definitions for environment batches.
+  Environment batches robustly select a set of environments that may be
+  required, like in challenges using BenchBot."
+chk_batchcloned_fix=\
+'rm -rf '"$PATH_BATCHES"' && 
+git clone '"$GIT_BATCHES $PATH_BATCHES"' &&
+pushd '"$PATH_BATCHES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+chk_batchcloned_reboot=1
+
+chk_batchuptodate_name='BenchBot batches up-to-date'
+chk_batchuptodate_pass='Up-to-date'
+chk_batchuptodate_fail='Outdated'
+chk_batchuptodate_check=\
+'[ -d '"$PATH_BATCHES"' ] && git -C '"$PATH_BATCHES"' rev-parse HEAD && 
+git ls-remote '"$GIT_BATCHES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_batchuptodate_eval='[ ! -z "$check_result" ] &&
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_batchuptodate_issue="\
+  The version of BenchBot batches on the host system is out of date. The
+  current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
+chk_batchuptodate_fix=\
+'pushd '"$PATH_BATCHES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
+chk_batchuptodate_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
 chk_hostsavail_pass='Found'
