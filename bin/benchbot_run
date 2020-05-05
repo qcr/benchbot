@@ -460,4 +460,5 @@ xhost -local:root > /dev/null
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker logs benchbot_supervisor
-docker attach benchbot_supervisor
+docker attach benchbot_supervisor --no-stdin &
+sleep 100

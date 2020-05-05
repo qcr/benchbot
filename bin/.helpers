@@ -117,8 +117,15 @@ function kill_benchbot() {
     header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
   fi
 
+  targets=$(pgrep -f "docker attach benchbot")
+  if [ $(echo "$targets" | wc -l) -gt 0 ]; then
+    echo -e "${colour_blue}Detached from the following containers:${colour_nc}"
+    echo "$targets"
+    for pid in "$targets"; do kill -9 $pid; done
+  fi
+
   targets=$(docker ps -q -f name='benchbot*')
-  if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then
+  if [ $(echo "$targets" | wc -l) -gt 0 ]; then
     echo -e "\n${colour_blue}Stopped the following containers:${colour_nc}"
     docker stop $targets
   fi
