@@ -99,6 +99,11 @@ _map_details_err=\
 poses (%d), & environment files (%d) found. This should never happen; please
 contact the developers."
 
+_simulator_err=\
+"ERROR: The BenchBot Simulator container has exited unexpectedly. This should 
+not happen unless something is installed incorrectly. Please see the detailed
+log below for details of the crash:"
+
 SELECTED_ENV=
 SELECTED_TASK=
 
@@ -457,8 +462,18 @@ name="benchbot_debug"
 ${docker_run//'$name'/$name} -it -d $DOCKER_TAG_SIMULATOR
 xhost -local:root > /dev/null
 
+# Print the output of the Supervisor, watching for failures
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker logs benchbot_supervisor
 docker attach benchbot_supervisor --no-stdin &
-sleep 100
+
+while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
+    [ ! -z $(docker ps -q -f 'name=benchbot_simulator') ]; do
+  sleep 1
+done
+
+if [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
+  echo -e "\n${colour_red}$_simulator_err${colour_nc}\n"
+  docker logs benchbot_simulator
+fi
