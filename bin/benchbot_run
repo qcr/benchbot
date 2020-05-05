@@ -101,8 +101,8 @@ contact the developers."
 
 _simulator_err=\
 "ERROR: The BenchBot Simulator container has exited unexpectedly. This should 
-not happen unless something is installed incorrectly. Please see the detailed
-log below for details of the crash:"
+not happen unless something is installed incorrectly. Please see the complete
+log below for a dump of the crash output:"
 
 SELECTED_ENV=
 SELECTED_TASK=
@@ -474,6 +474,7 @@ while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
 done
 
 if [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
+  header_block "BENCHBOT SIMULATOR ERROR" ${colour_red}
   echo -e "\n${colour_red}$_simulator_err${colour_nc}\n"
   docker logs benchbot_simulator
 fi
