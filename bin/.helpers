@@ -119,12 +119,12 @@ function kill_benchbot() {
 
   targets=$(docker ps -q -f name='benchbot*')
   if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then
-    echo "Stopped the following containers:"
+    echo -e "\n${colour_blue}Stopped the following containers:${colour_nc}"
     docker stop $targets
   fi
-  echo -e "\nDeleted the following containers:"
+  echo -e "\n${colour_blue}Deleted the following containers:${colour_nc}"
   docker system prune -f  # TODO this is still maybe a little too aggressive
-  echo -e "\nFinished cleaning!"
+  echo -e "\n${colour_blue}Finished cleaning!${colour_nc}"
 }
 
 function print_version_info() {

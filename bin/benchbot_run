@@ -393,7 +393,7 @@ selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
 # Print some configuration information
-echo -n "Running the BenchBot system with the following settings:
+echo -n -e "${colour_blue}Running the BenchBot system with the following settings:${colour_nc}
 
     Selected environment: $SELECTED_ENV
     Selected task:        $SELECTED_TASK
@@ -408,14 +408,15 @@ for i in "${!selected_map_paths[@]}"; do
   printf "%*s" 26
   printf "(starting @ %s)\n" "${selected_poses[$i]}"
 done
+echo ""
 
 # Create the network for BenchBot software stack
+echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
 docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
-echo -e "Created $DOCKER_NETWORK.\n"
 
 # Declare reusable parts to ensure our containers run with consistent settings
-xhost +local:root
+xhost +local:root > /dev/null
 ros_master_host="benchbot_roscore"
 docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
@@ -424,10 +425,12 @@ docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
+echo -e "\n${colour_blue}Starting container for BenchBot ROS:${colour_nc}"
 name="$ros_master_host"
 ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'roscore'
 
+echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
 name="benchbot_simulator"
 ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
@@ -438,6 +441,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin
   '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
   '"$( IFS=$':'; echo "${selected_poses[*]}")"
 
+echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
@@ -447,10 +451,11 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bi
   _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
   _simulator_address:='"${HOSTNAME_SIMULATOR}"':'"${PORT_SIMULATOR}"
 
+echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_SIMULATOR
 ${docker_run//'$name'/$name} -it -d $DOCKER_TAG_SIMULATOR
-xhost -local:root
+xhost -local:root > /dev/null
 
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
