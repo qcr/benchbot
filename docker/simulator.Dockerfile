@@ -7,7 +7,8 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
     /etc/apt/sources.list.d/ros-latest.list && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
     C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
-    apt update && apt install -y ros-melodic-desktop-full
+    apt update && apt install -y ros-melodic-desktop-full python-rosdep \
+    python-rosinstall python-rosinstall-generator python-wstool build-essential
 
 # Install Vulkan
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
@@ -34,7 +35,8 @@ ENV ISAAC_SDK_PATH /benchbot/isaac_sdk
 ADD --chown=benchbot:benchbot ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 
 # Build ROS & Isaac
-RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
+RUN sudo rosdep init && rosdep update && \
+    mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd && \
     pushd "$ISAAC_SDK_PATH" && \
     engine/build/scripts/install_dependencies.sh && bazel build ... && \
