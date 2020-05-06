@@ -192,6 +192,11 @@ function _expand_envs() {
   echo "$es" | sed -e 's/[[:space:]]*$//'
 }
 
+function exit_gracefully() {
+  kill_benchbot
+  exit ${1:-0}
+}
+
 function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
@@ -376,7 +381,7 @@ fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
-trap kill_benchbot EXIT
+trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Cache environment data (digging into a docker to view files is expensive...
@@ -478,3 +483,4 @@ if [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
   echo -e "\n${colour_red}$_simulator_err${colour_nc}\n"
   docker logs benchbot_simulator
 fi
+exit_gracefully 1

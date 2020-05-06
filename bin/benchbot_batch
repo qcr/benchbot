@@ -257,7 +257,7 @@ for i in "${!envs_list[@]}"; do
   # Run should never die normally, so treat this as an error
   if ! $(ps -p $run_pid &>/dev/null); then
     echo ""
-    kill -9 $submit_pid &> /dev/null
+    kill -TERM $submit_pid &> /dev/null
     wait $submit_pid
     header_block "Crash detected for environment: ${envs_list[$i]}" \
       ${colour_magenta}
@@ -273,14 +273,14 @@ for i in "${!envs_list[@]}"; do
   submit_result=$?
   if [ $submit_result -ne 0 ]; then
     echo ""
-    kill -9 $run_pid &> /dev/null
+    kill -TERM $run_pid &> /dev/null
     wait $run_pid
     printf "\n$submission_err\n" "${envs_list[$i]}"
     exit 1
   fi
 
   # All is well if we made it here (submit finished naturally)
-  kill -9 $run_pid &>/dev/null
+  kill -TERM $run_pid &>/dev/null
   wait $run_pid
 done
 
