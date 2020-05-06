@@ -131,7 +131,7 @@ function kill_benchbot() {
   fi
   echo -e "\n${colour_blue}Deleted the following containers:${colour_nc}"
   docker system prune -f  # TODO this is still maybe a little too aggressive
-  echo -e "\n${colour_blue}Finished cleaning!${colour_nc}"
+  echo -e "\n${colour_blue}Finished cleaning!${colour_nc}\n"
 }
 
 function print_version_info() {

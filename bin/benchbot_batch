@@ -139,10 +139,10 @@ FURTHER DETAILS:
     "
 
 run_err="ERROR: Running of environment '%s' failed with the error printed above.
-Qutting batch execution."
+Quitting batch execution."
 
 submission_err="ERROR: Submission for environment '%s' failed with the error printed
-above. Qutting batch execution."
+above. Quitting batch execution."
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -252,12 +252,17 @@ for i in "${!envs_list[@]}"; do
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
   done
+  sleep 5
 
   # Run should never die normally, so treat this as an error
   if ! $(ps -p $run_pid &>/dev/null); then
+    echo ""
     kill -9 $submit_pid &> /dev/null
     wait $submit_pid
-    printf "\n${colour_magenta}RUN COMMAND OUTPUT:${colour_nc}\n"
+    header_block "Crash detected for environment: ${envs_list[$i]}" \
+      ${colour_magenta}
+    printf "\n${colour_magenta}%s${colour_nc}\n" \
+      "Dumping output of 'benchbot_run' below:"
     cat /tmp/benchbot_run_out
     printf "\n$run_err\n" "${envs_list[$i]}"
     exit 1
@@ -266,8 +271,8 @@ for i in "${!envs_list[@]}"; do
   # Handle the result of failed submissions (looking for an error code)
   wait $submit_pid
   submit_result=$?
-  echo "SUBMIT IS DONE~?@?#"
   if [ $submit_result -ne 0 ]; then
+    echo ""
     kill -9 $run_pid &> /dev/null
     wait $run_pid
     printf "\n$submission_err\n" "${envs_list[$i]}"
