@@ -267,6 +267,7 @@ if [ -z "$envs_list" ]; then
   exit 0
 fi
 
+results_list=()
 for i in "${!envs_list[@]}"; do
   # Run the submission in the environment, waiting until something finishes
   header_block "Gathering results for environment: ${envs_list[$i]}" \
@@ -305,6 +306,7 @@ for i in "${!envs_list[@]}"; do
 
   # All is well if we made it here (submit finished naturally)
   kill_run
+  results_list+=("${prefix}_$i.json")
 done
 
 ################################################################################
@@ -314,14 +316,16 @@ done
 header_block "Processing results from batch" $colour_magenta
 
 if [ ! -z "$zip" ]; then
-  echo "Zipping up results ... "
-  rm -vf "${prefix}.zip" && zip "${prefix}.zip" "${prefix}_"[0-9]*.json
-  echo -e "Done\n"
+  echo -e "${colour_magenta}Zipping up results ... ${colour_nc}\n"
+  rm -vf "${prefix}.zip" && zip "${prefix}.zip" "${results_list[@]}"
+  echo ""
 fi
 
 if [ ! -z "$evaluate" ]; then
-  echo "Evaluating results..."
-  touch "${prefix}_scores.json"
+  echo -e "${colour_magenta}Evaluating results... ${colour_nc}"
+  benchbot_eval -o "${prefix}_scores.json" \
+    $([ -z "$zip" ] && echo "${results_list[@]}" || echo "${prefix}.zip")
+else
+  echo "Done."
 fi
 
-echo "Done."
