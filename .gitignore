@@ -3,6 +3,7 @@ id_rsa
 
 # We never want to track BenchBot components
 api/
+batches/
 eval/
 examples/
 ground_truth/

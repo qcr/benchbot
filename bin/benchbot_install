@@ -19,9 +19,6 @@ $URL_ROS $HOSTNAME_ROS
 $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
 
-# Command for install symlinks
-symlink_cmd='sudo ln -svf '"$(dirname $abs_path)"'/* '"$PATH_SYMLINKS"
-
 ################################################################################
 ########################### Definitions for messages ###########################
 ################################################################################
@@ -54,6 +51,10 @@ OPTION DETAILS:
             separated fields: MD5 checksum of environments *.zip, URL pointing
             to the environments *.zip, & plaintext version details. A general
             user should never need this flag.
+
+            Multiple sets of environments can be installed by providing this
+            flag multiple times:
+                benchbot_install -e https://envs1.com -e https://envs2.com
 
     -f,--force-clean
             Forces an install of the BenchBot software stack from scratch. It
@@ -552,6 +553,8 @@ checks_list_post=(
   "evalcloned"
   "evaluptodate"
   "evalinstalled"
+  "batchcloned"
+  "batchuptodate"
   "Integrating BenchBot with the host system:"
   "hostsavail"
   "symlinks"
@@ -604,7 +607,7 @@ chk_apicloned_fix=\
 'rm -rf '"$PATH_API"' && 
 git clone '"$GIT_API $PATH_API"' &&
 pushd '"$PATH_API"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
@@ -660,7 +663,7 @@ chk_examplescloned_fix=\
 'rm -rf '"$PATH_EXAMPLES"' && 
 git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
 pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_examplescloned_reboot=1
 
 chk_examplesuptodate_name='BenchBot examples up-to-date'
@@ -697,7 +700,7 @@ chk_evalcloned_fix=\
 'rm -rf '"$PATH_EVAL"' && 
 git clone '"$GIT_EVAL $PATH_EVAL"' &&
 pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && popd'
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
 chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='BenchBot evaluation up-to-date'
@@ -739,6 +742,43 @@ chk_evalinstalled_fix=\
 python3 -m pip install -e . && popd'
 chk_evalinstalled_reboot=1
 
+chk_batchcloned_name='BenchBot batches cloned'
+chk_batchcloned_pass='Yes'
+chk_batchcloned_fail='No'
+chk_batchcloned_check=\
+'git -C '"$PATH_BATCHES"' rev-parse --show-toplevel 2>/dev/null'
+chk_batchcloned_eval='[ "$check_result" == "$(realpath '"$PATH_BATCHES"')" ]'
+chk_batchcloned_issue="\
+  The BenchBot batches library contains definitions for environment batches.
+  Environment batches robustly select a set of environments that may be
+  required, like in challenges using BenchBot."
+chk_batchcloned_fix=\
+'rm -rf '"$PATH_BATCHES"' && 
+git clone '"$GIT_BATCHES $PATH_BATCHES"' &&
+pushd '"$PATH_BATCHES"' && 
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
+chk_batchcloned_reboot=1
+
+chk_batchuptodate_name='BenchBot batches up-to-date'
+chk_batchuptodate_pass='Up-to-date'
+chk_batchuptodate_fail='Outdated'
+chk_batchuptodate_check=\
+'[ -d '"$PATH_BATCHES"' ] && git -C '"$PATH_BATCHES"' rev-parse HEAD && 
+git ls-remote '"$GIT_BATCHES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_batchuptodate_eval='[ ! -z "$check_result" ] &&
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_batchuptodate_issue="\
+  The version of BenchBot batches on the host system is out of date. The
+  current version hash & latest version hash respectively are:
+
+"'$check_result'"
+
+  Please move to the latest version."
+chk_batchuptodate_fix=\
+'pushd '"$PATH_BATCHES"' && 
+git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
+chk_batchuptodate_reboot=1
+
 chk_hostsavail_name='BenchBot hosts available'
 chk_hostsavail_pass='Found'
 chk_hostsavail_fail='Not found'
@@ -766,10 +806,11 @@ chk_symlinks_check=\
   [ -e "'$PATH_SYMLINKS'/benchbot_run" ] &&
   [ -e "'$PATH_SYMLINKS'/benchbot_submit" ] &&
   [ -e "'$PATH_SYMLINKS'/benchbot_eval" ] &&
+  [ -e "'$PATH_SYMLINKS'/benchbot_batch" ] &&
   ls -l "'$PATH_SYMLINKS'/benchbot_"* | cut -d " " -f 9-11'
 chk_symlinks_eval='[ ! -z "$check_result" ]'
 chk_symlinks_issue="\
-  Symbolic links for each of the 3 BenchBot scripts were not found. If you do 
+  Symbolic links for each of the 5 BenchBot scripts were not found. If you do 
   not wish to add symbolic links, or would rather add the './bin/' directory to
   your PATH, please skip this step."
 chk_symlinks_fix=\
@@ -899,7 +940,7 @@ parse_out=$(getopt -o hb:e:fuv \
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_skip=
-envs_url=$URL_ENVS_INFO_DEFAULT
+envs_urls=()
 while true; do
   case "$1" in
     -h|--help)
@@ -909,8 +950,7 @@ while true; do
       BRANCH_DEFAULT="$2"; shift 2
       echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -e|--envs-url)
-      envs_url="$2"; echo "TODO envs_url untested & password unimplemented..."
-      shift 2 ;;
+      envs_urls+=("$2"); shift 2 ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
     -u|--uninstall)
@@ -925,6 +965,13 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+
+# Use the default environments URL if none was provided, & sort them so some of
+# our Docker caching & env checking later on has an easier time
+if [ -z "$envs_urls" ]; then
+  envs_urls=("${URLS_ENVS_INFO_DEFAULT[@]}")
+fi
+envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1002,21 +1049,30 @@ echo -e "\t\t$benchbot_api_hash."
 
 # Get md5sum of the latest from the provided envs_url
 echo -e "\nFetching md5sum & URL for latest version of environments ... "
-_envs_latest_info=$(is_latest_benchbot_envs | latest_version_info)
-benchbot_envs_md5sum=$(echo "$_envs_latest_info" | cut -d' ' -f1)
-benchbot_envs_url=$(echo "$_envs_latest_info" | cut -d' ' -f2)
-if [ -z "$benchbot_envs_md5sum" ] || \
-    [[ ! "$benchbot_envs_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-  echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
-  echo "${envs_err/'$envs_url'/$envs_url}"
-  exit 1
-elif [ -z "$benchbot_envs_url" ] || \
-    [[ ! "$benchbot_envs_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-  echo -e "\n\nERROR: Failed to fetch valid URL for environments"
-  echo "${envs_err/'$envs_url'/$envs_url}"
-  exit 1
-fi
-echo -e "\t\tDone."
+benchbot_envs_md5sums=()
+benchbot_envs_urls=()
+for i in "${!envs_urls[@]}"; do
+  u="${envs_urls[$i]}"
+  echo -e "\t$u ... "
+
+  _info=$(is_latest_benchbot_envs "$u" "$i" | latest_version_info)
+  _md5sum=$(echo "$_info" | cut -d ' ' -f1)
+  _url=$(echo "$_info" | cut -d ' ' -f2)
+  if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
+    echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
+    echo "${envs_err/'$envs_url'/$u}"
+    exit 1
+  elif [ -z "$_url" ] || \
+      [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
+    echo -e "\n\nERROR: Failed to fetch valid URL for environments"
+    echo "${envs_err/'$envs_url'/$u}"
+    exit 1
+  fi
+
+  benchbot_envs_md5sums+=("$_md5sum")
+  benchbot_envs_urls+=("$_url")
+  echo -e "\t\tDone."
+done
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
@@ -1052,8 +1108,9 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-  --build-arg BENCHBOT_ENVS_MD5SUM="${benchbot_envs_md5sum}" \
-  --build-arg BENCHBOT_ENVS_URL="${benchbot_envs_url}" \
+  --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
+  --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
+  --build-arg BENCHBOT_ENVS_SRCS="${envs_urls[*]}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
@@ -1068,9 +1125,11 @@ fi
 
 # Pull out ground truth files from the simulator
 rm -rf "$PATH_GROUND_TRUTH"
-location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
-  'echo "$BENCHBOT_ENVS_PATH/'$FILENAME_ENV_GROUND_TRUTH'"')
-docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+for i in "${!envs_urls[@]}"; do
+  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+    'echo "$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"')
+  docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+done
 
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \

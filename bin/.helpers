@@ -15,9 +15,10 @@ FILENAME_ENV_GROUND_TRUTH=".benchbot_object_maps"
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
 GIT_API="https://github.com/RoboticVisionOrg/benchbot_api"
+GIT_BATCHES="https://github.com/RoboticVisionOrg/benchbot_batches"
+GIT_BENCHBOT="https://github.com/RoboticVisionOrg/benchbot"
 GIT_EVAL="https://github.com/RoboticVisionOrg/benchbot_eval"
 GIT_EXAMPLES="https://github.com/RoboticVisionOrg/benchbot_examples"
-GIT_BENCHBOT="https://github.com/RoboticVisionOrg/benchbot"
 GIT_SIMULATOR="https://github.com/RoboticVisionOrg/benchbot_simulator"
 GIT_SUPERVISOR="https://github.com/RoboticVisionOrg/benchbot_supervisor"
 
@@ -30,6 +31,7 @@ MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
 PATH_ROOT="$(realpath ..)"
 
 PATH_API="$PATH_ROOT/api"
+PATH_BATCHES="$PATH_ROOT/batches"
 PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
 PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/docker/simulator.Dockerfile"
 PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
@@ -55,7 +57,10 @@ URL_SUPERVISOR="172.20.0.102"
 # - md5sum of latest env_*.zip
 # - URL for latest env_*.zip -
 # - timestamp of latest (field is optional / not used)
-URL_ENVS_INFO_DEFAULT="https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download"
+URLS_ENVS_INFO_DEFAULT=(
+  "https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download" 
+  "https://cloudstor.aarnet.edu.au/plus/s/tqz36vODDnOsJpQ/download"
+)
 
 ################################################################################
 ################## Coloured terminal output & heading blocks ###################
@@ -65,6 +70,7 @@ colour_red='\033[0;31m'
 colour_green='\033[0;32m'
 colour_yellow='\033[0;33m'
 colour_blue='\033[0;34m'
+colour_magenta='\033[0;35m'
 colour_nc='\033[0m'
 
 function header_block() {
@@ -111,14 +117,21 @@ function kill_benchbot() {
     header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
   fi
 
+  targets=$(pgrep -f "docker attach benchbot")
+  if [ $(echo "$targets" | wc -l) -gt 0 ]; then
+    echo -e "${colour_blue}Detached from the following containers:${colour_nc}"
+    echo "$targets"
+    for pid in "$targets"; do kill -9 $pid; done
+  fi
+
   targets=$(docker ps -q -f name='benchbot*')
-  if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then
-    echo "Stopped the following containers:"
+  if [ $(echo "$targets" | wc -l) -gt 0 ]; then
+    echo -e "\n${colour_blue}Stopped the following containers:${colour_nc}"
     docker stop $targets
   fi
-  echo -e "\nDeleted the following containers:"
+  echo -e "\n${colour_blue}Deleted the following containers:${colour_nc}"
   docker system prune -f  # TODO this is still maybe a little too aggressive
-  echo -e "\nFinished cleaning!"
+  echo -e "\n${colour_blue}Finished cleaning!${colour_nc}\n"
 }
 
 function print_version_info() {
@@ -176,12 +189,14 @@ function is_latest_benchbot_examples() {
 }
 
 function is_latest_benchbot_envs() {
+  # Requires a URL as $1 & index number as $2
   # TODO this should loudly error if there are any URL failures!
-  url=${1:-$URL_ENVS_INFO_DEFAULT}
   current=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
-    'echo -n "$BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_URL"')
-  latest=$(wget -qO- "$url" | cut -d ' ' -f 1,2)
+    '_md5s=($BENCHBOT_ENVS_MD5SUMS) && _urls=($BENCHBOT_ENVS_URLS) && \
+    echo -n "${_md5s['$2']} ${_urls['$2']}"')
+  latest=$(wget -qO- "$1" | cut -d ' ' -f 1,2)
+  echo "$2"
   echo "Current BenchBot Environments: $current"
   echo "Latest BenchBot Environments: $latest"
   [ "$current" == "$latest" ]
@@ -251,8 +266,20 @@ updates."
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Environments version ...\t"
-  is_latest_benchbot_envs > /dev/null
-  environments_valid=$?
+  _urls=($(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+    'echo -n "$BENCHBOT_ENVS_SRCS"'))
+  if [ -z "$_urls" ]; then
+    environments_valid=1
+  else
+    environments_valid=0
+    for i in "${!_urls[@]}"; do
+      if [ $environments_valid -eq 0 ]; then
+        is_latest_benchbot_envs "${_urls[$i]}" "$i" > /dev/null
+        environments_valid=$?
+      fi
+    done
+  fi
   [ $environments_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \

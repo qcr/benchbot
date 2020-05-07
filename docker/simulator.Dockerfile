@@ -7,7 +7,8 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
     /etc/apt/sources.list.d/ros-latest.list && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
     C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
-    apt update && apt install -y ros-melodic-desktop-full
+    apt update && apt install -y ros-melodic-desktop-full python-rosdep \
+    python-rosinstall python-rosinstall-generator python-wstool build-essential
 
 # Install Vulkan
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
@@ -34,23 +35,30 @@ ENV ISAAC_SDK_PATH /benchbot/isaac_sdk
 ADD --chown=benchbot:benchbot ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
 
 # Build ROS & Isaac
-RUN mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
+RUN sudo rosdep init && rosdep update && \
+    mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd && \
     pushd "$ISAAC_SDK_PATH" && \
     engine/build/scripts/install_dependencies.sh && bazel build ... && \
     bazel build ...
 
 # Install environments from a *.zip containing pre-compiled binaries
-ARG BENCHBOT_ENVS_MD5SUM
-ENV BENCHBOT_ENVS_MD5SUM=${BENCHBOT_ENVS_MD5SUM}
-ARG BENCHBOT_ENVS_URL
-ENV BENCHBOT_ENVS_URL=${BENCHBOT_ENVS_URL}
+ARG BENCHBOT_ENVS_MD5SUMS
+ENV BENCHBOT_ENVS_MD5SUMS=${BENCHBOT_ENVS_MD5SUMS}
+ARG BENCHBOT_ENVS_URLS
+ENV BENCHBOT_ENVS_URLS=${BENCHBOT_ENVS_URLS}
+ARG BENCHBOT_ENVS_SRCS
+ENV BENCHBOT_ENVS_SRCS=${BENCHBOT_ENVS_SRCS}
 ENV BENCHBOT_ENVS_PATH /benchbot/benchbot_envs
-RUN echo "Downloading environments ... " && wget -q $BENCHBOT_ENVS_URL -O benchbot_envs.zip && \
-    test $BENCHBOT_ENVS_MD5SUM = $(md5sum benchbot_envs.zip | cut -d' ' -f1) && \
-    echo "Extracting environments ... " && unzip -q benchbot_envs.zip && \
-    rm -v benchbot_envs.zip && mv LinuxNoEditor $BENCHBOT_ENVS_PATH
-ENV BENCHBOT_ENVS_MD5SUM $BENCHBOT_ENVS_MD5SUM
+RUN _urls=($BENCHBOT_ENVS_URLS) && _md5s=($BENCHBOT_ENVS_MD5SUMS) && \
+    _srcs=($BENCHBOT_ENVS_SRCS) && mkdir benchbot_envs && pushd benchbot_envs && \
+    for i in "${!_urls[@]}"; do \
+        echo "Installing environments from '${_srcs[$i]}':" && \
+        echo "Downloading ... " && wget -q "${_urls[$i]}" -O "$i".zip && \
+        test "${_md5s[$i]}" = $(md5sum "$i".zip | cut -d ' ' -f1) && \
+        echo "Extracting ... " && unzip -q "$i".zip && rm -v "$i".zip && \
+        mv LinuxNoEditor "$i" || exit 1; \
+    done
 
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SIMULATOR_GIT

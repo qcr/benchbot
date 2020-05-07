@@ -93,4 +93,4 @@ The BenchBot software stack is split into a number of standalone components, eac
 ## Further information
 
 - **[FAQs](https://github.com/RoboticVisionOrg/benchbot/wiki/FAQs):** Wiki page where answers to frequently asked questions & resolutions to common issues will be provided
-- **[Semantic SLAM Tutorial](https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet):** a tutorial that steps through creating a semantic SLAM system in BenchBot that utilises the 3D object detector [VoteNet](https://github.com/facebookresearch/votenet)
+- **[Semantic SLAM Tutorial](https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet):** a tutorial stepping through creating a semantic SLAM system in BenchBot that utilises the 3D object detector [VoteNet](https://github.com/facebookresearch/votenet)

@@ -56,8 +56,8 @@ USAGE:
 
     Submit, compile into a containerised environment, run the container on your
     machine, & evaluate the results which are also saved to 'my_results.json':
-        $(basename "$0") [-e|--evaluate-results] \
-          [-r|--results-location] 'my_results.json' \
+        $(basename "$0") [-e|--evaluate-results] \\
+          [-r|--results-location] 'my_results.json' \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
  
 OPTION DETAILS:
@@ -121,6 +121,9 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+mode_selection_err="ERROR: No valid submission mode was selected (-n|-c|-s). Please see 
+'benchbot_submit --help' for further details."
+
 SELECTED_MODE=
 SELECTED_OPTIONS=
 
@@ -182,7 +185,8 @@ while true; do
   esac
 done
 if [ -z $SELECTED_MODE ]; then
-  echo "$usage_text"; exit 0
+  echo "$mode_selection_err"
+  exit 1
 fi
 
 # Bail if we have received mode options we can't do anything with
@@ -249,7 +253,7 @@ if [ -n "$selected_command" ]; then
 fi
 if [ -n "$selected_code_dir" ]; then
   echo \
-"    Directory of solution:       $selected_code_dir"
+"    Dockerfile to build:         $selected_code_dir/Dockerfile"
 fi
 if [ -n "$selected_out_location" ]; then
   echo \
