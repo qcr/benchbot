@@ -82,10 +82,10 @@ OPTION DETAILS:
 
     -e, --envs
             A comma-separated list of environments for $(basename "$0") to
-            iterate over (e.g. \"house:1,minroom:2,office:3\"). See '-e, --env'
-            in 'benchbot_run --help' for further details of specifying valid
-            environments, & 'benchbot_run --list-envs' for a complete list of
-            supported environments.
+            iterate over (e.g. \"house:1,miniroom:2,office:3\"). See the
+            '-e, --env' arg in 'benchbot_run --help' for further details of
+            specifying valid environments, & 'benchbot_run --list-envs' for a
+            complete list of supported environments.
 
     -E, --envs-file
             A file specifying a single valid environment name on each line. The

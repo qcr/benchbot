@@ -66,6 +66,25 @@ OPTION DETAILS:
             not provided, results are saved as 'scores.json' in the current
             directory.
 
+    --required-envs
+            A comma-separated list of environments required for evaluation
+            (e.g. \"house:1,miniroom:2,office:3\"). Evaluation will not run
+            unless a result is supplied for each of these environments. See the
+            '-e, --env' arg in 'benchbot_run --help' for further details of
+            specifying valid environments, & 'benchbot_run --list-envs' for a
+            complete list of supported environments.
+
+    --required-envs-file
+            A file specifying a single required environment name on each line.
+            Evaluation will not run unless a result is supplied for each of
+            these environments.  See '--required-envs' above for further
+            details on valid environment specifications.
+
+    --required-task
+            Forces the script to only accept results for the supplied task
+            name. A list of supported task names can be found by running
+            'benchbot_run --list-tasks'.
+
     -v,--version
             Print version info for current installation.
 
@@ -96,10 +115,14 @@ location ('%s'). This should be created as part of the
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o ho:v --long help,output-location:,version -n \
-  "$(basename "$0")" -- "$@")
+long_args='help,output-location:,required-envs:,required-envs-file:,\
+required-task:,version'
+parse_out=$(getopt -o ho:v --long "$long_args" -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+required_envs=
+required_envs_file=
+required_task=
 results_files=
 scores_location='scores.json'
 while true; do
@@ -107,7 +130,13 @@ while true; do
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     -o|--output-location)
-      scores_location="$2"; shift 2;;
+      scores_location="$2"; shift 2 ;;
+    --required-envs)
+      required_envs=(${2//,/ }); shift 2 ;;
+    --required-envs-file)
+      required_envs_file="$2"; shift 2 ;;
+    --required-task)
+      required_task="$2"; shift 2 ;;
     -v|--version)
       print_version_info; exit ;;
     --)
@@ -116,6 +145,15 @@ while true; do
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+
+# Accept only --required-envs or --required-envs-file
+if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
+  echo "ERROR: Both '--required-envs' && '--required-envs-file' provided!"
+  exit 1
+elif [ ! -z "$required_envs_file" ]; then
+  required_envs=($(cat "$required_envs_file" | tr '\n' ' ' | \
+        sed 's/[[:space:]]*$//'))
+fi
 
 # Bail if any of the results files don't exist, or we got no results files
 if [ -z "$results_files" ]; then
@@ -145,9 +183,22 @@ fi
 header_block "Running evaluation over ${#results_files[@]} input files" \
   $colour_green
 
+# Form some strings of python code from our input arguments
+python_results='["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"]'
+python_req_task=
+if [ ! -z "$required_task" ]; then
+  python_req_task=', required_task="'"$required_task"'"'
+fi
+python_req_envs=
+if [ ! -z "$required_envs" ]; then
+  python_req_envs=', required_envs=["'$(echo "${required_envs[@]}" | \
+    sed 's/ /","/g')'"]'
+fi
+
+# Run the python command & exit
 python3 -c 'from benchbot_eval import Evaluator; \
-  Evaluator(["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"], \
-  "'"$gt_abs"'", "'$scores_location'").evaluate()'
+  Evaluator('"$python_results"', "'"$gt_abs"'", "'$scores_location'"\
+  '"$python_req_task$python_req_envs"').evaluate()'
 result=$?
 if [ $result -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
