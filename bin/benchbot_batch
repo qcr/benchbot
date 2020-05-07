@@ -144,6 +144,30 @@ Quitting batch execution."
 submission_err="ERROR: Submission for environment '%s' failed with the error printed
 above. Quitting batch execution."
 
+run_pid=
+function kill_run() {
+  if [ ! -z $run_pid ]; then
+    kill -TERM $run_pid &> /dev/null
+    wait $run_pid
+    run_pid=
+  fi
+}
+
+submit_pid=
+function kill_submit() {
+  if [ ! -z $submit_pid ]; then
+    kill -TERM $submit_pid &> /dev/null
+    wait $submit_pid
+    submit_pid=
+  fi
+}
+
+function exit_gracefully() {
+  kill_run
+  kill_submit
+  exit ${1:-0}
+}
+
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
@@ -203,6 +227,8 @@ fi
 ####################### Print settings prior to running ########################
 ################################################################################
 
+trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
+
 header_block "Dumping settings before running batch" $colour_magenta
 
 _ind="$(printf "%0.s " {1..8})"
@@ -257,8 +283,7 @@ for i in "${!envs_list[@]}"; do
   # Run should never die normally, so treat this as an error
   if ! $(ps -p $run_pid &>/dev/null); then
     echo ""
-    kill -TERM $submit_pid &> /dev/null
-    wait $submit_pid
+    kill_submit
     header_block "Crash detected for environment: ${envs_list[$i]}" \
       ${colour_magenta}
     printf "\n${colour_magenta}%s${colour_nc}\n" \
@@ -273,15 +298,13 @@ for i in "${!envs_list[@]}"; do
   submit_result=$?
   if [ $submit_result -ne 0 ]; then
     echo ""
-    kill -TERM $run_pid &> /dev/null
-    wait $run_pid
+    kill_run
     printf "\n$submission_err\n" "${envs_list[$i]}"
     exit 1
   fi
 
   # All is well if we made it here (submit finished naturally)
-  kill -TERM $run_pid &>/dev/null
-  wait $run_pid
+  kill_run
 done
 
 ################################################################################
