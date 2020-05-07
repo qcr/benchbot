@@ -89,6 +89,7 @@ The BenchBot software stack is split into a number of standalone components, eac
 - **[benchbot_api](https://github.com/RoboticVisionOrg/benchbot_api):** user-facing Python interface to the BenchBot system, allowing the user to control simulated or real robots in simulated or real world environments through simple commands
 - **[benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples):** a series of example submissions that use the API to drive a robot interactively, autonomously step through environments, evaluate dummy results, attempt semantic slam, & more
 - **[benchbot_eval](https://github.com/RoboticVisionOrg/benchbot_eval):** Python library for evaluating the performance in a task, based on the results produced by a submission
+- **[benchbot_batches](https://github.com/RoboticVisionOrg/benchbot_batches):** Collection of static environment lists for each of the tasks, used to produce repeatable result sets & consistent evaluation requirements
 
 ## Further information
 
