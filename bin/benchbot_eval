@@ -21,7 +21,7 @@ file/s.
 
 Evaluation is performed on a set of results which are gathered from a set of
 environments. For example, you can evaluate your algorithm just in house:1, or
-evaluate the performance wholistically in all 5 of the house scenes. As such,
+evaluate the performance holistically in all 5 of the house scenes. As such,
 the following modes are supported by benchbot_eval:
 
     - Providing a single JSON results file (the score in this environment will

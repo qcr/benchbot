@@ -80,9 +80,37 @@ Getting a solution up & running with BenchBot is as simple as 1,2,3:
 
 See [benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples) for more examples & further details of how to get up & running with the BenchBot software stack.
 
+## Power tools for autonomous algorithm evaluation
+
+Once you are confident your algorithm is a solution to the chosen task, the BenchBot software stack's power tools allow you to comprehensively explore your algorithm's performance. You can autonomously run your algorithm over multiple environments, & evaluate it holistically to produce a single summary statistic of your algorithm's performance:
+
+1. Use the `benchbot_batch` script to autonomously run your algorithm over a number of environments & produce a set of results. The script has a number of toggles available to customise the process. See `benchbot_batch --help` for full details. Here's a basic example for autonomously running your `semantic_slam:active:ground_truth` algorithm over 3 environments:
+    ```
+    u@pc:~$ benchbot_batch --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --native python <MY_ALGORITHM>
+    ```
+    Alternatively, you can use one of the pre-defined environment batches included through [benchbot_batches](https://github.com/roboticvisionorg/benchbot_batches):
+    ```
+    u@pc:~$ benchbot_batch --task semantic_slam:active:ground_truth --envs-file <BENCHBOT_ROOT>/batches/develop/sslam_active_gt --native python <MY_ALGORITHM>
+    ```
+    Additionally, you can request a results ZIP to be created & even create an overall evaluation score at the end of the batch:
+    ```
+    u@pc:~$ benchbot_batch --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --zip --score-results --native python <MY_ALGORITHM>
+    ```
+    Lastly, both native & containerised submissions are supported exactly as in `benchbot_submit`:
+    ```
+    u@pc:~$ benchbot_batch --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --containerised <MY_ALGORITHM_FOLDER>
+    ```
+2. The holistic evaluation performed internally by `benchbot_batch` above, can also be directly called through the `benchbot_eval` script. The script supports single result files, multiple results files, or a ZIP of multiple results files. See `benchbot_eval --help` for full details. Below are examples calling `benchbot_eval` with a series of results & a ZIP of results respectively:
+    ```
+    u@pc:~$ benchbot_eval -o my_jsons_scores result_1.json result_2.json result_3.json
+    ```
+    ```
+    u@pc:~$ benchbot_eval -o my_zip_scores results.zip
+    ```
+
 ## Components of the BenchBot software stack
 
-The BenchBot software stack is split into a number of standalone components, each with their own Github repository & documentation. This repository glues them all together for you into a working system. The components of the stack are:
+The BenchBot software stack is split into a number of standalone components, each with their own GitHub repository & documentation. This repository glues them all together for you into a working system. The components of the stack are:
 
 - **[benchbot_simulator](https://github.com/RoboticVisionOrg/benchbot_simulator):** a realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
 - **[benchbot_supervisor](https://github.com/RoboticVisionOrg/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces & the low-level ROS components of a simulator or real robot
