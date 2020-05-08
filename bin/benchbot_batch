@@ -67,7 +67,6 @@ USAGE:
         office:4:5
         company:5:1
 
- 
 OPTION DETAILS:
 
     -h,--help             
@@ -128,6 +127,12 @@ OPTION DETAILS:
     -v,--version
             Print version info for current installation.
 
+    -z,--zip
+            Produce a ZIP file of the results once all environments in the
+            batch have been run. The ZIP file will be named using the value
+            provided by the '-p, --prefix' argument (i.e. 'PREFIX.zip'), with
+            the default prefix '$DEFAULT_PREFIX' used if none is provided.
+
 FURTHER DETAILS:
 
     See the README of this repository for further details. For further details
@@ -178,7 +183,7 @@ function exit_gracefully() {
 
 # Safely parse options input
 parse_out=$(getopt -o e:E:c:hn:p:st:vz --long \
-  envs,envs-file,containerised,help,native,prefix,score-results,task,version,zip \
+  envs:,envs-file:,containerised:,help,native:,prefix:,score-results,task:,version,zip \
   -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
