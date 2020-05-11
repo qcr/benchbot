@@ -344,7 +344,8 @@ fi
 
 if [ ! -z "$evaluate" ]; then
   echo -e "${colour_magenta}Evaluating results... ${colour_nc}"
-  benchbot_eval -o "${prefix}_scores.json" \
+  benchbot_eval -o "${prefix}_scores.json" --required-task "$task" \
+    --required-envs $(echo "${envs_list[@]}" | tr ' ' ',') \
     $([ -z "$zip" ] && echo "${results_list[@]}" || echo "${prefix}.zip")
 else
   echo "Done."
