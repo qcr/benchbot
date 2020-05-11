@@ -35,7 +35,7 @@ the following modes are supported by benchbot_eval:
     archive)
 
 Note: results must be of the format specified in the README here:
-    https://github.com/RoboticVisionOrg/benchbot_eval#the-results-format
+    https://github.com/roboticvisionorg/benchbot_eval#the-results-format
 The evaluation will error if missing any required fields (in particular the
 fields describing task type).
 

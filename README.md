@@ -32,7 +32,7 @@ Having a system that meets the above hardware requirements is all that is requir
 Installation is simple:
 
 ```
-u@pc:~$ git clone https://github.com/RoboticVisionOrg/benchbot && cd benchbot
+u@pc:~$ git clone https://github.com/roboticvisionorg/benchbot && cd benchbot
 u@pc:~$ ./install
 ```
 
@@ -78,7 +78,7 @@ Getting a solution up & running with BenchBot is as simple as 1,2,3:
     u@pc:~$ benchbot_submit --evaluate-results --native python <MY_SOLUTION>
     ```
 
-See [benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples) for more examples & further details of how to get up & running with the BenchBot software stack.
+See [benchbot_examples](https://github.com/roboticvisionorg/benchbot_examples) for more examples & further details of how to get up & running with the BenchBot software stack.
 
 ## Power tools for autonomous algorithm evaluation
 
@@ -112,14 +112,14 @@ Once you are confident your algorithm is a solution to the chosen task, the Benc
 
 The BenchBot software stack is split into a number of standalone components, each with their own GitHub repository & documentation. This repository glues them all together for you into a working system. The components of the stack are:
 
-- **[benchbot_simulator](https://github.com/RoboticVisionOrg/benchbot_simulator):** a realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
-- **[benchbot_supervisor](https://github.com/RoboticVisionOrg/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces & the low-level ROS components of a simulator or real robot
-- **[benchbot_api](https://github.com/RoboticVisionOrg/benchbot_api):** user-facing Python interface to the BenchBot system, allowing the user to control simulated or real robots in simulated or real world environments through simple commands
-- **[benchbot_examples](https://github.com/RoboticVisionOrg/benchbot_examples):** a series of example submissions that use the API to drive a robot interactively, autonomously step through environments, evaluate dummy results, attempt semantic slam, & more
-- **[benchbot_eval](https://github.com/RoboticVisionOrg/benchbot_eval):** Python library for evaluating the performance in a task, based on the results produced by a submission
-- **[benchbot_batches](https://github.com/RoboticVisionOrg/benchbot_batches):** Collection of static environment lists for each of the tasks, used to produce repeatable result sets & consistent evaluation requirements
+- **[benchbot_simulator](https://github.com/roboticvisionorg/benchbot_simulator):** a realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
+- **[benchbot_supervisor](https://github.com/roboticvisionorg/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces & the low-level ROS components of a simulator or real robot
+- **[benchbot_api](https://github.com/roboticvisionorg/benchbot_api):** user-facing Python interface to the BenchBot system, allowing the user to control simulated or real robots in simulated or real world environments through simple commands
+- **[benchbot_examples](https://github.com/roboticvisionorg/benchbot_examples):** a series of example submissions that use the API to drive a robot interactively, autonomously step through environments, evaluate dummy results, attempt semantic slam, & more
+- **[benchbot_eval](https://github.com/roboticvisionorg/benchbot_eval):** Python library for evaluating the performance in a task, based on the results produced by a submission
+- **[benchbot_batches](https://github.com/roboticvisionorg/benchbot_batches):** Collection of static environment lists for each of the tasks, used to produce repeatable result sets & consistent evaluation requirements
 
 ## Further information
 
-- **[FAQs](https://github.com/RoboticVisionOrg/benchbot/wiki/FAQs):** Wiki page where answers to frequently asked questions & resolutions to common issues will be provided
-- **[Semantic SLAM Tutorial](https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet):** a tutorial stepping through creating a semantic SLAM system in BenchBot that utilises the 3D object detector [VoteNet](https://github.com/facebookresearch/votenet)
+- **[FAQs](https://github.com/roboticvisionorg/benchbot/wiki/FAQs):** Wiki page where answers to frequently asked questions & resolutions to common issues will be provided
+- **[Semantic SLAM Tutorial](https://github.com/roboticvisionorg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet):** a tutorial stepping through creating a semantic SLAM system in BenchBot that utilises the 3D object detector [VoteNet](https://github.com/facebookresearch/votenet)
