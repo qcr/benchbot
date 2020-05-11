@@ -1019,9 +1019,10 @@ done
 
 printf "\n\n"
 clear_stdin
-read -n 1 -r -p \
-  "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
-  prompt
+s="All requirements & dependencies fulfilled. Docker containers for the BenchBot\n"
+s+="software stack will now be built (which may take anywhere from a few seconds\n"
+s+="to many hours). Would you like to proceed (y,N)? "
+read -n 1 -r -e -p "$(echo -e "$s")" prompt
 printf "\n"
 if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
   printf "Proceeding with install ... \n\n"
