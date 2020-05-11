@@ -148,7 +148,9 @@ done
 
 # Accept only --required-envs or --required-envs-file
 if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
-  echo "ERROR: Both '--required-envs' && '--required-envs-file' provided!"
+  printf "${colour_red}%s\n%s${colour_nc}\n" \
+    "ERROR: Both '--required-envs' && '--required-envs-file' provided; please " \
+    "only provide 1!"
   exit 1
 elif [ ! -z "$required_envs_file" ]; then
   required_envs=($(cat "$required_envs_file" | tr '\n' ' ' | \
@@ -157,12 +159,12 @@ fi
 
 # Bail if any of the results files don't exist, or we got no results files
 if [ -z "$results_files" ]; then
-  printf "${_missing_results_err}\n"
+  printf "${colour_red}${_missing_results_err}${colour_nc}\n"
   exit 1
 else
   for r in "${results_files[@]}"; do
     if [ ! -f "$r" ]; then
-      printf "${_invalid_location_err}\n" "$r"
+      printf "${colour_red}${_invalid_location_err}${colour_nc}\n" "$r"
       exit 1
     fi
   done
@@ -172,7 +174,7 @@ fi
 # the script was run...)
 gt_abs=$(realpath "$PATH_GROUND_TRUTH")
 if [ ! -d "$gt_abs" ]; then
-  printf "${_ground_truth_err}\n" "$gt_abs"
+  printf "${colour_red}${_ground_truth_err}${colour_nc}\n" "$gt_abs"
   exit 1
 fi
 

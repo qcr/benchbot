@@ -224,7 +224,8 @@ done
 # Process envs & envs-file here (defer all other argument evaluation to the
 # appropriate scripts which use the values)
 if [ ! -z "$envs_str" ] && [ ! -z "$envs_file" ]; then
-  echo "ERROR: Both '--envs' && '--envs-file' provided; please only proved 1!"
+  printf "${colour_red}%s${colour_nc}\n" \
+    "ERROR: Both '--envs' && '--envs-file' provided; please only provide 1!"
   exit 1
 elif [ ! -z "$envs_str" ]; then
   envs_list=(${envs_str//,/ })
@@ -300,7 +301,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
     printf "\n${colour_magenta}%s${colour_nc}\n" \
       "Dumping output of 'benchbot_run' below:"
     cat /tmp/benchbot_run_out
-    printf "\n$run_err\n" "${envs_list[$i]}"
+    printf "\n${colour_red}$run_err${colour_nc}\n" "${envs_list[$i]}"
     exit 1
   fi
 
@@ -310,7 +311,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
   if [ $submit_result -ne 0 ]; then
     echo ""
     kill_run
-    printf "\n$submission_err\n" "${envs_list[$i]}"
+    printf "\n${colour_red}$submission_err${colour_nc}\n" "${envs_list[$i]}"
     exit 1
   fi
 

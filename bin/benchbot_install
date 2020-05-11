@@ -80,21 +80,21 @@ FURTHER DETAILS:
     "
 
 build_err="\
-  Ensure that Docker has been installed correctly AND that you can run Docker 
-  WITHOUT root access (there is no need to ever run Docker with root). See 
-  https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
-  fix this. 
+Ensure that Docker has been installed correctly AND that you can run Docker 
+WITHOUT root access (there is no need to ever run Docker with root). See 
+https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
+fix this. 
 
-  If the error is more generic, please contact us so that we can update our
-  pre-install host system checks.
+If the error is more generic, please contact us so that we can update our
+pre-install host system checks.
 "
 envs_err="\
-  Ensure that the URL: 
-    "'$envs_url'"
-  points to a single-line text file with whitespace-separated fields. The first 
-  field contains the md5sum of the latest envs_*.zip, second field is URL of 
-  envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
-  internet connection also helps!
+Ensure that the URL: 
+  "'$envs_url'"
+points to a single-line text file with whitespace-separated fields. The first 
+field contains the md5sum of the latest envs_*.zip, second field is URL of 
+envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
+internet connection also helps!
 "
 
 ################################################################################
@@ -1059,13 +1059,15 @@ for i in "${!envs_urls[@]}"; do
   _md5sum=$(echo "$_info" | cut -d ' ' -f1)
   _url=$(echo "$_info" | cut -d ' ' -f2)
   if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-    echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
-    echo "${envs_err/'$envs_url'/$u}"
+    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
+      "ERROR: Failed to fetch valid MD5SUM for environments" \
+      "${envs_err/'$envs_url'/$u}"
     exit 1
   elif [ -z "$_url" ] || \
       [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-    echo -e "\n\nERROR: Failed to fetch valid URL for environments"
-    echo "${envs_err/'$envs_url'/$u}"
+    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
+      "ERROR: Failed to fetch valid URL for environments" \ 
+      "${envs_err/'$envs_url'/$u}"
     exit 1
   fi
 
