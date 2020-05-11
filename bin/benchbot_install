@@ -1126,9 +1126,13 @@ fi
 # Pull out ground truth files from the simulator
 rm -rf "$PATH_GROUND_TRUTH"
 for i in "${!envs_urls[@]}"; do
-  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
-    'echo "$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"')
-  docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" \
+    /bin/bash -c 'p="$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"; \
+    [ -d "$p" ] && echo "$p" || echo ""')
+  if [ ! -z "$location" ]; then
+    docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+  fi
+  docker rm -f ground_truth
 done
 
 # Build the BenchBot Submission Docker image
