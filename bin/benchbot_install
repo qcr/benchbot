@@ -627,7 +627,9 @@ chk_apiuptodate_issue="\
   Please move to the latest version."
 chk_apiuptodate_fix=\
 'pushd '"$PATH_API"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
@@ -683,7 +685,9 @@ chk_examplesuptodate_issue="\
   Please move to the latest version."
 chk_examplesuptodate_fix=\
 'pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
@@ -720,7 +724,9 @@ chk_evaluptodate_issue="\
   Please move to the latest version."
 chk_evaluptodate_fix=\
 'pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='BenchBot evaluation installed'
@@ -776,7 +782,9 @@ chk_batchuptodate_issue="\
   Please move to the latest version."
 chk_batchuptodate_fix=\
 'pushd '"$PATH_BATCHES"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_batchuptodate_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
