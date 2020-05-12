@@ -80,21 +80,21 @@ FURTHER DETAILS:
     "
 
 build_err="\
-  Ensure that Docker has been installed correctly AND that you can run Docker 
-  WITHOUT root access (there is no need to ever run Docker with root). See 
-  https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
-  fix this. 
+Ensure that Docker has been installed correctly AND that you can run Docker 
+WITHOUT root access (there is no need to ever run Docker with root). See 
+https://docs.docker.com/install/linux/linux-postinstall/ for details on how to 
+fix this. 
 
-  If the error is more generic, please contact us so that we can update our
-  pre-install host system checks.
+If the error is more generic, please contact us so that we can update our
+pre-install host system checks.
 "
 envs_err="\
-  Ensure that the URL: 
-    "'$envs_url'"
-  points to a single-line text file with whitespace-separated fields. The first 
-  field contains the md5sum of the latest envs_*.zip, second field is URL of 
-  envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
-  internet connection also helps!
+Ensure that the URL: 
+  "'$envs_url'"
+points to a single-line text file with whitespace-separated fields. The first 
+field contains the md5sum of the latest envs_*.zip, second field is URL of 
+envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
+internet connection also helps!
 "
 
 ################################################################################
@@ -627,7 +627,9 @@ chk_apiuptodate_issue="\
   Please move to the latest version."
 chk_apiuptodate_fix=\
 'pushd '"$PATH_API"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
@@ -683,7 +685,9 @@ chk_examplesuptodate_issue="\
   Please move to the latest version."
 chk_examplesuptodate_fix=\
 'pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
@@ -720,7 +724,9 @@ chk_evaluptodate_issue="\
   Please move to the latest version."
 chk_evaluptodate_fix=\
 'pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='BenchBot evaluation installed'
@@ -776,7 +782,9 @@ chk_batchuptodate_issue="\
   Please move to the latest version."
 chk_batchuptodate_fix=\
 'pushd '"$PATH_BATCHES"' && 
-git fetch --all && git checkout $BRANCH_DEFAULT && git pull && popd'
+git fetch --all && 
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
 chk_batchuptodate_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
@@ -1019,9 +1027,10 @@ done
 
 printf "\n\n"
 clear_stdin
-read -n 1 -r -p \
-  "All requirements & dependencies fulfilled; proceed with install (y/N)? "\
-  prompt
+s="All requirements & dependencies fulfilled. Docker containers for the BenchBot\n"
+s+="software stack will now be built (which may take anywhere from a few seconds\n"
+s+="to many hours). Would you like to proceed (y,N)? "
+read -n 1 -r -e -p "$(echo -e "$s")" prompt
 printf "\n"
 if [[ "$prompt" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
   printf "Proceeding with install ... \n\n"
@@ -1059,13 +1068,15 @@ for i in "${!envs_urls[@]}"; do
   _md5sum=$(echo "$_info" | cut -d ' ' -f1)
   _url=$(echo "$_info" | cut -d ' ' -f2)
   if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-    echo -e "\n\nERROR: Failed to fetch valid md5sum for environments"
-    echo "${envs_err/'$envs_url'/$u}"
+    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
+      "ERROR: Failed to fetch valid MD5SUM for environments" \
+      "${envs_err/'$envs_url'/$u}"
     exit 1
   elif [ -z "$_url" ] || \
       [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-    echo -e "\n\nERROR: Failed to fetch valid URL for environments"
-    echo "${envs_err/'$envs_url'/$u}"
+    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
+      "ERROR: Failed to fetch valid URL for environments" \ 
+      "${envs_err/'$envs_url'/$u}"
     exit 1
   fi
 
@@ -1126,9 +1137,13 @@ fi
 # Pull out ground truth files from the simulator
 rm -rf "$PATH_GROUND_TRUTH"
 for i in "${!envs_urls[@]}"; do
-  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
-    'echo "$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"')
-  docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" \
+    /bin/bash -c 'p="$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"; \
+    [ -d "$p" ] && echo "$p" || echo ""')
+  if [ ! -z "$location" ]; then
+    docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
+  fi
+  docker rm -f ground_truth
 done
 
 # Build the BenchBot Submission Docker image

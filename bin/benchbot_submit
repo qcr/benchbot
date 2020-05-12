@@ -185,7 +185,7 @@ while true; do
   esac
 done
 if [ -z $SELECTED_MODE ]; then
-  echo "$mode_selection_err"
+  echo -e "${colour_nc}$mode_selection_err${colour_nc}"
   exit 1
 fi
 
@@ -194,17 +194,17 @@ fi
 case "$SELECTED_MODE" in
   containerised|submission)
     if [ ! -d "${SELECTED_OPTIONS[0]}" ]; then
-      s="$(basename "$0"): directory '${SELECTED_OPTIONS[0]}' provided with "
-      s+="mode\n'$SELECTED_MODE' does not exist. Exiting..."
-      echo -e "$s"
+      printf "${colour_red}%s%s${colour_nc}\n" \
+        "$(basename "$0"): directory '${SELECTED_OPTIONS[0]}' provided with "\
+        "mode\n'$SELECTED_MODE' does not exist. Exiting..."
       exit 1
     fi ;;&
   submission)
     if [ -z "$evaluate" ] || [ -z "$results_location" ]; then
-      s="$(basename "$0"): cannot create results or perform evaluation from " 
-      s+="\nsubmission mode as no code is run. Please run again in a different "
-      s+="\nmode."
-      echo -e "$s"
+      printf "${colour_red}%s%s%s${colour_nc}\n" \
+        "$(basename "$0"): cannot create results or perform evaluation from " \
+        "\nsubmission mode as no code is run. Please run again in a different " \
+        "\nmode."
       exit 1
     fi
     ;;

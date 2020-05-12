@@ -67,7 +67,6 @@ USAGE:
         office:4:5
         company:5:1
 
- 
 OPTION DETAILS:
 
     -h,--help             
@@ -82,10 +81,10 @@ OPTION DETAILS:
 
     -e, --envs
             A comma-separated list of environments for $(basename "$0") to
-            iterate over (e.g. \"house:1,minroom:2,office:3\"). See '-e, --env'
-            in 'benchbot_run --help' for further details of specifying valid
-            environments, & 'benchbot_run --list-envs' for a complete list of
-            supported environments.
+            iterate over (e.g. \"house:1,miniroom:2,office:3\"). See the
+            '-e, --env' arg in 'benchbot_run --help' for further details of
+            specifying valid environments, & 'benchbot_run --list-envs' for a
+            complete list of supported environments.
 
     -E, --envs-file
             A file specifying a single valid environment name on each line. The
@@ -128,6 +127,12 @@ OPTION DETAILS:
     -v,--version
             Print version info for current installation.
 
+    -z,--zip
+            Produce a ZIP file of the results once all environments in the
+            batch have been run. The ZIP file will be named using the value
+            provided by the '-p, --prefix' argument (i.e. 'PREFIX.zip'), with
+            the default prefix '$DEFAULT_PREFIX' used if none is provided.
+
 FURTHER DETAILS:
 
     See the README of this repository for further details. For further details
@@ -137,6 +142,9 @@ FURTHER DETAILS:
     Please contact the authors of BenchBot for support or to report bugs:
         b.talbot@qut.edu.au
     "
+
+collision_warn="WARNING: Running of environment '%s' in passive mode resulted in a
+collision. This should not happen, so this environment will be rerun!"
 
 run_err="ERROR: Running of environment '%s' failed with the error printed above.
 Quitting batch execution."
@@ -165,6 +173,7 @@ function kill_submit() {
 function exit_gracefully() {
   kill_run
   kill_submit
+  echo ""
   exit ${1:-0}
 }
 
@@ -174,7 +183,7 @@ function exit_gracefully() {
 
 # Safely parse options input
 parse_out=$(getopt -o e:E:c:hn:p:st:vz --long \
-  envs,envs-file,containerised,help,native,prefix,score-results,task,version,zip \
+  envs:,envs-file:,containerised:,help,native:,prefix:,score-results,task:,version,zip \
   -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -215,7 +224,8 @@ done
 # Process envs & envs-file here (defer all other argument evaluation to the
 # appropriate scripts which use the values)
 if [ ! -z "$envs_str" ] && [ ! -z "$envs_file" ]; then
-  echo "ERROR: Both '--envs' && '--envs-file' provided; please only proved 1!"
+  printf "${colour_red}%s${colour_nc}\n" \
+    "ERROR: Both '--envs' && '--envs-file' provided; please only provide 1!"
   exit 1
 elif [ ! -z "$envs_str" ]; then
   envs_list=(${envs_str//,/ })
@@ -268,7 +278,8 @@ if [ -z "$envs_list" ]; then
 fi
 
 results_list=()
-for i in "${!envs_list[@]}"; do
+i=0
+while [ $i -lt ${#envs_list[@]} ]; do
   # Run the submission in the environment, waiting until something finishes
   header_block "Gathering results for environment: ${envs_list[$i]}" \
     $colour_magenta
@@ -290,7 +301,7 @@ for i in "${!envs_list[@]}"; do
     printf "\n${colour_magenta}%s${colour_nc}\n" \
       "Dumping output of 'benchbot_run' below:"
     cat /tmp/benchbot_run_out
-    printf "\n$run_err\n" "${envs_list[$i]}"
+    printf "\n${colour_red}$run_err${colour_nc}\n" "${envs_list[$i]}"
     exit 1
   fi
 
@@ -300,13 +311,24 @@ for i in "${!envs_list[@]}"; do
   if [ $submit_result -ne 0 ]; then
     echo ""
     kill_run
-    printf "\n$submission_err\n" "${envs_list[$i]}"
+    printf "\n${colour_red}$submission_err${colour_nc}\n" "${envs_list[$i]}"
     exit 1
   fi
 
-  # All is well if we made it here (submit finished naturally)
+  # Move to next environment (excluding case of collisions whilst in passive
+  # mode)
+  if [ ! -z "$(echo "$task" | grep -v "passive")" ] || \
+      [ -z "$(docker run --rm --network $DOCKER_NETWORK -it \
+        "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+        'curl '$HOSTNAME_SUPERVISOR':'$PORT_SUPERVISOR'/simulator/is_collided' \
+        | grep "true")" ]; then
+    results_list+=("${prefix}_$i.json")
+    ((i++))
+  else
+    printf "\n${colour_yellow}$collision_warn${colour_nc}\n\n" \
+      "${envs_list[$i]}"
+  fi
   kill_run
-  results_list+=("${prefix}_$i.json")
 done
 
 ################################################################################
@@ -323,7 +345,8 @@ fi
 
 if [ ! -z "$evaluate" ]; then
   echo -e "${colour_magenta}Evaluating results... ${colour_nc}"
-  benchbot_eval -o "${prefix}_scores.json" \
+  benchbot_eval -o "${prefix}_scores.json" --required-task "$task" \
+    --required-envs $(echo "${envs_list[@]}" | tr ' ' ',') \
     $([ -z "$zip" ] && echo "${results_list[@]}" || echo "${prefix}.zip")
 else
   echo "Done."
