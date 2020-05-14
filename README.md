@@ -1,3 +1,5 @@
+<p align=center><strong>~ Our <a href="https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
+
 # BenchBot Software Stack
 
 ![benchbot_web](./docs/benchbot_web.gif)
@@ -78,7 +80,7 @@ Getting a solution up & running with BenchBot is as simple as 1,2,3:
     u@pc:~$ benchbot_submit --evaluate-results --native python <MY_SOLUTION>
     ```
 
-See [benchbot_examples](https://github.com/roboticvisionorg/benchbot_examples) for more examples & further details of how to get up & running with the BenchBot software stack.
+The [BenchBot Tutorial](https://github.com/roboticvisionorg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet) is a great place to start working with BenchBot; the tutorial takes the user all the way from a blank system to a working Semantic SLAM solution, with many steps educational steps along the way. Also, see [benchbot_examples](https://github.com/roboticvisionorg/benchbot_examples) for more examples of how to get up and running with the BenchBot software stack.
 
 ## Power tools for autonomous algorithm evaluation
 
