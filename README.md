@@ -1,3 +1,4 @@
+<p align=center><strong>~ Our <a href="https://evalai.cloudcv.org/web/challenges/challenge-page/625/overview">Semantic Scene Understanding Challenge is live on EvalAI</a>, with $2,500USD in prizes on offer ~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
 # BenchBot Software Stack
@@ -38,7 +39,7 @@ u@pc:~$ git clone https://github.com/roboticvisionorg/benchbot && cd benchbot
 u@pc:~$ ./install
 ```
 
-Any missing software components, or configuration issues with your system, should be detected by the install script & resolved interactively. 
+Any missing software components, or configuration issues with your system, should be detected by the install script & resolved interactively. The final step of installation asks if you want to add BenchBot helper scripts to your `PATH`. Choosing yes will make the following commands available from any directory: `benchbot_install` (same as `./install` above), `benchbot_run`, `benchbot_submit`, `benchbot_eval`, and `benchbot_batch`.
 
 The BenchBot software stack will frequently check for updates & can update itself automatically. To update simply run the install script again (add the `--force-clean` flag if you would like to install from scratch):
 
