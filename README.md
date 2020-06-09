@@ -1,3 +1,4 @@
+<p align=center><strong>~ Our <a href="https://evalai.cloudcv.org/web/challenges/challenge-page/625/overview">Semantic Scene Understanding Challenge is live on EvalAI</a>, with $2,500USD in prizes on offer ~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
 # BenchBot Software Stack
