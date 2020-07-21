@@ -60,6 +60,12 @@ OPTION DETAILS:
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
 
+    --no-simulator
+            Runs installation without installing the Nvidia Isaac simulator.
+            This option is useful for avoiding the excessive space requirements
+            (>100GB) when using the BenchBot software stack on a machine that
+            will only be used with a real robot.
+
     --no-update
             Skip checking for updates to the BenchBot software stack, & instead
             jump straight into the installation process.
@@ -948,6 +954,7 @@ parse_out=$(getopt -o hb:e:fuv \
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_skip=
+no_simulator=
 envs_urls=()
 while true; do
   case "$1" in
@@ -965,6 +972,8 @@ while true; do
       uninstall_benchbot; exit ;;
     -v|--version)
       print_version_info; exit ;;
+    --no-simulator)
+      no_simulator=1; shift ;;
     --no-update)
       updates_skip=1; shift ;;
     --)
