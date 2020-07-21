@@ -158,7 +158,7 @@ chk_nvidiacard_name='Nvidia GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
 chk_nvidiacard_check=\
-'lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | \
+'lspci -nn | grep -E "\[03.*\[10de:[0-9a-f]{4}\]" | \
 sed -E '"'"'s/.*(10de:[0-9a-f]{4}).*/\1/'"'"' | head -n 1'
 chk_nvidiacard_eval='[ ! -z "$check_result" ]'
 chk_nvidiacard_issue="\
