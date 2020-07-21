@@ -1,4 +1,4 @@
-<p align=center><strong>~ Our <a href="https://evalai.cloudcv.org/web/challenges/challenge-page/625/overview">Semantic Scene Understanding Challenge is live on EvalAI</a>, with $2,500USD in prizes on offer ~</strong></p>
+<p align=center><strong>~ Our <a href="https://evalai.cloudcv.org/web/challenges/challenge-page/625/overview">Semantic Scene Understanding Challenge is live on EvalAI</a> ~<br>(prizes include $2,500USD provided by <a href="https://www.roboticvision.org/">ACRV</a> & GPUs provided by sponsors <a href="https://www.nvidia.com/en-us/research/robotics/">Nvidia</a>)</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/RoboticVisionOrg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
 # BenchBot Software Stack
@@ -126,3 +126,9 @@ The BenchBot software stack is split into a number of standalone components, eac
 
 - **[FAQs](https://github.com/roboticvisionorg/benchbot/wiki/FAQs):** Wiki page where answers to frequently asked questions & resolutions to common issues will be provided
 - **[Semantic SLAM Tutorial](https://github.com/roboticvisionorg/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet):** a tutorial stepping through creating a semantic SLAM system in BenchBot that utilises the 3D object detector [VoteNet](https://github.com/facebookresearch/votenet)
+
+## Supporters
+
+Development of the BenchBot software stack was directly supported by:
+
+[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)
