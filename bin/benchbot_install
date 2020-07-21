@@ -949,7 +949,7 @@ trap cleanup_terminal EXIT
 # Safely parse options input
 input=$@
 parse_out=$(getopt -o hb:e:fuv \
-  --long help,branch:,envs-url:,force-clean,uninstall,no-update,version \
+  --long help,branch:,envs-url:,force-clean,uninstall,no-simulator,no-update,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -983,12 +983,19 @@ while true; do
   esac
 done
 
-# Use the default environments URL if none was provided, & sort them so some of
-# our Docker caching & env checking later on has an easier time
-if [ -z "$envs_urls" ]; then
-  envs_urls=("${URLS_ENVS_INFO_DEFAULT[@]}")
+# Make installation adjustments based on whether a simulator is being installed
+# or not
+if [ -z "$no_simulator" ]; then
+  # Use the default environments URL if none was provided, & sort them so some of
+  # our Docker caching & env checking later on has an easier time
+  if [ -z "$envs_urls" ]; then
+    envs_urls=("${URLS_ENVS_INFO_DEFAULT[@]}")
+  fi
+  envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
+else
+  # Remove the Isaac pre install check
+  checks_list_pre=( "${checks_list_pre[@]/isaac}" )
 fi
-envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1023,7 +1030,7 @@ header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 for c in "${checks_list_pre[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
-  else
+  elif [ ! -z "$c" ]; then
     handle_requirement "$c"
     res=$?
     if [ $res -eq 2 ]; then
