@@ -7,7 +7,7 @@
 BRANCH_DEFAULT="master"
 
 DOCKER_TAG_CORE="benchbot/core:base"
-DOCKER_TAG_SIMULATOR="benchbot/simulator:base"
+DOCKER_TAG_BACKEND="benchbot/backend:base"
 DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
 
@@ -33,7 +33,7 @@ PATH_ROOT="$(realpath ..)"
 PATH_API="$PATH_ROOT/api"
 PATH_BATCHES="$PATH_ROOT/batches"
 PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
-PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/docker/simulator.Dockerfile"
+PATH_DOCKERFILE_BACKEND="$PATH_ROOT/docker/backend.Dockerfile"
 PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
@@ -191,8 +191,8 @@ function is_latest_benchbot_examples() {
 function is_latest_benchbot_envs() {
   # Requires a URL as $1 & index number as $2
   # TODO this should loudly error if there are any URL failures!
-  current=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  current=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     '_md5s=($BENCHBOT_ENVS_MD5SUMS) && _urls=($BENCHBOT_ENVS_URLS) && \
     echo -n "${_md5s['$2']} ${_urls['$2']}"')
   latest=$(wget -qO- "$1" | cut -d ' ' -f 1,2)
@@ -204,8 +204,8 @@ function is_latest_benchbot_envs() {
 }
 
 function is_latest_benchbot_simulator() {
-  current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
   latest_hash=$(git ls-remote "$GIT_SIMULATOR" "$1" | awk '{print $1}')
   echo "Current BenchBot Simulator: $current_hash"
@@ -215,8 +215,8 @@ function is_latest_benchbot_simulator() {
 }
 
 function is_latest_benchbot_supervisor() {
-  current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'cd $BENCHBOT_SUPERVISOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
   latest_hash=$(git ls-remote "$GIT_SUPERVISOR" "$1" | awk '{print $1}')
   echo "Current BenchBot Supervisor: $current_hash"
@@ -266,8 +266,8 @@ updates."
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Environments version ...\t"
-  _urls=($(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  _urls=($(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'echo -n "$BENCHBOT_ENVS_SRCS"'))
   if [ -z "$_urls" ]; then
     environments_valid=1

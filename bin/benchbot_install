@@ -493,7 +493,7 @@ chk_fsspace_name='/var/lib/docker driver space check'
 chk_fsspace_pass='Sufficient space ($check_resultG)'
 chk_fsspace_fail='Insufficient space ($check_resultG)'
 chk_fsspace_check=\
-'dup_space=$(docker images --filter "reference='$DOCKER_TAG_SIMULATOR'" \
+'dup_space=$(docker images --filter "reference='$DOCKER_TAG_BACKEND'" \
   --format "{{.Size}}") &&
 if [ -z "$dup_space" ]; 
   then dup_space=0; 
@@ -1104,7 +1104,6 @@ if [ -z "$no_simulator" ]; then
     echo -e "\t\tDone."
   done
 fi
-exit 0
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
@@ -1135,10 +1134,11 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
-# Build the BenchBot Simulator Docker image
+# Build the BenchBot Backend Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
-  "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
+  "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
+docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
+  --build-arg NO_SIMULATOR="${no_simulator}" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
   --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
@@ -1150,7 +1150,7 @@ docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
-    "ERROR: Building BenchBot \"simulator\" returned a non-zero error code" \
+    "ERROR: Building BenchBot \"backend\" returned a non-zero error code" \
     "$build_ret"
   exit 1
 fi
@@ -1158,7 +1158,7 @@ fi
 # Pull out ground truth files from the simulator
 rm -rf "$PATH_GROUND_TRUTH"
 for i in "${!envs_urls[@]}"; do
-  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" \
+  location=$(docker run --name ground_truth "$DOCKER_TAG_BACKEND" \
     /bin/bash -c 'p="$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"; \
     [ -d "$p" ] && echo "$p" || echo ""')
   if [ ! -z "$location" ]; then
