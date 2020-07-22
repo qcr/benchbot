@@ -25,9 +25,12 @@ USAGE:
     Get info about the program / available options:
         $(basename "$abs_path") [-h|--help|--list-tasks|--list-envs]
 
-    Run a simulator with a specifc task setup:
+    Run a simulator with a specific task setup:
         $(basename "$abs_path") --env ENV_NAME --task TASK_NAME
         $(basename "$abs_path") -e ENV_NAME -t TASK_NAME
+
+    Request the backend to explicitly use the carter robot platform:
+        $(basename "$abs_path") -e ENV_NAME -t TASK_NAME --robot carter
 
 OPTION DETAILS:
 
@@ -64,9 +67,26 @@ OPTION DETAILS:
             Search for & list all installed environments. The listed
             environment names are in the format needed for the --env option.
 
+    --list-robots
+            List all supported robot targets. This list will adjust to include
+            what is available in your current installation (i.e. there will be
+            no simulated robots listed if you installed with '--no-simulator')
+
     --list-tasks   
             Lists all supported task combinations. The listed tasks are printed
             in the format needed for the --task option.
+
+    -r, --robot
+            Configure the BenchBot supervisor for a specific robot. This
+            currently is used to select either a simulator or real robot, but
+            has all the flexibility in the future to target any desired robot
+            platform, whether that be simulated or real.
+
+            If the full backend is installed (with a simulator), the 'sim'
+            target robot will be used by default, otherwise the 'real' target
+            robot will be the default.
+
+            (Use --list-robots to see a list of available robots)
 
     -t, --task             
             Configure BenchBot for a specific task style (this must be called
@@ -214,6 +234,12 @@ the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
   "
 }
 
+function opt_list_robots() {
+  # TODO this will need to be redone in a more flexible way to support a more
+  # dynamic style of "robot" target creation
+  echo "The following robot targets are supported in your BenchBot installation:"
+}
+
 function opt_list_tasks() {
   # TODO this is hard coded for now... maybe should be done differently...
   echo "The following tasks are supported by BenchBot: 
@@ -293,6 +319,11 @@ function opt_select_env() {
   return 1
 }
 
+function opt_select_robot() {
+  # Only update the SELECTED_ROBOT variable if it is in the list of envs
+  SELECTED_ROBOT="sim"
+}
+
 function opt_select_task() {
   # Only update the SELECTED_TASK variable if it is in the list of tasks
   for t in ${_task_list[@]}; do
@@ -311,8 +342,8 @@ function opt_select_task() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o he:t:fuv \
-  --long help,env:,task:,list-envs,list-tasks,force-updateless,updates-check,version \
+parse_out=$(getopt -o he:t:r:fuv \
+  --long help,env:,force-updateless,list-envs,list-robots,list-tasks,robot:,task:,updates-check,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -322,16 +353,20 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
-    --list-envs)
-      _env_data_get ; opt_list_envs ; exit 0 ;;
-    --list-tasks)
-      opt_list_tasks ; exit 0 ;;
     -e|--env)
       _env_data_get ; opt_select_env "$2"; shift 2 ;;
-    -t|--task)
-      opt_select_task "$2"; shift 2 ;;
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
+    --list-envs)
+      _env_data_get ; opt_list_envs ; exit 0 ;;
+    --list_robots)
+      opt_list_robots ; exit 0 ;;
+    --list-tasks)
+      opt_list_tasks ; exit 0 ;;
+    -r|--robot)
+      opt_select_robot "$2"; shift 2 ;;
+    -t|--task)
+      opt_select_task "$2"; shift 2 ;;
     -u|--updates-check)
       updates_exit=1 ; shift ;;
     -v|--version)

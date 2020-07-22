@@ -32,6 +32,9 @@ USAGE:
     Install from scratch, & skip check for the latest software stack:
         $(basename "$abs_path") --no-update [-f|--force-clean]
 
+    Install the lite version of the backend (i.e. no simulator, ~10GB):
+        $(basename "$abs_path") --no-simulator
+
     Uninstall the software stack:
         $(basename "$abs_path") [-u|--uninstall]
 
