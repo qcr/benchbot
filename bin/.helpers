@@ -93,8 +93,19 @@ function header_block() {
 ######################## Helpers for managing BenchBot #########################
 ################################################################################
 
+function backend_type() {
+  echo "$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+    'echo "$BENCHBOT_BACKEND_TYPE"' | tr -d '[:space:]')"
+  return
+}
+
 function clear_stdin() {
   read -t 0.1 -d '' -n 10000 discard
+}
+
+function has_simulator() {
+  [ "$(backend_type)" == "full" ] && echo "1"
 }
 
 function eval_version() {

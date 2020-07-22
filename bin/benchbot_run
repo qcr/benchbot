@@ -220,17 +220,27 @@ function exit_gracefully() {
 function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
-
   # Print the list with details
   echo "The following environments are installed in your BenchBot Docker image:
   "
-  for e in $(_env_list); do
-    echo "        $e"
-  done
+  if [ ! -z "$(has_simulator)" ]; then
+    for e in $(_env_list); do
+      echo "        $e"
+    done
+  else
+    echo "        NONE (simulator not installed)"
+  fi
   echo "
-The string is of the format ENV_NAME:VARIATION_NUMBER. Note when running the
-scene change detection tasks you will have to specifiy a second variation using
-the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
+Please note the following:
+    Simulated environments: 
+        The string is of the format ENV_NAME:VARIATION_NUMBER. When running the
+        scene change detection tasks you will have to specify a second
+        variation of the form ENV_NAME:VARIATION_NUMBER_1:VARIATION_NUMBER_2.
+
+    Real word environments: 
+        Real robots operate in real environments which have no restriction on
+        the selected name. Think of your environment name as a distinct label
+        for the real world environment where your robot operated.
   "
 }
 
