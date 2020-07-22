@@ -1135,10 +1135,12 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build the BenchBot Backend Docker image
+backend_dockerfile=$([ -z "$no_simulator" ] && \
+  echo "$PATH_DOCKERFILE_BACKEND" || echo "$PATH_DOCKERFILE_BACKEND_LITE")
+backend_name="$(basename "$backend_dockerfile")"
 printf "\n${colour_blue}%s${colour_nc}\n" \
-  "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
-  --build-arg NO_SIMULATOR="${no_simulator}" \
+  "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
+docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
   --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
@@ -1150,7 +1152,7 @@ docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
-    "ERROR: Building BenchBot \"backend\" returned a non-zero error code" \
+    "ERROR: Building BenchBot \"${backend_name%.*}\" returned a non-zero error code" \
     "$build_ret"
   exit 1
 fi
