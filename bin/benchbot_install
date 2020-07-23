@@ -158,7 +158,7 @@ chk_nvidiacard_name='Nvidia GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
 chk_nvidiacard_check=\
-'lspci -nn | grep -E "VGA.*\[10de:[0-9a-f]{4}\]" | \
+'lspci -nn | grep -E "\[03.*\[10de:[0-9a-f]{4}\]" | \
 sed -E '"'"'s/.*(10de:[0-9a-f]{4}).*/\1/'"'"' | head -n 1'
 chk_nvidiacard_eval='[ ! -z "$check_result" ]'
 chk_nvidiacard_issue="\
@@ -627,7 +627,7 @@ chk_apiuptodate_issue="\
   Please move to the latest version."
 chk_apiuptodate_fix=\
 'pushd '"$PATH_API"' && 
-git fetch --all && 
+git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
 git pull && popd'
 chk_apiuptodate_reboot=1
@@ -685,7 +685,7 @@ chk_examplesuptodate_issue="\
   Please move to the latest version."
 chk_examplesuptodate_fix=\
 'pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && 
+git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
 git pull && popd'
 chk_examplesuptodate_reboot=1
@@ -724,7 +724,7 @@ chk_evaluptodate_issue="\
   Please move to the latest version."
 chk_evaluptodate_fix=\
 'pushd '"$PATH_EVAL"' && 
-git fetch --all && 
+git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
 git pull && popd'
 chk_evaluptodate_reboot=1
@@ -782,7 +782,7 @@ chk_batchuptodate_issue="\
   Please move to the latest version."
 chk_batchuptodate_fix=\
 'pushd '"$PATH_BATCHES"' && 
-git fetch --all && 
+git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
 git pull && popd'
 chk_batchuptodate_reboot=1
@@ -997,7 +997,7 @@ if [ -z "$updates_skip" ]; then
   elif [ $is_latest -eq 1 ]; then
     echo -e "\n${colour_yellow}BenchBot scripts are outdated. Updating &"\
       "restarting install script ...\n${colour_nc}"
-    git fetch --all && git stash && git checkout "$benchbot_latest_hash"
+    git fetch --all && git checkout -- . && git checkout "$benchbot_latest_hash"
     echo -e "\n${colour_yellow}Done.${colour_nc}"
     popd > /dev/null && exec $0 $input --no-update
   else
