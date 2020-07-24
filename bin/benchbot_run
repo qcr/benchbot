@@ -161,7 +161,9 @@ function _env_data() {
 }
 
 function _env_data_get() {
-  if [ -z "$_env_data_full_cached" ]; then
+  if [ -z "$(has_simulator)" ]; then
+    _env_data_full_cached=""
+  elif [ -z "$_env_data_full_cached" ]; then
     # A little hacky, but docker runs are costly so this gets everything in 1 go
     _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_BACKEND /bin/bash \
       -c 'find $BENCHBOT_ENVS_PATH/*/'$FILENAME_ENV_METADATA' -name "*.yaml"\
@@ -221,26 +223,33 @@ function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
   # Print the list with details
-  echo "The following environments are installed in your BenchBot Docker image:
-  "
+  echo "A specific environment can be selected by entering a string in the format 
+ENV_NAME:VARIATION_NUMBER. Scene change detection tasks require an environment 
+string of the form ENV_NAME:VARIATION_NUMBER_1:VARIATION_NUMBER_2, as a second
+variation is required in completing the task. 
+
+Either simulated or real world environments can be selected. Please see the
+'--list-robots' command for the available simulated and real robot platforms.
+Only simulated robots can be run in simulated environments, and only real
+robots in real environments (as you would expect).
+
+Support for the following environments is provided in your installed BenchBot
+Docker image:
+
+    Simulated: 
+        "
   if [ ! -z "$(has_simulator)" ]; then
     for e in $(_env_list); do
-      echo "        $e"
+      echo "            $e"
     done
   else
-    echo "        NONE (simulator not installed)"
+    echo "             NONE (simulator not installed)"
   fi
   echo "
-Please note the following:
-    Simulated environments: 
-        The string is of the format ENV_NAME:VARIATION_NUMBER. When running the
-        scene change detection tasks you will have to specify a second
-        variation of the form ENV_NAME:VARIATION_NUMBER_1:VARIATION_NUMBER_2.
 
-    Real word environments: 
-        Real robots operate in real environments which have no restriction on
-        the selected name. Think of your environment name as a distinct label
-        for the real world environment where your robot operated.
+    Real word: 
+             ???
+
   "
 }
 
@@ -330,7 +339,7 @@ function opt_select_env() {
 }
 
 function opt_select_robot() {
-  # Only update the SELECTED_ROBOT variable if it is in the list of envs
+  # Only update the SELECTED_ROBOT variable if it is in the list of robots
   SELECTED_ROBOT="sim"
 }
 
