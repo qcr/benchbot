@@ -57,7 +57,8 @@ RUN _urls=($BENCHBOT_ENVS_URLS) && _md5s=($BENCHBOT_ENVS_MD5SUMS) && \
         echo "Downloading ... " && wget -q "${_urls[$i]}" -O "$i".zip && \
         test "${_md5s[$i]}" = $(md5sum "$i".zip | cut -d ' ' -f1) && \
         echo "Extracting ... " && unzip -q "$i".zip && rm -v "$i".zip && \
-        mv LinuxNoEditor "$i" || exit 1; \
+        mv "$(find . -mindepth 1 -maxdepth 1 -type d | head -n 1)" "$i" || \
+        exit 1; \
     done
 
 # Install benchbot components, ordered by how expensive installation is

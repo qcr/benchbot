@@ -58,9 +58,13 @@ URL_SUPERVISOR="172.20.0.102"
 # - md5sum of latest env_*.zip
 # - URL for latest env_*.zip -
 # - timestamp of latest (field is optional / not used)
-URLS_ENVS_INFO_DEFAULT=(
+URLS_ENVS_INFO_FULL_DEFAULT=(
   "https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download" 
   "https://cloudstor.aarnet.edu.au/plus/s/tqz36vODDnOsJpQ/download"
+  "https://cloudstor.aarnet.edu.au/plus/s/b7JI8bHajapkcOe/download"
+)
+URLS_ENVS_INFO_LITE_DEFAULT=(
+  "https://cloudstor.aarnet.edu.au/plus/s/b7JI8bHajapkcOe/download"
 )
 
 ################################################################################
