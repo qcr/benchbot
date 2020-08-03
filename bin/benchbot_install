@@ -986,16 +986,18 @@ while true; do
   esac
 done
 
+# Use the default environments URL if none was provided, & sort them so some of
+# our Docker caching & env checking later on has an easier time
+if [ -z "$envs_urls" ]; then
+  envs_urls=("$([ -z "$no_simulator" ] && \
+    echo "${URLS_ENVS_INFO_FULL_DEFAULT[@]}" || \
+    echo "${URLS_ENVS_INFO_LITE_DEFAULT[@]}")")
+fi
+envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
+
 # Make installation adjustments based on whether a simulator is being installed
 # or not
-if [ -z "$no_simulator" ]; then
-  # Use the default environments URL if none was provided, & sort them so some of
-  # our Docker caching & env checking later on has an easier time
-  if [ -z "$envs_urls" ]; then
-    envs_urls=("${URLS_ENVS_INFO_DEFAULT[@]}")
-  fi
-  envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
-else
+if [ ! -z "$no_simulator" ]; then
   # Remove the Isaac pre install check
   checks_list_pre=( "${checks_list_pre[@]/isaac}" )
 fi
@@ -1066,47 +1068,60 @@ if [ -z "$no_simulator" ]; then
   echo -e "\nFetching latest hash for BenchBot Simulator ... "
   benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
     latest_version_info)
+if [ -z "$benchbot_simulator_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
   echo -e "\t\t$benchbot_simulator_hash."
 fi
 echo "Fetching latest hash for BenchBot Supervisor ... "
 benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
   latest_version_info)
+if [ -z "$benchbot_supervisor_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
 echo -e "\t\t$benchbot_supervisor_hash."
 echo "Fetching latest hash for BenchBot API ... "
 benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
   latest_version_info)
+if [ -z "$benchbot_api_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
 echo -e "\t\t$benchbot_api_hash."
 
 # Get md5sum of the latest from the provided envs_url
-if [ -z "$no_simulator" ]; then
-  echo -e "\nFetching md5sum & URL for latest version of environments ... "
-  benchbot_envs_md5sums=()
-  benchbot_envs_urls=()
-  for i in "${!envs_urls[@]}"; do
-    u="${envs_urls[$i]}"
-    echo -e "\t$u ... "
+echo -e "\nFetching md5sum & URL for latest version of environments ... "
+benchbot_envs_md5sums=()
+benchbot_envs_urls=()
+for i in "${!envs_urls[@]}"; do
+  u="${envs_urls[$i]}"
+  echo -e "\t$u ... "
 
-    _info=$(is_latest_benchbot_envs "$u" "$i" | latest_version_info)
-    _md5sum=$(echo "$_info" | cut -d ' ' -f1)
-    _url=$(echo "$_info" | cut -d ' ' -f2)
-    if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-      printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
-        "ERROR: Failed to fetch valid MD5SUM for environments" \
-        "${envs_err/'$envs_url'/$u}"
-      exit 1
-    elif [ -z "$_url" ] || \
-        [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-      printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
-        "ERROR: Failed to fetch valid URL for environments" \ 
-        "${envs_err/'$envs_url'/$u}"
-      exit 1
-    fi
+  _info=$(is_latest_benchbot_envs "$u" "$i" | latest_version_info)
+  _md5sum=$(echo "$_info" | cut -d ' ' -f1)
+  _url=$(echo "$_info" | cut -d ' ' -f2)
+  if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
+    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
+      "ERROR: Failed to fetch valid MD5SUM for environments" \
+      "${envs_err/'$envs_url'/$u}"
+    exit 1
+  elif [ -z "$_url" ] || \
+      [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
+    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
+      "ERROR: Failed to fetch valid URL for environments" \ 
+      "${envs_err/'$envs_url'/$u}"
+    exit 1
+  fi
 
-    benchbot_envs_md5sums+=("$_md5sum")
-    benchbot_envs_urls+=("$_url")
-    echo -e "\t\tDone."
-  done
-fi
+  benchbot_envs_md5sums+=("$_md5sum")
+  benchbot_envs_urls+=("$_url")
+  echo -e "\t\tDone."
+done
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
