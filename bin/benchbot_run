@@ -161,9 +161,7 @@ function _env_data() {
 }
 
 function _env_data_get() {
-  if [ -z "$(has_simulator)" ]; then
-    _env_data_full_cached=""
-  elif [ -z "$_env_data_full_cached" ]; then
+  if [ -z "$_env_data_full_cached" ]; then
     # A little hacky, but docker runs are costly so this gets everything in 1 go
     _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_BACKEND /bin/bash \
       -c 'find $BENCHBOT_ENVS_PATH/*/'$FILENAME_ENV_METADATA' -name "*.yaml"\
@@ -204,6 +202,16 @@ function _env_poses() {
   echo "$ps" | sed -e 's/[[:space:]]*$//'
 }
 
+function _env_type() {
+  envs=($(_expand_envs $1))
+  ts=
+  for e in "${envs[@]}"; do
+    ts+="$(_env_data $e | sed -n 's/.*type: \(.*\)/\1/p' | \
+      tr -d '[:space:]') "
+  done;
+  echo "$ts" | sed -e 's/[[:space:]]*$//'
+}
+
 function _expand_envs() {
   env_name=$(echo "$1" | sed 's/:.*//')
   env_nums=($(echo "$1" | sed 's/[^:]*://; s/:/ /'))
@@ -240,7 +248,9 @@ Docker image:
         "
   if [ ! -z "$(has_simulator)" ]; then
     for e in $(_env_list); do
-      echo "            $e"
+      if [ -z "$(_env_type $e | grep "real")" ]; then
+        echo "            $e"
+      fi
     done
   else
     echo "             NONE (simulator not installed)"
@@ -248,9 +258,13 @@ Docker image:
   echo "
 
     Real word: 
-             ???
-
-  "
+        "
+  for e in $(_env_list); do
+    if [ ! -z "$(_env_type $e | grep "real")" ]; then
+      echo "            $e"
+    fi
+  done
+  echo ""
 }
 
 function opt_list_robots() {
