@@ -273,7 +273,7 @@ function opt_list_robots() {
   # dynamic style of "robot" target creation
   echo "The following robot targets are supported in your BenchBot installation:
         "
-  for r in "$(_robot_list)"; do
+  for r in $(_robot_list); do
     echo "        $r"
   done;
   echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running a real 
@@ -361,7 +361,16 @@ function opt_select_env() {
 
 function opt_select_robot() {
   # Only update the SELECTED_ROBOT variable if it is in the list of robots
-  SELECTED_ROBOT="sim"
+  selection="${1:-carter:sim}"
+  for r in $(_robot_list); do
+    r=$(echo "$r" | tr -d '[:space:]')
+    if [ "$r" == "$selection" ]; then
+      SELECTED_ROBOT="$r"
+      return 0
+    fi
+  done
+  echo "Robot '$1' is not a supported robot platform. Please check --list-robots."
+  return 1
 }
 
 function opt_select_task() {
@@ -421,6 +430,7 @@ if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_exit=
 updates_skip=
+robot_selection=
 while true; do
   case "$1" in
     -h|--help)
@@ -436,7 +446,7 @@ while true; do
     --list-tasks)
       opt_list_tasks ; exit 0 ;;
     -r|--robot)
-      _robot_data_get; opt_select_robot "$2"; shift 2 ;;
+      robot_selection="$2"; shift 2 ;;
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
     -u|--updates-check)
@@ -449,17 +459,25 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+_robot_data_get; opt_select_robot "$robot_selection"
 
-# Bail if we are running & they didn't give us both an environment & task
-if [ -z "$updates_exit" ] && [ -z "$SELECTED_ENV" ]; then 
-  printf "${colour_red}%s${colour_nc}\n" \
-    "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
-  exit 1
-fi
-if [ -z "$updates_exit" ] && [ -z "$SELECTED_TASK" ]; then 
-  printf "${colour_red}%s${colour_nc}\n" \
-    "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
-  exit 1
+# Bail if we are running & we didn't get a valid robot, env, & task
+if [ -z "$updates_exit" ]; then
+  if [ -z "$SELECTED_ROBOT" ]; then
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid robot selected (selected_robot = "$SELECTED_ROBOT")"
+    exit 1
+  fi
+  if [ -z "$SELECTED_ENV" ]; then 
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
+    exit 1
+  fi
+  if [ -z "$SELECTED_TASK" ]; then 
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
+    exit 1
+  fi
 fi
 
 # Ensure task & environment combo is valid
