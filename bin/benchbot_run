@@ -147,6 +147,7 @@ function _env_files() {
 }
 
 function _env_data() {
+  found=
   while read -r line; do
     if [ -z "$found" ] && [[ "$line" =~ ^/.*"${1/:/_}"\.yaml ]]; then
       found=true
@@ -270,7 +271,13 @@ Docker image:
 function opt_list_robots() {
   # TODO this will need to be redone in a more flexible way to support a more
   # dynamic style of "robot" target creation
-  echo "The following robot targets are supported in your BenchBot installation:"
+  echo "The following robot targets are supported in your BenchBot installation:
+        "
+  for r in "$(_robot_list)"; do
+    echo "        $r"
+  done;
+  echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running
+a real robot platform in a simulated environment is an invalid configuration)."
 }
 
 function opt_list_tasks() {
@@ -369,6 +376,40 @@ function opt_select_task() {
   return 1
 }
 
+_robot_data_full_cached=
+
+function _robot_data() {
+  found=
+  while read -r line; do
+    if [ -z "$found" ] && [[ "$line" =~ ^/.*"$1"\.yaml ]]; then
+      found=true
+      echo "$line"
+    elif [ ! -z "$found" ] && [[ "$line" =~ ^/.*\.yaml ]]; then
+      return 0
+    elif [ ! -z "$found" ]; then
+      echo "$line"
+    fi
+  done <<< "$_robot_data_full_cached"
+  return 1
+}
+
+function _robot_data_get() {
+  if [ -z "$_robot_data_full_cached" ]; then
+    # A little hacky, but docker runs are costly so this gets everything in 1 go
+    _robot_data_full_cached=$(docker run --rm -t $DOCKER_TAG_BACKEND /bin/bash \
+      -c 'find $BENCHBOT_SUPERVISOR_PATH/robots -name "*.yaml" |\
+      while read robot; do echo "$(realpath $robot)"; cat $robot; echo ""; \
+      done')
+  fi
+}
+
+function _robot_list() {
+  echo "$_robot_data_full_cached" | sed -n 's/\(.*\)\.yaml/\1/p' | \
+    awk -F'/' '{print $NF}' | \
+    sed 's/_sim/ (simulated platform)/p; s/_real/ (real robot platform)/p' | \
+    sort -u
+}
+
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -392,12 +433,12 @@ while true; do
       updates_skip=1 ; shift ;;
     --list-envs)
       _env_data_get ; opt_list_envs ; exit 0 ;;
-    --list_robots)
-      opt_list_robots ; exit 0 ;;
+    --list-robots)
+      _robot_data_get; opt_list_robots ; exit 0 ;;
     --list-tasks)
       opt_list_tasks ; exit 0 ;;
     -r|--robot)
-      opt_select_robot "$2"; shift 2 ;;
+      _robot_data_get; opt_select_robot "$2"; shift 2 ;;
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
     -u|--updates-check)
@@ -528,7 +569,7 @@ echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
-  _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter.yaml" \
+  _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter_sim.yaml" \
   _observations_file:="'"$selected_observations"'.yaml" \
   _actions_file:="'"$selected_actions"'_control.yaml"\
   _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
