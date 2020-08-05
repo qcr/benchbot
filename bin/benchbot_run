@@ -276,15 +276,15 @@ function opt_list_robots() {
   for r in "$(_robot_list)"; do
     echo "        $r"
   done;
-  echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running
-a real robot platform in a simulated environment is an invalid configuration)."
+  echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running a real 
+robot platform in a simulated environment is an invalid configuration)."
 }
 
 function opt_list_tasks() {
   # TODO this is hard coded for now... maybe should be done differently...
   echo "The following tasks are supported by BenchBot: 
   "
-  for t in "${_task_list[@]}"; do
+  for t in ${_task_list[@]}; do
     echo "        $t"
   done
   echo "
@@ -405,9 +405,7 @@ function _robot_data_get() {
 
 function _robot_list() {
   echo "$_robot_data_full_cached" | sed -n 's/\(.*\)\.yaml/\1/p' | \
-    awk -F'/' '{print $NF}' | \
-    sed 's/_sim/ (simulated platform)/p; s/_real/ (real robot platform)/p' | \
-    sort -u
+    awk -F'/' '{print $NF}' | sed 's/_/:/p'| sort -u
 }
 
 
