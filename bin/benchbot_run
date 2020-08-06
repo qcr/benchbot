@@ -483,7 +483,15 @@ if [ -z "$updates_exit" ]; then
       "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
     exit 1
   fi
-  if [[ "$(_robot_type "$SELECTED_ROBOT")" != *"$(_env_type "$SELECTED_ENV")"* ]]; then
+  if [ -z "$has_simulator" ] && \
+      [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+    printf "${colour_red}%s\n%s${colour_nc}\n" \
+      "ERROR: Can't run a simulated robot (selected_robot = "$SELECTED_ROBOT") in an" \
+      "installation that doesn't have a simulator installed."
+    exit 1
+  fi
+  if [[ "$(_robot_type "$SELECTED_ROBOT")" \
+      != *"$(_env_type "$SELECTED_ENV")"* ]]; then
     printf "${colour_red}%s\n%s${colour_nc}\n" \
       "ERROR: Type mismatch between selected robot & environment" \
       "(selected_robot = "$SELECTED_ROBOT", selected_env= "$SELECTED_ENV")"
