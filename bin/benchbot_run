@@ -208,7 +208,7 @@ function _env_type() {
   ts=
   for e in "${envs[@]}"; do
     ts+="$(_env_data $e | sed -n 's/.*type: \(.*\)/\1/p' | \
-      tr -d '[:space:]') "
+      tr -d '[:space:]' | tr -d '"') "
   done;
   echo "$ts" | sed -e 's/[[:space:]]*$//'
 }
@@ -417,6 +417,11 @@ function _robot_list() {
     awk -F'/' '{print $NF}' | sed 's/_/:/p'| sort -u
 }
 
+function _robot_type() {
+  # TODO in the future this needs to be a lot less dumb
+  echo "$1" | sed 's/.*://'
+}
+
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -476,6 +481,12 @@ if [ -z "$updates_exit" ]; then
   if [ -z "$SELECTED_TASK" ]; then 
     printf "${colour_red}%s${colour_nc}\n" \
       "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
+    exit 1
+  fi
+  if [[ "$(_robot_type "$SELECTED_ROBOT")" != *"$(_env_type "$SELECTED_ENV")"* ]]; then
+    printf "${colour_red}%s\n%s${colour_nc}\n" \
+      "ERROR: Type mismatch between selected robot & environment" \
+      "(selected_robot = "$SELECTED_ROBOT", selected_env= "$SELECTED_ENV")"
     exit 1
   fi
 fi
