@@ -588,17 +588,20 @@ name="$ros_master_host"
 ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
-name="benchbot_simulator"
-${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-  "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
-  --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
-  --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
-  --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
-  --port '"$PORT_SIMULATOR"' \
-  '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
-  '"$( IFS=$':'; echo "${selected_poses[*]}")"
-while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
+if [ ! -z "$has_simulator" ] && \
+    [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+  echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
+  name="benchbot_simulator"
+  ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+    "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
+    --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
+    --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
+    --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
+    --port '"$PORT_SIMULATOR"' \
+    '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
+    '"$( IFS=$':'; echo "${selected_poses[*]}")"
+  while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
+fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
