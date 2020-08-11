@@ -110,6 +110,22 @@ Once you are confident your algorithm is a solution to the chosen task, the Benc
     ```
     u@pc:~$ benchbot_eval -o my_zip_scores results.zip
     ```
+## Using BenchBot in your research
+
+BenchBot was made to enable & assist the development of high quality, repeatable research results. We welcome any & all use of the BenchBot software stack in your research. 
+
+To use our system, we just ask that you cite our paper on the BenchBot system. This will help us follow uses of BenchBot in the research community, & understand how we can improve the system to help support future research results. Citation details are as follows:
+
+```
+@misc{talbot2020benchbot,
+    title={BenchBot: Evaluating Robotics Research in Photorealistic 3D Simulation and on Real Robots},
+    author={Ben Talbot and David Hall and Haoyang Zhang and Suman Raj Bista and Rohan Smith and Feras Dayoub and Niko Sünderhauf},
+    year={2020},
+    eprint={2008.00635},
+    archivePrefix={arXiv},
+    primaryClass={cs.RO}
+}
+```
 
 ## Components of the BenchBot software stack
 
