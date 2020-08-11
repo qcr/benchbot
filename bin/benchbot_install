@@ -508,9 +508,9 @@ fi &&
 space=$(df -Th -BG /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
 space=$(echo "${space:0:-1}" | sed '"'"'s/\..*$//'"'"') &&
 echo "$space+$dup_space" | bc'
-chk_fsspace_eval='[ $check_result -gt 128 ]'
+chk_fsspace_eval='[ $check_result -gt SIZE ]'
 chk_fsspace_issue="\
-  The drive holding /var/lib/docker needs at least 128GB free. This check takes
+  The drive holding /var/lib/docker needs at least SIZEGB free. This check takes
   into account if you already have BenchBot installed (it will add the size of
   the Docker image to your \"available space\").
 
@@ -518,7 +518,7 @@ chk_fsspace_issue="\
   /var/lib/docker to a drive with more space."
 chk_fsspace_fix=\
 'clear_stdin
-read -p "New location for /var/lib/docker with 128GB free: " new_location
+read -p "New location for /var/lib/docker with SIZEGB free: " new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -995,13 +995,6 @@ if [ -z "$envs_urls" ]; then
 fi
 envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
 
-# Make installation adjustments based on whether a simulator is being installed
-# or not
-if [ ! -z "$no_simulator" ]; then
-  # Remove the Isaac pre install check
-  checks_list_pre=( "${checks_list_pre[@]/isaac}" )
-fi
-
 # Pre-install
 if [ -z "$updates_skip" ]; then
   header_block "CHECKING BENCHBOT SCRIPTS VERSION" ${colour_blue}
@@ -1029,6 +1022,15 @@ fi
 
 # PART 1: Ensuring the system state is compatible with BenchBot
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
+
+# Patch in any values that can only be determined at runtime
+if [ ! -z "$no_simulator" ]; then
+  checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
+fi
+_sz=$([ -z "$no_simulator" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
+chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
+chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
+chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
 
 # Iterate through the list of checks, doing some dirty string based variable
 # extraction in the handle_requirement() function...
