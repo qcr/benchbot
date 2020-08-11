@@ -1197,7 +1197,6 @@ docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  printf "\n${colour_red}%s: %d" \
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
     "ERROR: Building BenchBot \"submission\" returned a non-zero error code" \
     "$build_ret"
