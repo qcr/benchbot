@@ -11,8 +11,8 @@ RUN apt update && apt install -y libsm6 libxext6 libxrender-dev python3 \
 #     https://github.com/skvark/opencv-python/issues/372 
 # We upgrade pip here the lazy way which will give a warning (having a recent
 # version of pip without requiring Ubuntu to push it out... Ubuntu has v9 in
-# apt & pip is up to v20 atm...) is apparently impossible without virtual
-# environments or manually deleting system files. See issue below for details:
+# apt & pip is up to v20 atm... is apparently impossible without virtual
+# environments or manually deleting system files). See issue below for details:
 #     https://github.com/pypa/pip/issues/5599
 # I'll move on rather than digressing into how stupid it is that that's the
 # state of things...
