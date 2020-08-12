@@ -560,6 +560,7 @@ echo -n -e "${colour_blue}Running the BenchBot system with the following setting
 
     Selected environment: $SELECTED_ENV
     Selected task:        $SELECTED_TASK
+    Selected robot:       $SELECTED_ROBOT
     Actions set:          $selected_actions
     Observations set:     $selected_observations
     Maps:                 "
@@ -615,7 +616,7 @@ echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
-  _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter_sim.yaml" \
+  _task_name:="'"$SELECTED_TASK"'" _robot_file:="'"${SELECTED_ROBOT/:/_}"'.yaml" \
   _observations_file:="'"$selected_observations"'.yaml" \
   _actions_file:="'"$selected_actions"'_control.yaml"\
   _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
