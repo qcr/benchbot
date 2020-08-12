@@ -550,6 +550,11 @@ fi
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
+if [ ! -z "$has_simulator" ] && \
+    [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+  simulator_required=1
+fi
+
 # Print some configuration information
 echo -n -e "${colour_blue}Running the BenchBot system with the following settings:${colour_nc}
 
@@ -566,6 +571,8 @@ for i in "${!selected_map_paths[@]}"; do
   printf "%*s" 26
   printf "(starting @ %s)\n" "${selected_poses[$i]}"
 done
+printf "    %-22s" "Simulator required:"
+printf "%s\n"  $([ -z "$simulator_required"] && echo "No" || echo "Yes")
 echo ""
 
 # Create the network for BenchBot software stack
@@ -588,8 +595,7 @@ name="$ros_master_host"
 ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-if [ ! -z "$has_simulator" ] && \
-    [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+if [ ! -z "$simulator_required" ]; then
   echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
   name="benchbot_simulator"
   ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
@@ -601,6 +607,8 @@ if [ ! -z "$has_simulator" ] && \
     '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
     '"$( IFS=$':'; echo "${selected_poses[*]}")"
   while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
+else
+  echo -e "\n${colour_blue}Skipping BenchBot simulator container...${colour_nc}"
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
@@ -626,11 +634,13 @@ docker logs benchbot_supervisor
 docker attach benchbot_supervisor --no-stdin &
 
 while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
-    [ ! -z $(docker ps -q -f 'name=benchbot_simulator') ]; do
+  ([ -z "$simulator_required" ] || \
+  [ ! -z $(docker ps -q -f 'name=benchbot_simulator') ]); do
   sleep 1
 done
 
-if [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
+if [ ! -z "$simulator_required" ] && \
+    [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
   header_block "BENCHBOT SIMULATOR ERROR" ${colour_red}
   echo -e "\n${colour_red}$_simulator_err${colour_nc}\n"
   docker logs benchbot_simulator
