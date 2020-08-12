@@ -526,7 +526,7 @@ chk_pip_issue="\
   Python package manager pip was not found. It is required for installation of
   BenchBot python modules. Please either restart the install script with pip
   available, or install it."
-chk_pip_fix='sudo apt install -y python3-pip'
+chk_pip_fix='sudo apt install -y python3-pip && pip3 install --upgrade pip'
 chk_pip_reboot=1
 
 chk_pythontk_name='Tkinter for Python installed'
