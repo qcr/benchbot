@@ -224,6 +224,11 @@ function _expand_envs() {
 }
 
 function exit_gracefully() {
+  if [ -z "$simulator_required" ]; then
+    printf "\n\n${colour_blue}%s${colour_nc}\n" \
+      "Re-closing network openings used for real robot:"
+    close_network $network_forwarding $network_policy
+  fi
   kill_benchbot
   exit ${1:-0}
 }
@@ -580,6 +585,14 @@ echo ""
 echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
 docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
+if [ -z "$simulator_required"]; then
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Opening network to facilitate communications with real robot:"
+  network_forwarding=$(cat /proc/sys/net/ipv4/conf/all/forwarding)
+  network_policy=$(sudo iptables --list FORWARD | head -n 1 | \
+    sed 's/Chain.*(policy \([^)]*\))/\1/')
+  open_network;
+fi
 
 # Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root > /dev/null
@@ -625,7 +638,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
 # ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_BACKEND
-${docker_run//'$name'/$name} -it -d $DOCKER_TAG_BACKEND
+${docker_run//'$name'/$name} -it -d $DOCKER_TAG_BACKEND /bin/bash
 xhost -local:root > /dev/null
 
 # Print the output of the Supervisor, watching for failures

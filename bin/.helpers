@@ -111,6 +111,11 @@ function clear_stdin() {
   read -t 0.1 -d '' -n 10000 discard
 }
 
+function close_network() {
+  sudo sysctl net.ipv4.conf.all.forwarding=${1:-0}
+  sudo iptables --policy FORWARD ${2:-DROP}
+}
+
 function has_simulator() {
   [ "$(backend_type)" == "full" ] && echo "1"
 }
@@ -151,6 +156,11 @@ function kill_benchbot() {
   echo -e "\n${colour_blue}Deleted the following containers:${colour_nc}"
   docker system prune -f  # TODO this is still maybe a little too aggressive
   echo -e "\n${colour_blue}Finished cleaning!${colour_nc}\n"
+}
+
+function open_network() {
+  sudo sysctl net.ipv4.conf.all.forwarding=1
+  sudo iptables --policy FORWARD ACCEPT
 }
 
 function print_version_info() {
