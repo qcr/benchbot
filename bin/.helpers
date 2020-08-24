@@ -23,7 +23,7 @@ GIT_SIMULATOR="https://github.com/roboticvisionorg/benchbot_simulator"
 GIT_SUPERVISOR="https://github.com/roboticvisionorg/benchbot_supervisor"
 
 HOSTNAME_ROS="benchbot_ros"
-HOSTNAME_SIMULATOR="benchbot_simulator"
+HOSTNAME_ROBOT="benchbot_robot"
 HOSTNAME_SUPERVISOR="benchbot_supervisor"
 
 MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
@@ -42,7 +42,7 @@ PATH_GROUND_TRUTH="$PATH_ROOT/ground_truth"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
 
-PORT_SIMULATOR=10000
+PORT_ROBOT=10000
 PORT_SUPERVISOR=10000
 
 SIZE_GB_FULL=128
@@ -51,7 +51,7 @@ SIZE_GB_LITE=15
 URL_DOCKER_SUBNET="172.20.0.0/24"
 URL_DOCKER_GATEWAY="172.20.0.254"
 URL_ROS="172.20.0.100"
-URL_SIMULATOR="172.20.0.101"
+URL_ROBOT="172.20.0.101"
 URL_SUPERVISOR="172.20.0.102"
 
 # NOTE: link should end with */download (default CloudStor link returns a web 

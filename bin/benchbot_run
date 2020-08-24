@@ -18,7 +18,7 @@ source .helpers
 ######################## Helper functions for commands #########################
 ################################################################################
 
-usage_text="$(basename "$abs_path") -- Run script for the BenchBot backend & simulator
+usage_text="$(basename "$abs_path") -- Run script for the BenchBot backend & simulator / real robot
 
 USAGE:
 
@@ -519,7 +519,7 @@ elif [[ "$SELECTED_TASK" =~ .*"scd".* ]] && \
 fi
 
 ################################################################################
-##################### Run the simulator & BenchBot backend #####################
+############## Run the simulator / real robot & BenchBot backend ###############
 ################################################################################
 
 # Check for & handles updates to the BenchBot software stack
@@ -633,7 +633,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/
   _observations_file:="'"$selected_observations"'.yaml" \
   _actions_file:="'"$selected_actions"'_control.yaml"\
   _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
-  _simulator_address:='"${HOSTNAME_SIMULATOR}"':'"${PORT_SIMULATOR}"
+  _robot_address:='"${HOSTNAME_ROBOT}"':'"${PORT_ROBOT}"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
