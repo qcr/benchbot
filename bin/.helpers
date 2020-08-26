@@ -22,6 +22,7 @@ GIT_EXAMPLES="https://github.com/roboticvisionorg/benchbot_examples"
 GIT_SIMULATOR="https://github.com/roboticvisionorg/benchbot_simulator"
 GIT_SUPERVISOR="https://github.com/roboticvisionorg/benchbot_supervisor"
 
+HOSTNAME_DEBUG="benchbot_debug"
 HOSTNAME_ROS="benchbot_ros"
 HOSTNAME_ROBOT="benchbot_robot"
 HOSTNAME_SUPERVISOR="benchbot_supervisor"
@@ -48,6 +49,7 @@ PORT_SUPERVISOR=10000
 SIZE_GB_FULL=128
 SIZE_GB_LITE=15
 
+URL_DEBUG="172.20.0.200"
 URL_DOCKER_SUBNET="172.20.0.0/24"
 URL_DOCKER_GATEWAY="172.20.0.254"
 URL_ROS="172.20.0.100"

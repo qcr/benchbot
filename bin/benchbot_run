@@ -633,12 +633,11 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/
   _observations_file:="'"$selected_observations"'.yaml" \
   _actions_file:="'"$selected_actions"'_control.yaml"\
   _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
-  _robot_address:='"${HOSTNAME_ROBOT}"':'"${PORT_ROBOT}"
+  _robot_address:=192.168.1.20:'"${PORT_SIMULATOR}"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
-# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_BACKEND
-${docker_run//'$name'/$name} -it -d $DOCKER_TAG_BACKEND /bin/bash
+${docker_run//'$name'/$name} --ip "$URL_DEBUG" -it -d $DOCKER_TAG_BACKEND /bin/bash
 xhost -local:root > /dev/null
 
 # Print the output of the Supervisor, watching for failures
