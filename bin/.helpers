@@ -17,6 +17,7 @@ FILENAME_ENV_METADATA=".benchbot_data_files"
 GIT_API="https://github.com/roboticvisionorg/benchbot_api"
 GIT_BATCHES="https://github.com/roboticvisionorg/benchbot_batches"
 GIT_BENCHBOT="https://github.com/roboticvisionorg/benchbot"
+GIT_CONTROLLER="https://github.com/roboticvisionorg/benchbot_robot_controller"
 GIT_EVAL="https://github.com/roboticvisionorg/benchbot_eval"
 GIT_EXAMPLES="https://github.com/roboticvisionorg/benchbot_examples"
 GIT_SIMULATOR="https://github.com/roboticvisionorg/benchbot_simulator"
@@ -205,6 +206,17 @@ function is_latest_benchbot() {
 
 function is_latest_benchbot_api() {
   _is_latest_local_git "$PATH_API" "$GIT_API" "$1" "BenchBot API"
+  return
+}
+
+function is_latest_benchbot_controller() {
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+    'cd $BENCHBOT_CONTROLLER_PATH && git rev-parse HEAD' | tr -d '[:space:]')
+  latest_hash=$(git ls-remote "$GIT_CONTROLLER" "$1" | awk '{print $1}')
+  echo "Current BenchBot Robot Controller: $current_hash"
+  echo "Latest BenchBot Robot Controller: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
   return
 }
 

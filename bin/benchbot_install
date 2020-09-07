@@ -1078,6 +1078,15 @@ if [ -z "$benchbot_simulator_hash" ]; then
 fi
   echo -e "\t\t$benchbot_simulator_hash."
 fi
+echo "Fetching latest hash for BenchBot Robot Controller ... "
+benchbot_controller_hash=$(is_latest_benchbot_controller $BRANCH_DEFAULT | \
+  latest_version_info)
+if [ -z "$benchbot_controller_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
+echo -e "\t\t$benchbot_controller_hash."
 echo "Fetching latest hash for BenchBot Supervisor ... "
 benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
   latest_version_info)
@@ -1166,6 +1175,8 @@ docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
   --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
   --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
   --build-arg BENCHBOT_ENVS_SRCS="${envs_urls[*]}" \
+  --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
+  --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}"\
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
