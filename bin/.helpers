@@ -120,7 +120,8 @@ function close_network() {
 }
 
 function has_simulator() {
-  [ "$(backend_type)" == "full" ] && echo "1"
+  [ "$(backend_type)" == "full" ]
+  return
 }
 
 function eval_version() {
