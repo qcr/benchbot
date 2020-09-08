@@ -488,8 +488,7 @@ if [ -z "$updates_exit" ]; then
       "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
     exit 1
   fi
-  if [ has_simulator -ne 0 ] \
-      && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+  if ! has_simulator && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
     printf "${colour_red}%s\n%s${colour_nc}\n" \
       "ERROR: Can't run a simulated robot (selected_robot = "$SELECTED_ROBOT") in an" \
       "installation that doesn't have a simulator installed."
@@ -577,14 +576,14 @@ for i in "${!selected_map_paths[@]}"; do
   printf "(starting @ %s)\n" "${selected_poses[$i]}"
 done
 printf "    %-22s" "Simulator required:"
-printf "%s\n"  $([ -z "$simulator_required"] && echo "No" || echo "Yes")
+printf "%s\n"  $([ -z "$simulator_required" ] && echo "No" || echo "Yes")
 echo ""
 
 # Create the network for BenchBot software stack
 echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
 docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
-if [ -z "$simulator_required"]; then
+if [ -z "$simulator_required" ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Opening network to facilitate communications with real robot:"
   network_forwarding=$(cat /proc/sys/net/ipv4/conf/all/forwarding)
@@ -612,13 +611,14 @@ if [ ! -z "$simulator_required" ]; then
   echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
   name="benchbot_simulator"
   ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-    "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
-    --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
-    --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
-    --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
-    --port '"$PORT_SIMULATOR"' \
-    '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
-    '"$( IFS=$':'; echo "${selected_poses[*]}")"
+    'while true; do sleep 1; done'
+    # "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
+    # --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
+    # --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
+    # --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
+    # --port '"$PORT_SIMULATOR"' \
+    # '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
+    # '"$( IFS=$':'; echo "${selected_poses[*]}")"
   while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
 else
   echo -e "\n${colour_blue}Skipping BenchBot simulator container...${colour_nc}"
@@ -627,12 +627,13 @@ fi
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
-  _task_name:="'"$SELECTED_TASK"'" _robot_file:="'"${SELECTED_ROBOT/:/_}"'.yaml" \
-  _observations_file:="'"$selected_observations"'.yaml" \
-  _actions_file:="'"$selected_actions"'_control.yaml"\
-  _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
-  _robot_address:='"${HOSTNAME_ROBOT}"':'"${PORT_SIMULATOR}"
+    'while true; do sleep 1; done'
+  # "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
+  # _task_name:="'"$SELECTED_TASK"'" _robot_file:="'"${SELECTED_ROBOT/:/_}"'.yaml" \
+  # _observations_file:="'"$selected_observations"'.yaml" \
+  # _actions_file:="'"$selected_actions"'_control.yaml"\
+  # _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
+  # _robot_address:='"${HOSTNAME_ROBOT}"':'"${PORT_SIMULATOR}"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
