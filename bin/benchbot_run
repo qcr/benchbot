@@ -555,8 +555,7 @@ fi
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
-if [ has_simulator -ne 0 ] \
-    && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+if has_simulator && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
   simulator_required=1
 fi
 
@@ -633,7 +632,7 @@ ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/
   _observations_file:="'"$selected_observations"'.yaml" \
   _actions_file:="'"$selected_actions"'_control.yaml"\
   _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
-  _robot_address:=192.168.1.20:'"${PORT_SIMULATOR}"
+  _robot_address:='"${HOSTNAME_ROBOT}"':'"${PORT_SIMULATOR}"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
