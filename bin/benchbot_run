@@ -119,10 +119,10 @@ _map_details_err=\
 poses (%d), & environment files (%d) found. This should never happen; please
 contact the developers."
 
-_simulator_err=\
-"ERROR: The BenchBot Simulator container has exited unexpectedly. This should 
-not happen unless something is installed incorrectly. Please see the complete
-log below for a dump of the crash output:"
+_robot_err=\
+"ERROR: The BenchBot Robot Controller container has exited unexpectedly. This 
+should not happen unless something is installed incorrectly. Please see the
+complete log below for a dump of the crash output:"
 
 SELECTED_ENV=
 SELECTED_TASK=
@@ -608,21 +608,29 @@ ${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c
   "$cmd_prefix"'roscore'
 
 if [ ! -z "$simulator_required" ]; then
-  echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
-  name="benchbot_simulator"
-  ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Starting container for BenchBot Robot Controller:"
+  name="benchbot_robot"
+  ${docker_run//'$name'/$name} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
     'while true; do sleep 1; done'
-    # "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
-    # --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
-    # --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
-    # --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
-    # --port '"$PORT_SIMULATOR"' \
-    # '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
-    # '"$( IFS=$':'; echo "${selected_poses[*]}")"
-  while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
-else
-  echo -e "\n${colour_blue}Skipping BenchBot simulator container...${colour_nc}"
 fi
+
+# if [ ! -z "$simulator_required" ]; then
+#   echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
+#   name="benchbot_simulator"
+#   ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+#     'while true; do sleep 1; done'
+#     # "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
+#     # --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
+#     # --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
+#     # --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
+#     # --port '"$PORT_SIMULATOR"' \
+#     # '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
+#     # '"$( IFS=$':'; echo "${selected_poses[*]}")"
+#   while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
+# else
+#   echo -e "\n${colour_blue}Skipping BenchBot simulator container...${colour_nc}"
+# fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
@@ -646,14 +654,14 @@ docker attach benchbot_supervisor --no-stdin &
 
 while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
   ([ -z "$simulator_required" ] || \
-  [ ! -z $(docker ps -q -f 'name=benchbot_simulator') ]); do
+  [ ! -z $(docker ps -q -f 'name=benchbot_robot') ]); do
   sleep 1
 done
 
 if [ ! -z "$simulator_required" ] && \
-    [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
-  header_block "BENCHBOT SIMULATOR ERROR" ${colour_red}
-  echo -e "\n${colour_red}$_simulator_err${colour_nc}\n"
-  docker logs benchbot_simulator
+    [ -z $(docker ps -q -f 'name=benchbot_robot') ]; then
+  header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
+  echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
+  docker logs benchbot_robot
 fi
 exit_gracefully 1
