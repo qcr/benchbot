@@ -79,7 +79,7 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     ln -sv $BENCHBOT_SUPERVISOR_PATH src/ && source devel/setup.bash && catkin_make
 ARG BENCHBOT_CONTROLLER_GIT
 ARG BENCHBOT_CONTROLLER_HASH
-ENV BENCHBOT_CONTROLLER_PATH /benchbot/benchbot_controller
+ENV BENCHBOT_CONTROLLER_PATH /benchbot/benchbot_robot_controller
 RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pushd $BENCHBOT_CONTROLLER_PATH && git checkout $BENCHBOT_CONTROLLER_HASH && \
     pip install -r $BENCHBOT_CONTROLLER_PATH/requirements.txt && pushd $ROS_WS_PATH && \
