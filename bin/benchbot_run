@@ -627,13 +627,11 @@ fi
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-    'while true; do sleep 1; done'
-  # "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
-  # _task_name:="'"$SELECTED_TASK"'" _robot_file:="'"${SELECTED_ROBOT/:/_}"'.yaml" \
-  # _observations_file:="'"$selected_observations"'.yaml" \
-  # _actions_file:="'"$selected_actions"'_control.yaml"\
-  # _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
-  # _robot_address:='"${HOSTNAME_ROBOT}"':'"${PORT_SIMULATOR}"
+  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
+  _task_name:="'"$SELECTED_TASK"'" _robot_file:="'"${SELECTED_ROBOT/:/_}"'.yaml" \
+  _observations_file:="'"$selected_observations"'.yaml" \
+  _actions_file:="'"$selected_actions"'_control.yaml"\
+  _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
