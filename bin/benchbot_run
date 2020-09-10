@@ -612,7 +612,7 @@ if [ ! -z "$simulator_required" ]; then
     "Starting container for BenchBot Robot Controller:"
   name="benchbot_robot"
   ${docker_run//'$name'/$name} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-    'while true; do sleep 1; done'
+    "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
 fi
 
 # if [ ! -z "$simulator_required" ]; then
