@@ -615,23 +615,6 @@ if [ ! -z "$simulator_required" ]; then
     "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
 fi
 
-# if [ ! -z "$simulator_required" ]; then
-#   echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
-#   name="benchbot_simulator"
-#   ${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-#     'while true; do sleep 1; done'
-#     # "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
-#     # --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
-#     # --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
-#     # --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
-#     # --port '"$PORT_SIMULATOR"' \
-#     # '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
-#     # '"$( IFS=$':'; echo "${selected_poses[*]}")"
-#   while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
-# else
-#   echo -e "\n${colour_blue}Skipping BenchBot simulator container...${colour_nc}"
-# fi
-
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
