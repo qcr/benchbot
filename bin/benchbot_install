@@ -17,8 +17,8 @@ hostnames_block=\
 "# BENCHBOT SPECIFIC HOSTNAMES
 $URL_ROS $HOSTNAME_ROS
 $URL_SIMULATOR $HOSTNAME_SIMULATOR
-$URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
-$URL_DEBUG $HOSTNAME_DEBUG
+$URL_SUPERVISOR $HOSTNAME_SUPERVISOR
+$URL_DEBUG $HOSTNAME_DEBUG"
 
 ################################################################################
 ########################### Definitions for messages ###########################
