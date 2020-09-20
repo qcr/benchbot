@@ -411,7 +411,7 @@ function _robot_data_get() {
   if [ -z "$_robot_data_full_cached" ]; then
     # A little hacky, but docker runs are costly so this gets everything in 1 go
     _robot_data_full_cached=$(docker run --rm -t $DOCKER_TAG_BACKEND /bin/bash \
-      -c 'find $BENCHBOT_SUPERVISOR_PATH/robots -name "*.yaml" |\
+      -c 'find $BENCHBOT_SUPERVISOR_PATH/benchbot_supervisor/robots -name "*.yaml" |\
       while read robot; do echo "$(realpath $robot)"; cat $robot; echo ""; \
       done')
   fi
