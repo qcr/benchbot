@@ -115,10 +115,11 @@ Once you are confident your algorithm is a solution to the chosen task, the Benc
 
 The BenchBot software stack is split into a number of standalone components, each with their own GitHub repository & documentation. This repository glues them all together for you into a working system. The components of the stack are:
 
-- **[benchbot_simulator](https://github.com/roboticvisionorg/benchbot_simulator):** a realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
-- **[benchbot_supervisor](https://github.com/roboticvisionorg/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces & the low-level ROS components of a simulator or real robot
 - **[benchbot_api](https://github.com/roboticvisionorg/benchbot_api):** user-facing Python interface to the BenchBot system, allowing the user to control simulated or real robots in simulated or real world environments through simple commands
 - **[benchbot_examples](https://github.com/roboticvisionorg/benchbot_examples):** a series of example submissions that use the API to drive a robot interactively, autonomously step through environments, evaluate dummy results, attempt semantic slam, & more
+- **[benchbot_supervisor](https://github.com/roboticvisionorg/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces & the underlying robot controller
+- **[benchbot_robot_controller](https://github.com/roboticvisionorg/benchbot_robot_controller):** a wrapping script which controls the low-level ROS functionality of a simulator or real robot, handles automated subprocess management, & exposes interaction via a HTTP server 
+- **[benchbot_simulator](https://github.com/roboticvisionorg/benchbot_simulator):** a realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
 - **[benchbot_eval](https://github.com/roboticvisionorg/benchbot_eval):** Python library for evaluating the performance in a task, based on the results produced by a submission
 - **[benchbot_batches](https://github.com/roboticvisionorg/benchbot_batches):** Collection of static environment lists for each of the tasks, used to produce repeatable result sets & consistent evaluation requirements
 
