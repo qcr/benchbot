@@ -618,7 +618,7 @@ fi
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
 ${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-  "$cmd_prefix"'$BENCHBOT_SUPERVISOR_PATH/benchbot_supervisor/scripts/supervisor \
+  "$cmd_prefix"'python -m benchbot_supervisor \
   --task-name "'"$SELECTED_TASK"'" --robot-file "'"${SELECTED_ROBOT/:/_}"'.yaml" \
   --observations-file "'"$selected_observations"'.yaml" \
   --actions-file "'"$selected_actions"'_control.yaml"\
