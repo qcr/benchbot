@@ -18,6 +18,7 @@ hostnames_block=\
 $URL_ROS $HOSTNAME_ROS
 $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR"
+$URL_DEBUG $HOSTNAME_DEBUG
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -31,6 +32,9 @@ USAGE:
 
     Install from scratch, & skip check for the latest software stack:
         $(basename "$abs_path") --no-update [-f|--force-clean]
+
+    Install the lite version of the backend (i.e. no simulator, ~10GB):
+        $(basename "$abs_path") --no-simulator
 
     Uninstall the software stack:
         $(basename "$abs_path") [-u|--uninstall]
@@ -59,6 +63,12 @@ OPTION DETAILS:
     -f,--force-clean
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
+
+    --no-simulator
+            Runs installation without installing the Nvidia Isaac simulator.
+            This option is useful for avoiding the excessive space requirements
+            (>100GB) when using the BenchBot software stack on a machine that
+            will only be used with a real robot.
 
     --no-update
             Skip checking for updates to the BenchBot software stack, & instead
@@ -487,7 +497,7 @@ chk_fsspace_name='/var/lib/docker driver space check'
 chk_fsspace_pass='Sufficient space ($check_resultG)'
 chk_fsspace_fail='Insufficient space ($check_resultG)'
 chk_fsspace_check=\
-'dup_space=$(docker images --filter "reference='$DOCKER_TAG_SIMULATOR'" \
+'dup_space=$(docker images --filter "reference='$DOCKER_TAG_BACKEND'" \
   --format "{{.Size}}") &&
 if [ -z "$dup_space" ]; 
   then dup_space=0; 
@@ -499,9 +509,9 @@ fi &&
 space=$(df -Th -BG /var/lib/docker | awk '"'"'/^\// {print $5}'"'"') &&
 space=$(echo "${space:0:-1}" | sed '"'"'s/\..*$//'"'"') &&
 echo "$space+$dup_space" | bc'
-chk_fsspace_eval='[ $check_result -gt 128 ]'
+chk_fsspace_eval='[ $check_result -gt SIZE ]'
 chk_fsspace_issue="\
-  The drive holding /var/lib/docker needs at least 128GB free. This check takes
+  The drive holding /var/lib/docker needs at least SIZEGB free. This check takes
   into account if you already have BenchBot installed (it will add the size of
   the Docker image to your \"available space\").
 
@@ -509,7 +519,7 @@ chk_fsspace_issue="\
   /var/lib/docker to a drive with more space."
 chk_fsspace_fix=\
 'clear_stdin
-read -p "New location for /var/lib/docker with 128GB free: " new_location
+read -p "New location for /var/lib/docker with SIZEGB free: " new_location
 sudo systemctl stop docker
 sudo mv /var/lib/docker "$new_location"
 sudo ln -sv "$new_location" /var/lib/docker
@@ -943,11 +953,12 @@ trap cleanup_terminal EXIT
 # Safely parse options input
 input=$@
 parse_out=$(getopt -o hb:e:fuv \
-  --long help,branch:,envs-url:,force-clean,uninstall,no-update,version \
+  --long help,branch:,envs-url:,force-clean,uninstall,no-simulator,no-update,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_skip=
+no_simulator=
 envs_urls=()
 while true; do
   case "$1" in
@@ -965,6 +976,8 @@ while true; do
       uninstall_benchbot; exit ;;
     -v|--version)
       print_version_info; exit ;;
+    --no-simulator)
+      no_simulator=1; shift ;;
     --no-update)
       updates_skip=1; shift ;;
     --)
@@ -977,7 +990,9 @@ done
 # Use the default environments URL if none was provided, & sort them so some of
 # our Docker caching & env checking later on has an easier time
 if [ -z "$envs_urls" ]; then
-  envs_urls=("${URLS_ENVS_INFO_DEFAULT[@]}")
+  envs_urls=("$([ -z "$no_simulator" ] && \
+    echo "${URLS_ENVS_INFO_FULL_DEFAULT[@]}" || \
+    echo "${URLS_ENVS_INFO_LITE_DEFAULT[@]}")")
 fi
 envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
 
@@ -1009,12 +1024,21 @@ fi
 # PART 1: Ensuring the system state is compatible with BenchBot
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
+# Patch in any values that can only be determined at runtime
+if [ ! -z "$no_simulator" ]; then
+  checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
+fi
+_sz=$([ -z "$no_simulator" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
+chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
+chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
+chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
+
 # Iterate through the list of checks, doing some dirty string based variable
 # extraction in the handle_requirement() function...
 for c in "${checks_list_pre[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
-  else
+  elif [ ! -z "$c" ]; then
     handle_requirement "$c"
     res=$?
     if [ $res -eq 2 ]; then
@@ -1043,17 +1067,43 @@ fi
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-echo -e "\nFetching latest hash for BenchBot Simulator ... "
-benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
+if [ -z "$no_simulator" ]; then
+  echo -e "\nFetching latest hash for BenchBot Simulator ... "
+  benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
+    latest_version_info)
+if [ -z "$benchbot_simulator_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
+  echo -e "\t\t$benchbot_simulator_hash."
+fi
+echo "Fetching latest hash for BenchBot Robot Controller ... "
+benchbot_controller_hash=$(is_latest_benchbot_controller $BRANCH_DEFAULT | \
   latest_version_info)
-echo -e "\t\t$benchbot_simulator_hash."
+if [ -z "$benchbot_controller_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
+echo -e "\t\t$benchbot_controller_hash."
 echo "Fetching latest hash for BenchBot Supervisor ... "
 benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
   latest_version_info)
+if [ -z "$benchbot_supervisor_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
 echo -e "\t\t$benchbot_supervisor_hash."
 echo "Fetching latest hash for BenchBot API ... "
 benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
   latest_version_info)
+if [ -z "$benchbot_api_hash" ]; then
+  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+    "Failed (check Internet connection!). Exiting."
+  exit 1
+fi
 echo -e "\t\t$benchbot_api_hash."
 
 # Get md5sum of the latest from the provided envs_url
@@ -1114,14 +1164,19 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
-# Build the BenchBot Simulator Docker image
+# Build the BenchBot Backend Docker image
+backend_dockerfile=$([ -z "$no_simulator" ] && \
+  echo "$PATH_DOCKERFILE_BACKEND" || echo "$PATH_DOCKERFILE_BACKEND_LITE")
+backend_name="$(basename "$backend_dockerfile")"
 printf "\n${colour_blue}%s${colour_nc}\n" \
-  "BUILDING BENCHBOT SIMULATOR DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
+  "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
+docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
   --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
   --build-arg BENCHBOT_ENVS_SRCS="${envs_urls[*]}" \
+  --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
+  --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}"\
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
@@ -1129,7 +1184,7 @@ docker build -t "$DOCKER_TAG_SIMULATOR" -f "$PATH_DOCKERFILE_SIMULATOR" \
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
-    "ERROR: Building BenchBot \"simulator\" returned a non-zero error code" \
+    "ERROR: Building BenchBot \"${backend_name%.*}\" returned a non-zero error code" \
     "$build_ret"
   exit 1
 fi
@@ -1137,7 +1192,7 @@ fi
 # Pull out ground truth files from the simulator
 rm -rf "$PATH_GROUND_TRUTH"
 for i in "${!envs_urls[@]}"; do
-  location=$(docker run --name ground_truth "$DOCKER_TAG_SIMULATOR" \
+  location=$(docker run --name ground_truth "$DOCKER_TAG_BACKEND" \
     /bin/bash -c 'p="$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"; \
     [ -d "$p" ] && echo "$p" || echo ""')
   if [ ! -z "$location" ]; then
@@ -1154,7 +1209,6 @@ docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
-  printf "\n${colour_red}%s: %d" \
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
     "ERROR: Building BenchBot \"submission\" returned a non-zero error code" \
     "$build_ret"

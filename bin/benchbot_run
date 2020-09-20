@@ -18,16 +18,19 @@ source .helpers
 ######################## Helper functions for commands #########################
 ################################################################################
 
-usage_text="$(basename "$abs_path") -- Run script for the BenchBot backend & simulator
+usage_text="$(basename "$abs_path") -- Run script for the BenchBot backend & simulator / real robot
 
 USAGE:
 
     Get info about the program / available options:
         $(basename "$abs_path") [-h|--help|--list-tasks|--list-envs]
 
-    Run a simulator with a specifc task setup:
+    Run a simulator with a specific task setup:
         $(basename "$abs_path") --env ENV_NAME --task TASK_NAME
         $(basename "$abs_path") -e ENV_NAME -t TASK_NAME
+
+    Request the backend to explicitly use the carter robot platform:
+        $(basename "$abs_path") -e ENV_NAME -t TASK_NAME --robot carter
 
 OPTION DETAILS:
 
@@ -64,9 +67,26 @@ OPTION DETAILS:
             Search for & list all installed environments. The listed
             environment names are in the format needed for the --env option.
 
+    --list-robots
+            List all supported robot targets. This list will adjust to include
+            what is available in your current installation (i.e. there will be
+            no simulated robots listed if you installed with '--no-simulator')
+
     --list-tasks   
             Lists all supported task combinations. The listed tasks are printed
             in the format needed for the --task option.
+
+    -r, --robot
+            Configure the BenchBot supervisor for a specific robot. This
+            currently is used to select either a simulator or real robot, but
+            has all the flexibility in the future to target any desired robot
+            platform, whether that be simulated or real.
+
+            If the full backend is installed (with a simulator), the 'sim'
+            target robot will be used by default, otherwise the 'real' target
+            robot will be the default.
+
+            (Use --list-robots to see a list of available robots)
 
     -t, --task             
             Configure BenchBot for a specific task style (this must be called
@@ -99,10 +119,10 @@ _map_details_err=\
 poses (%d), & environment files (%d) found. This should never happen; please
 contact the developers."
 
-_simulator_err=\
-"ERROR: The BenchBot Simulator container has exited unexpectedly. This should 
-not happen unless something is installed incorrectly. Please see the complete
-log below for a dump of the crash output:"
+_robot_err=\
+"ERROR: The BenchBot Robot Controller container has exited unexpectedly. This 
+should not happen unless something is installed incorrectly. Please see the
+complete log below for a dump of the crash output:"
 
 SELECTED_ENV=
 SELECTED_TASK=
@@ -127,6 +147,7 @@ function _env_files() {
 }
 
 function _env_data() {
+  found=
   while read -r line; do
     if [ -z "$found" ] && [[ "$line" =~ ^/.*"${1/:/_}"\.yaml ]]; then
       found=true
@@ -143,7 +164,7 @@ function _env_data() {
 function _env_data_get() {
   if [ -z "$_env_data_full_cached" ]; then
     # A little hacky, but docker runs are costly so this gets everything in 1 go
-    _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_SIMULATOR /bin/bash \
+    _env_data_full_cached=$(docker run --rm -t $DOCKER_TAG_BACKEND /bin/bash \
       -c 'find $BENCHBOT_ENVS_PATH/*/'$FILENAME_ENV_METADATA' -name "*.yaml"\
       | while read env; do echo "$(realpath $env)"; cat $env; echo ""; done')
   fi
@@ -182,6 +203,16 @@ function _env_poses() {
   echo "$ps" | sed -e 's/[[:space:]]*$//'
 }
 
+function _env_type() {
+  envs=($(_expand_envs $1))
+  ts=
+  for e in "${envs[@]}"; do
+    ts+="$(_env_data $e | sed -n 's/.*type: \(.*\)/\1/p' | \
+      tr -d '[:space:]' | tr -d '"') "
+  done;
+  echo "$ts" | sed -e 's/[[:space:]]*$//'
+}
+
 function _expand_envs() {
   env_name=$(echo "$1" | sed 's/:.*//')
   env_nums=($(echo "$1" | sed 's/[^:]*://; s/:/ /'))
@@ -193,6 +224,11 @@ function _expand_envs() {
 }
 
 function exit_gracefully() {
+  if [ -z "$simulator_required" ]; then
+    printf "\n\n${colour_blue}%s${colour_nc}\n" \
+      "Re-closing network openings used for real robot:"
+    close_network $network_forwarding $network_policy
+  fi
   kill_benchbot
   exit ${1:-0}
 }
@@ -200,25 +236,60 @@ function exit_gracefully() {
 function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
-
   # Print the list with details
-  echo "The following environments are installed in your BenchBot Docker image:
-  "
-  for e in $(_env_list); do
-    echo "        $e"
-  done
+  echo "A specific environment can be selected by entering a string in the format 
+ENV_NAME:VARIATION_NUMBER. Scene change detection tasks require an environment 
+string of the form ENV_NAME:VARIATION_NUMBER_1:VARIATION_NUMBER_2, as a second
+variation is required in completing the task. 
+
+Either simulated or real world environments can be selected. Please see the
+'--list-robots' command for the available simulated and real robot platforms.
+Only simulated robots can be run in simulated environments, and only real
+robots in real environments (as you would expect).
+
+Support for the following environments is provided in your installed BenchBot
+Docker image:
+
+    Simulated: 
+        "
+  if has_simulator; then
+    for e in $(_env_list); do
+      if [ -z "$(_env_type $e | grep "real")" ]; then
+        echo "            $e"
+      fi
+    done
+  else
+    echo "             NONE (simulator not installed)"
+  fi
   echo "
-The string is of the format ENV_NAME:VARIATION_NUMBER. Note when running the
-scene change detection tasks you will have to specifiy a second variation using
-the format ENV_NAME:VARIATION_NUMBER_ONE:VARIATION_NUMBER_TWO.
-  "
+
+    Real word: 
+        "
+  for e in $(_env_list); do
+    if [ ! -z "$(_env_type $e | grep "real")" ]; then
+      echo "            $e"
+    fi
+  done
+  echo ""
+}
+
+function opt_list_robots() {
+  # TODO this will need to be redone in a more flexible way to support a more
+  # dynamic style of "robot" target creation
+  echo "The following robot targets are supported in your BenchBot installation:
+        "
+  for r in $(_robot_list); do
+    echo "        $r"
+  done;
+  echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running a real 
+robot platform in a simulated environment is an invalid configuration)."
 }
 
 function opt_list_tasks() {
   # TODO this is hard coded for now... maybe should be done differently...
   echo "The following tasks are supported by BenchBot: 
   "
-  for t in "${_task_list[@]}"; do
+  for t in ${_task_list[@]}; do
     echo "        $t"
   done
   echo "
@@ -293,6 +364,20 @@ function opt_select_env() {
   return 1
 }
 
+function opt_select_robot() {
+  # Only update the SELECTED_ROBOT variable if it is in the list of robots
+  selection="${1:-carter:sim}"
+  for r in $(_robot_list); do
+    r=$(echo "$r" | tr -d '[:space:]')
+    if [ "$r" == "$selection" ]; then
+      SELECTED_ROBOT="$r"
+      return 0
+    fi
+  done
+  echo "Robot '$1' is not a supported robot platform. Please check --list-robots."
+  return 1
+}
+
 function opt_select_task() {
   # Only update the SELECTED_TASK variable if it is in the list of tasks
   for t in ${_task_list[@]}; do
@@ -305,33 +390,75 @@ function opt_select_task() {
   return 1
 }
 
+_robot_data_full_cached=
+
+function _robot_data() {
+  found=
+  while read -r line; do
+    if [ -z "$found" ] && [[ "$line" =~ ^/.*"$1"\.yaml ]]; then
+      found=true
+      echo "$line"
+    elif [ ! -z "$found" ] && [[ "$line" =~ ^/.*\.yaml ]]; then
+      return 0
+    elif [ ! -z "$found" ]; then
+      echo "$line"
+    fi
+  done <<< "$_robot_data_full_cached"
+  return 1
+}
+
+function _robot_data_get() {
+  if [ -z "$_robot_data_full_cached" ]; then
+    # A little hacky, but docker runs are costly so this gets everything in 1 go
+    _robot_data_full_cached=$(docker run --rm -t $DOCKER_TAG_BACKEND /bin/bash \
+      -c 'find $BENCHBOT_SUPERVISOR_PATH/benchbot_supervisor/robots -name "*.yaml" |\
+      while read robot; do echo "$(realpath $robot)"; cat $robot; echo ""; \
+      done')
+  fi
+}
+
+function _robot_list() {
+  echo "$_robot_data_full_cached" | sed -n 's/\(.*\)\.yaml/\1/p' | \
+    awk -F'/' '{print $NF}' | sed 's/_/:/p'| sort -u
+}
+
+function _robot_type() {
+  # TODO in the future this needs to be a lot less dumb
+  echo "$1" | sed 's/.*://'
+}
+
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o he:t:fuv \
-  --long help,env:,task:,list-envs,list-tasks,force-updateless,updates-check,version \
+parse_out=$(getopt -o he:t:r:fuv \
+  --long help,env:,force-updateless,list-envs,list-robots,list-tasks,robot:,task:,updates-check,version \
   -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_exit=
 updates_skip=
+robot_selection=
 while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
-    --list-envs)
-      _env_data_get ; opt_list_envs ; exit 0 ;;
-    --list-tasks)
-      opt_list_tasks ; exit 0 ;;
     -e|--env)
       _env_data_get ; opt_select_env "$2"; shift 2 ;;
-    -t|--task)
-      opt_select_task "$2"; shift 2 ;;
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
+    --list-envs)
+      _env_data_get ; opt_list_envs ; exit 0 ;;
+    --list-robots)
+      _robot_data_get; opt_list_robots ; exit 0 ;;
+    --list-tasks)
+      opt_list_tasks ; exit 0 ;;
+    -r|--robot)
+      robot_selection="$2"; shift 2 ;;
+    -t|--task)
+      opt_select_task "$2"; shift 2 ;;
     -u|--updates-check)
       updates_exit=1 ; shift ;;
     -v|--version)
@@ -342,17 +469,38 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+_robot_data_get; opt_select_robot "$robot_selection"
 
-# Bail if we are running & they didn't give us both an environment & task
-if [ -z "$updates_exit" ] && [ -z "$SELECTED_ENV" ]; then 
-  printf "${colour_red}%s${colour_nc}\n" \
-    "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
-  exit 1
-fi
-if [ -z "$updates_exit" ] && [ -z "$SELECTED_TASK" ]; then 
-  printf "${colour_red}%s${colour_nc}\n" \
-    "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
-  exit 1
+# Bail if we are running & we didn't get a valid robot, env, & task
+if [ -z "$updates_exit" ]; then
+  if [ -z "$SELECTED_ROBOT" ]; then
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid robot selected (selected_robot = "$SELECTED_ROBOT")"
+    exit 1
+  fi
+  if [ -z "$SELECTED_ENV" ]; then 
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
+    exit 1
+  fi
+  if [ -z "$SELECTED_TASK" ]; then 
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
+    exit 1
+  fi
+  if ! has_simulator && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+    printf "${colour_red}%s\n%s${colour_nc}\n" \
+      "ERROR: Can't run a simulated robot (selected_robot = "$SELECTED_ROBOT") in an" \
+      "installation that doesn't have a simulator installed."
+    exit 1
+  fi
+  if [[ "$(_robot_type "$SELECTED_ROBOT")" \
+      != *"$(_env_type "$SELECTED_ENV")"* ]]; then
+    printf "${colour_red}%s\n%s${colour_nc}\n" \
+      "ERROR: Type mismatch between selected robot & environment" \
+      "(selected_robot = "$SELECTED_ROBOT", selected_env= "$SELECTED_ENV")"
+    exit 1
+  fi
 fi
 
 # Ensure task & environment combo is valid
@@ -370,7 +518,7 @@ elif [[ "$SELECTED_TASK" =~ .*"scd".* ]] && \
 fi
 
 ################################################################################
-##################### Run the simulator & BenchBot backend #####################
+############## Run the simulator / real robot & BenchBot backend ###############
 ################################################################################
 
 # Check for & handles updates to the BenchBot software stack
@@ -406,11 +554,16 @@ fi
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
+if has_simulator && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+  simulator_required=1
+fi
+
 # Print some configuration information
 echo -n -e "${colour_blue}Running the BenchBot system with the following settings:${colour_nc}
 
     Selected environment: $SELECTED_ENV
     Selected task:        $SELECTED_TASK
+    Selected robot:       $SELECTED_ROBOT
     Actions set:          $selected_actions
     Observations set:     $selected_observations
     Maps:                 "
@@ -422,12 +575,22 @@ for i in "${!selected_map_paths[@]}"; do
   printf "%*s" 26
   printf "(starting @ %s)\n" "${selected_poses[$i]}"
 done
+printf "    %-22s" "Simulator required:"
+printf "%s\n"  $([ -z "$simulator_required" ] && echo "No" || echo "Yes")
 echo ""
 
 # Create the network for BenchBot software stack
 echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
 docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
+if [ -z "$simulator_required" ]; then
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Opening network to facilitate communications with real robot:"
+  network_forwarding=$(cat /proc/sys/net/ipv4/conf/all/forwarding)
+  network_policy=$(sudo iptables --list FORWARD | head -n 1 | \
+    sed 's/Chain.*(policy \([^)]*\))/\1/')
+  open_network;
+fi
 
 # Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root > /dev/null
@@ -441,35 +604,29 @@ cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 echo -e "\n${colour_blue}Starting container for BenchBot ROS:${colour_nc}"
 name="$ros_master_host"
-${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
+${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-echo -e "\n${colour_blue}Starting container for BenchBot Simulator:${colour_nc}"
-name="benchbot_simulator"
-${docker_run//'$name'/$name} --ip "$URL_SIMULATOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'$BENCHBOT_SIMULATOR_PATH/scripts/simulator_controller \
-  --file-collisions /tmp/benchbot_collision --file-dirty-state /tmp/benchbot_dirty \
-  --path-envs '$(dirname $(dirname $(_env_path $SELECTED_ENV)))' \
-  --path-isaac $ISAAC_SDK_PATH --path-simulator $BENCHBOT_SIMULATOR_PATH \
-  --port '"$PORT_SIMULATOR"' \
-  '"$FILENAME_ENV_METADATA"' '"$( IFS=$':'; echo "${selected_map_paths[*]}")"' \
-  '"$( IFS=$':'; echo "${selected_poses[*]}")"
-while [ $(docker ps -q -f "name=$name" | wc -l) -eq 0 ]; do sleep 1; done
+if [ ! -z "$simulator_required" ]; then
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Starting container for BenchBot Robot Controller:"
+  name="benchbot_robot"
+  ${docker_run//'$name'/$name} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+    "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 name="benchbot_supervisor"
-${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_SIMULATOR /bin/bash -c \
-  "$cmd_prefix"'rosrun benchbot_supervisor benchbot_supervisor \
-  _task_name:="'"$SELECTED_TASK"'" _robot_file:="carter.yaml" \
-  _observations_file:="'"$selected_observations"'.yaml" \
-  _actions_file:="'"$selected_actions"'_control.yaml"\
-  _environment_files:='"$( IFS=$':'; echo "${selected_env_files[*]}")"' \
-  _simulator_address:='"${HOSTNAME_SIMULATOR}"':'"${PORT_SIMULATOR}"
+${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+  "$cmd_prefix"'python -m benchbot_supervisor \
+  --task-name "'"$SELECTED_TASK"'" --robot-file "'"${SELECTED_ROBOT/:/_}"'.yaml" \
+  --observations-file "'"$selected_observations"'.yaml" \
+  --actions-file "'"$selected_actions"'_control.yaml"\
+  --environment-files '"$( IFS=$':'; echo "${selected_env_files[*]}")"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 name="benchbot_debug"
-# ${docker_run//'$name'/$name} --user root --privileged -v /dev:/dev -i $DOCKER_TAG_SIMULATOR
-${docker_run//'$name'/$name} -it -d $DOCKER_TAG_SIMULATOR
+${docker_run//'$name'/$name} --ip "$URL_DEBUG" -it -d $DOCKER_TAG_BACKEND /bin/bash
 xhost -local:root > /dev/null
 
 # Print the output of the Supervisor, watching for failures
@@ -479,13 +636,15 @@ docker logs benchbot_supervisor
 docker attach benchbot_supervisor --no-stdin &
 
 while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
-    [ ! -z $(docker ps -q -f 'name=benchbot_simulator') ]; do
+  ([ -z "$simulator_required" ] || \
+  [ ! -z $(docker ps -q -f 'name=benchbot_robot') ]); do
   sleep 1
 done
 
-if [ -z $(docker ps -q -f 'name=benchbot_simulator') ]; then
-  header_block "BENCHBOT SIMULATOR ERROR" ${colour_red}
-  echo -e "\n${colour_red}$_simulator_err${colour_nc}\n"
-  docker logs benchbot_simulator
+if [ ! -z "$simulator_required" ] && \
+    [ -z $(docker ps -q -f 'name=benchbot_robot') ]; then
+  header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
+  echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
+  docker logs benchbot_robot
 fi
 exit_gracefully 1
