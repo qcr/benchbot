@@ -20,6 +20,10 @@ $URL_SIMULATOR $HOSTNAME_SIMULATOR
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR
 $URL_DEBUG $HOSTNAME_DEBUG"
 
+# Default program versions to install
+NVIDIA_DEFAULT='nvidia-driver-455'
+CUDA_DEFAULT='cuda'
+
 ################################################################################
 ########################### Definitions for messages ###########################
 ################################################################################
@@ -195,7 +199,7 @@ sudo apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/\
 cuda/repos/ubuntu1804/x86_64/7fa2af80.pub" &&
 sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/\
 cuda/repos/ubuntu${v}/x86_64/ /" &&
-sudo apt-get update && sudo apt-get -y install nvidia-driver-440'
+sudo apt-get update && sudo apt-get -y install '"$NVIDIA_DEFAULT"
 chk_nvidiadriver_reboot=0
 
 chk_nvidiaversion_name='Nvidia driver version valid'
@@ -249,7 +253,7 @@ chk_cudadriversavailable_issue="\
   installations from the official Nvidia repository. Please add the Nvidia 
   repository, & install 'cuda-drivers' through apt."
 chk_cudadriversavailable_fix=\
-"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
 chk_cudadriversavailable_reboot=1
 
 chk_cudadriversversion_name='CUDA drivers version valid'
@@ -264,7 +268,8 @@ chk_cudadriversversion_issue="\
 
   Please install a more recent version of the CUDA drivers from the Nvidia 
   repository."
-chk_cudadriversversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}
+chk_cudadriversversion_fix=\
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
 chk_cudadriversversion_reboot=1
 
 chk_cudadriversppa_name='CUDA drivers from the Nvidia PPA'
@@ -289,7 +294,7 @@ chk_cudadriversppa_issue="\
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudadriversppa_fix=\
 'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
-"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-drivers}"
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
 chk_cudadriversppa_reboot=1
 
 chk_cudaavailable_name='CUDA is installed'
@@ -301,33 +306,32 @@ chk_cudaavailable_eval='[ ! -z "$check_result" ]'
 chk_cudaavailable_issue="\
   No version of CUDA detected. Our Docker only supports CUDA installations from
   the official Nvidia repository. Please add the Nvidia repository, & install 
-  'cuda-10' through apt."
-chk_cudaavailable_fix="${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
+  'cuda' through apt."
+chk_cudaavailable_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaavailable_reboot=1
 
 chk_cudaversion_name='CUDA version valid'
 chk_cudaversion_pass='Valid ($check_result)'
 chk_cudaversion_fail='Invalid'
-chk_cudaversion_check=\
-'cat /usr/local/cuda/version.txt 2>/dev/null | cut -d " " -f3'
+chk_cudaversion_check='/usr/local/cuda/bin/nvcc --version | grep release | '\
+'sed '"'"'s/.*release \([0-9\.]*\).*/\1/'"'"''
 chk_cudaversion_eval='eval_version "$check_result" 10'
 chk_cudaversion_issue="\
   The version of CUDA detected ("'$check_result'") is incompatible with BenchBot
   which requires at least 10.0 for the Isaac SDK.
 
   Please install a more recent version of CUDA from the Nvidia repository."
-chk_cudaversion_fix=${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}
+chk_cudaversion_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaversion_reboot=1
 
 chk_cudappa_name='CUDA is from the Nvidia PPA'
 chk_cudappa_pass='PPA is valid'
 chk_cudappa_fail='PPA is invalid'
 chk_cudappa_check=\
-'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-[0-9].*$(cat \
-/usr/local/cuda/version.txt | cut -d " " -f 3)"); \
-apt download --print-uris $(echo $installed | sed '"'"'s/^\([^\/]*\).*/\1/'"'"')=\
-$(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
-cut -d'"'"' '"'"' -f1'
+'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-$(\
+/usr/local/cuda/bin/nvcc --version | grep release | \
+sed '"'"'s/.*release \([0-9\.]*\).*/\1/'"'"')"); \
+apt download --print-uris "$(echo "$installed" | sed '"'"'s/\([^\/]*\).*/\1/'"'"')=$(echo "$installed" | cut -d " " -f 2)" 2>/dev/null'
 chk_cudappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudappa_issue="\
@@ -341,7 +345,7 @@ chk_cudappa_issue="\
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudappa_fix=\
 'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
-"${chk_nvidiadriver_fix//nvidia-driver-440/cuda-10-1}"
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudappa_reboot=1
 
 chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
