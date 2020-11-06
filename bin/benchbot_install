@@ -441,7 +441,7 @@ chk_dockernct_reboot=1
 chk_dockerroot_name='Docker runs without root'
 chk_dockerroot_pass='Passed'
 chk_dockerroot_fail='Failed'
-chk_dockerroot_check='docker run hello-world &>/dev/null; echo $?'
+chk_dockerroot_check='docker run --rm hello-world &>/dev/null; echo $?'
 chk_dockerroot_eval='[ $check_result -eq 0 ]'
 chk_dockerroot_issue="\
   Docker failed to run the hello-world test.
@@ -1143,19 +1143,21 @@ done
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
 # Get some useful variables from the host
+os_version=$(lsb_release -a 2>/dev/null | grep "Codename" | cut -d$'\t' -f2)
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
 cuda_drivers_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-drivers/" | cut -d ' ' -f 2)
 cuda_version=$(apt list --installed 2>/dev/null | \
-  grep "cuda-[0-9].*$(cat /usr/local/cuda/version.txt | cut -d ' ' -f 3)" | \
-  cut -d ' ' -f 2)
+  grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
+  sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
 sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT CORE DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
+  --build-arg OS_VERSION="${os_version}" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
