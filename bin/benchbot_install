@@ -1177,6 +1177,7 @@ backend_name="$(basename "$backend_dockerfile")"
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
 docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
+  --build-arg OS_VERSION="${os_version}" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
   --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \

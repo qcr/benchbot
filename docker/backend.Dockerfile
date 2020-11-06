@@ -1,24 +1,27 @@
 # Extend the BenchBot Core image
 FROM benchbot/core:base
+ARG OS_VERSION
 
 # Install ROS Melodic
 ENV ROS_WS_PATH /benchbot/ros_ws
-RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
+RUN echo "deb http://packages.ros.org/ros/ubuntu ${OS_VERSION} main" > \
     /etc/apt/sources.list.d/ros-latest.list && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
     C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
-    apt update && apt install -y ros-melodic-desktop-full python-rosdep \
-    python-rosinstall python-rosinstall-generator python-wstool build-essential
+    ROS_VERSION="$([ $OS_VERSION == 'focal' ] && echo 'noetic' || echo 'melodic')" && \
+    PYTHON_VERSION="$([ $OS_VERSION == 'focal' ] && echo '3')" && \
+    apt update && apt install -y ros-${ROS_VERSION}-desktop-full \
+    python${PYTHON_VERSION}-rosdep python${PYTHON_VERSION}-rosinstall \
+    python${PYTHON_VERSION}-rosinstall-generator python${PYTHON_VERSION}-wstool \
+    python${PYTHON_VERSION}-catkin-tools python${PYTHON_VERSION}-pip \
+    python${PYTHON_VERSION}-rosinstall-generator python${PYTHON_VERSION}-wstool \
+    build-essential git 
 
 # Install Vulkan
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
     apt-key add - && wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list \
     http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
     apt update && DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk
-
-# Install any remaining extra software
-RUN apt update && apt install -y git python-catkin-tools python-pip \
-    python-rosinstall-generator python-wstool
 
 # Create a benchbot user with ownership of the benchbot software stack (Unreal
 # for some irritating reason will not accept being run by root...) 
@@ -29,16 +32,19 @@ RUN useradd --create-home --password "" benchbot && passwd -d benchbot && \
 USER benchbot
 WORKDIR /benchbot
 
-# Install Isaac (using local copies of licensed libraries)
+# Build ROS
+RUN sudo rosdep init && rosdep update && \
+    mkdir -p ros_ws/src && source /opt/ros/*/setup.bash && \
+    pushd ros_ws && catkin_make && source devel/setup.bash
+
+# Install & build Isaac (using local copies of licensed libraries)
 ARG ISAAC_SDK_TGZ
 ENV ISAAC_SDK_PATH /benchbot/isaac_sdk
 ADD --chown=benchbot:benchbot ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
-
-# Build ROS & Isaac
-RUN sudo rosdep init && rosdep update && \
-    mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
-    pushd ros_ws && catkin_make && source devel/setup.bash && popd && \
-    pushd "$ISAAC_SDK_PATH" && \
+RUN pushd "$ISAAC_SDK_PATH" && \
+    LIBVPX_VERSION="$([ $OS_VERSION == 'focal' ] && echo '6' || echo '5')" && \
+    sed -i "s/\(libvpx\)\(5\)/\1${LIBVPX_VERSION}/" \
+    engine/build/scripts/install_dependencies.sh && \
     engine/build/scripts/install_dependencies.sh && bazel build ... && \
     bazel build ...
 
