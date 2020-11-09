@@ -16,7 +16,7 @@ source .helpers
 hostnames_block=\
 "# BENCHBOT SPECIFIC HOSTNAMES
 $URL_ROS $HOSTNAME_ROS
-$URL_SIMULATOR $HOSTNAME_SIMULATOR
+$URL_ROBOT $HOSTNAME_ROBOT
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR
 $URL_DEBUG $HOSTNAME_DEBUG"
 
@@ -807,8 +807,8 @@ chk_hostsavail_name='BenchBot hosts available'
 chk_hostsavail_pass='Found'
 chk_hostsavail_fail='Not found'
 chk_hostsavail_check=\
-'getent hosts benchbot_ros benchbot_simulator benchbot_supervisor'
-chk_hostsavail_eval='[ $(echo "$check_result" | wc -l) -eq 3 ]'
+'getent hosts benchbot_ros benchbot_robot benchbot_supervisor benchbot_debug'
+chk_hostsavail_eval='[ $(echo "$check_result" | wc -l) -eq 4 ]'
 chk_hostsavail_issue="\
   The hosts benchbot_ros, benchbot_simulator, & benchbot_supervisor were not
   found on the host system. Only the following hosts were found (may be empty):
@@ -819,7 +819,7 @@ chk_hostsavail_issue="\
   to communicate between each of the individual components. Please add the host
   to your /etc/hosts file."
 chk_hostsavail_fix=\
-'echo -e "$hostnames_block" | sudo tee -a /etc/hosts'
+'echo -e "\n$hostnames_block" | sudo tee -a /etc/hosts'
 chk_hostsavail_reboot=1
 
 chk_symlinks_name='BenchBot symlinks available'
