@@ -580,7 +580,9 @@ chk_cudadriverdep_fail='Does not match'
 chk_cudadriverdep_check=\
 'fn='"'"'echo "Nvidia: $(cat /proc/driver/nvidia/version | \
   sed "/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/"), \
-  CUDA: $(cat /usr/local/cuda/version.txt | cut -d " " -f 3)"'"'"' &&
+  CUDA: $(apt list --installed 2>/dev/null | grep -E "cuda-$(\
+  /usr/local/cuda/bin/nvcc --version | grep release | \
+  sed "s/.*release \([0-9\.]*\).*/\1/")" | cut -d " " -f 2)"'"'"' && 
 host=$(eval "$fn") && 
 bb=$(docker run --rm -t '$DOCKER_TAG_CORE' /bin/bash -c "$fn" | \
   sed '"'"'s/[[:space:]]*$//'"'"') &&
@@ -1143,7 +1145,6 @@ done
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
 # Get some useful variables from the host
-os_version=$(lsb_release -a 2>/dev/null | grep "Codename" | cut -d$'\t' -f2)
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
 cuda_drivers_version=$(apt list --installed 2>/dev/null | \
@@ -1157,7 +1158,6 @@ sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT CORE DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
-  --build-arg OS_VERSION="${os_version}" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
@@ -1177,7 +1177,6 @@ backend_name="$(basename "$backend_dockerfile")"
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
 docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
-  --build-arg OS_VERSION="${os_version}" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
   --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
   --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \

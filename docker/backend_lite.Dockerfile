@@ -8,17 +8,14 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
     C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
     apt update && apt install -y ros-melodic-desktop-full python-rosdep \
-    python-rosinstall python-rosinstall-generator python-wstool build-essential
+    python-rosinstall python-rosinstall-generator python-wstool \
+    python-catkin-tools python-pip build-essential
 
 # Install Vulkan
 RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
     apt-key add - && wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list \
     http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
     apt update && DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk
-
-# Install any remaining extra software
-RUN apt update && apt install -y git python-catkin-tools python-pip \
-    python-rosinstall-generator python-wstool
 
 # Create a benchbot user with ownership of the benchbot software stack (Unreal
 # for some irritating reason will not accept being run by root...) 
@@ -29,7 +26,7 @@ RUN useradd --create-home --password "" benchbot && passwd -d benchbot && \
 USER benchbot
 WORKDIR /benchbot
 
-# Build ROS & Isaac
+# Build ROS
 RUN sudo rosdep init && rosdep update && \
     mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd 
