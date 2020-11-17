@@ -215,21 +215,6 @@ function is_latest_benchbot_examples() {
   return
 }
 
-function is_latest_benchbot_envs() {
-  # Requires a URL as $1 & index number as $2
-  # TODO this should loudly error if there are any URL failures!
-  current=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
-    '_md5s=($BENCHBOT_ENVS_MD5SUMS) && _urls=($BENCHBOT_ENVS_URLS) && \
-    echo -n "${_md5s['$2']} ${_urls['$2']}"')
-  latest=$(wget -qO- "$1" | cut -d ' ' -f 1,2)
-  echo "$2"
-  echo "Current BenchBot Environments: $current"
-  echo "Latest BenchBot Environments: $latest"
-  [ "$current" == "$latest" ]
-  return
-}
-
 function is_latest_benchbot_simulator() {
   current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
@@ -292,27 +277,10 @@ updates."
   is_latest_benchbot_supervisor "$1" > /dev/null
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot Environments version ...\t"
-  _urls=($(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
-    'echo -n "$BENCHBOT_ENVS_SRCS"'))
-  if [ -z "$_urls" ]; then
-    environments_valid=1
-  else
-    environments_valid=0
-    for i in "${!_urls[@]}"; do
-      if [ $environments_valid -eq 0 ]; then
-        is_latest_benchbot_envs "${_urls[$i]}" "$i" > /dev/null
-        environments_valid=$?
-      fi
-    done
-  fi
-  [ $environments_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \
     [ $eval_valid -eq 0 ] && [ $examples_valid -eq 0 ] && \
-    [ $simulator_valid -eq 0 ] && [ $supervisor_valid -eq 0 ] && \
-    [ $environments_valid -eq 0 ]
+    [ $simulator_valid -eq 0 ] && [ $supervisor_valid -eq 0 ]
   valid=$?
   if [ $valid -eq 0 ]; then 
     echo -e "\n$colour_green$_valid_text$colour_nc"
