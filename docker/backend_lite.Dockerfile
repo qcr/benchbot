@@ -31,25 +31,6 @@ RUN sudo rosdep init && rosdep update && \
     mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd 
 
-# Install environments from a *.zip containing pre-compiled binaries
-ARG BENCHBOT_ENVS_MD5SUMS
-ENV BENCHBOT_ENVS_MD5SUMS=${BENCHBOT_ENVS_MD5SUMS}
-ARG BENCHBOT_ENVS_URLS
-ENV BENCHBOT_ENVS_URLS=${BENCHBOT_ENVS_URLS}
-ARG BENCHBOT_ENVS_SRCS
-ENV BENCHBOT_ENVS_SRCS=${BENCHBOT_ENVS_SRCS}
-ENV BENCHBOT_ENVS_PATH /benchbot/benchbot_envs
-RUN _urls=($BENCHBOT_ENVS_URLS) && _md5s=($BENCHBOT_ENVS_MD5SUMS) && \
-    _srcs=($BENCHBOT_ENVS_SRCS) && mkdir benchbot_envs && pushd benchbot_envs && \
-    for i in "${!_urls[@]}"; do \
-        echo "Installing environments from '${_srcs[$i]}':" && \
-        echo "Downloading ... " && wget -q "${_urls[$i]}" -O "$i".zip && \
-        test "${_md5s[$i]}" = $(md5sum "$i".zip | cut -d ' ' -f1) && \
-        echo "Extracting ... " && unzip -q "$i".zip && rm -v "$i".zip && \
-        mv "$(find . -mindepth 1 -maxdepth 1 -type d | head -n 1)" "$i" || \
-        exit 1; \
-    done
-
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SUPERVISOR_GIT
 ARG BENCHBOT_SUPERVISOR_HASH

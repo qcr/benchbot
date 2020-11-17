@@ -57,22 +57,6 @@ URL_ROS="172.20.0.100"
 URL_ROBOT="172.20.0.101"
 URL_SUPERVISOR="172.20.0.102"
 
-# NOTE: link should end with */download (default CloudStor link returns a web 
-# page...)
-# NOTE: this URL should point to a single-line text file describing the latest
-# version of the environments. Description is 3 whitespace separated fields:
-# - md5sum of latest env_*.zip
-# - URL for latest env_*.zip -
-# - timestamp of latest (field is optional / not used)
-URLS_ENVS_INFO_FULL_DEFAULT=(
-  "https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download" 
-  "https://cloudstor.aarnet.edu.au/plus/s/tqz36vODDnOsJpQ/download"
-  "https://cloudstor.aarnet.edu.au/plus/s/b7JI8bHajapkcOe/download"
-)
-URLS_ENVS_INFO_LITE_DEFAULT=(
-  "https://cloudstor.aarnet.edu.au/plus/s/b7JI8bHajapkcOe/download"
-)
-
 ################################################################################
 ################## Coloured terminal output & heading blocks ###################
 ################################################################################

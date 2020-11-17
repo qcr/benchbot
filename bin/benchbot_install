@@ -20,7 +20,8 @@ $URL_ROBOT $HOSTNAME_ROBOT
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR
 $URL_DEBUG $HOSTNAME_DEBUG"
 
-# Default program versions to install
+# Defaults for the installation process
+ADD_ONS_DEFAULT='roboticvisionorg/bao_ssu_challenge'
 NVIDIA_DEFAULT='nvidia-driver-455'
 CUDA_DEFAULT='cuda'
 
@@ -114,14 +115,6 @@ fix this.
 
 If the error is more generic, please contact us so that we can update our
 pre-install host system checks.
-"
-envs_err="\
-Ensure that the URL: 
-  "'$envs_url'"
-points to a single-line text file with whitespace-separated fields. The first 
-field contains the md5sum of the latest envs_*.zip, second field is URL of 
-envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
-internet connection also helps!
 "
 
 ################################################################################
@@ -971,30 +964,36 @@ trap cleanup_terminal EXIT
 
 # Safely parse options input
 input=$@
-parse_out=$(getopt -o hb:e:fuv \
-  --long help,branch:,envs-url:,force-clean,uninstall,no-simulator,no-update,version \
-  -n "$(basename "$abs_path")" -- "$@")
+_args="help,add-ons:,branch:,force-clean,uninstall,list-add-ons,no-simulator,\
+no-update,simulator:,version"
+parse_out=$(getopt -o ha:b:fs:uv \
+  --long $_args -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
-updates_skip=
+add_ons=
 no_simulator=
-envs_urls=()
+simulator=
+updates_skip=
 while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
+    -a|--add-ons)
+      add_ons="$2"; shift 2 ;;
     -b|--branch)
       # This is a real dirty way to do this... sorry
       BRANCH_DEFAULT="$2"; shift 2
       echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
-    -e|--envs-url)
-      envs_urls+=("$2"); shift 2 ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
+    -s|--simulator)
+      simulator="$2"; shift 2 ;;
     -u|--uninstall)
       uninstall_benchbot; exit ;;
     -v|--version)
       print_version_info; exit ;;
+    --list-add-ons)
+      list_add_ons; exit ;;
     --no-simulator)
       no_simulator=1; shift ;;
     --no-update)
@@ -1005,15 +1004,12 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+echo 
+exit 0
 
-# Use the default environments URL if none was provided, & sort them so some of
-# our Docker caching & env checking later on has an easier time
-if [ -z "$envs_urls" ]; then
-  envs_urls=("$([ -z "$no_simulator" ] && \
-    echo "${URLS_ENVS_INFO_FULL_DEFAULT[@]}" || \
-    echo "${URLS_ENVS_INFO_LITE_DEFAULT[@]}")")
-fi
-envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
+# Sanitise argument values
+if [ -z "$add_ons" ]; then add_ons="$ADD_ONS_DEFAULT"; fi
+if [ ! -z "$no_simulator"]; then simulator= ; fi
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1125,35 +1121,6 @@ if [ -z "$benchbot_api_hash" ]; then
 fi
 echo -e "\t\t$benchbot_api_hash."
 
-# Get md5sum of the latest from the provided envs_url
-echo -e "\nFetching md5sum & URL for latest version of environments ... "
-benchbot_envs_md5sums=()
-benchbot_envs_urls=()
-for i in "${!envs_urls[@]}"; do
-  u="${envs_urls[$i]}"
-  echo -e "\t$u ... "
-
-  _info=$(is_latest_benchbot_envs "$u" "$i" | latest_version_info)
-  _md5sum=$(echo "$_info" | cut -d ' ' -f1)
-  _url=$(echo "$_info" | cut -d ' ' -f2)
-  if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
-      "ERROR: Failed to fetch valid MD5SUM for environments" \
-      "${envs_err/'$envs_url'/$u}"
-    exit 1
-  elif [ -z "$_url" ] || \
-      [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
-      "ERROR: Failed to fetch valid URL for environments" \ 
-      "${envs_err/'$envs_url'/$u}"
-    exit 1
-  fi
-
-  benchbot_envs_md5sums+=("$_md5sum")
-  benchbot_envs_urls+=("$_url")
-  echo -e "\t\tDone."
-done
-
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
@@ -1191,9 +1158,6 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
 docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
   --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-  --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
-  --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
-  --build-arg BENCHBOT_ENVS_SRCS="${envs_urls[*]}" \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
   --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}"\
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
@@ -1207,18 +1171,6 @@ if [ $build_ret -ne 0 ]; then
     "$build_ret"
   exit 1
 fi
-
-# Pull out ground truth files from the simulator
-rm -rf "$PATH_GROUND_TRUTH"
-for i in "${!envs_urls[@]}"; do
-  location=$(docker run --name ground_truth "$DOCKER_TAG_BACKEND" \
-    /bin/bash -c 'p="$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"; \
-    [ -d "$p" ] && echo "$p" || echo ""')
-  if [ ! -z "$location" ]; then
-    docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
-  fi
-  docker rm -f ground_truth
-done
 
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
