@@ -48,35 +48,48 @@ OPTION DETAILS:
     -h,--help
             Show this help menu.
 
+    -a,--add-ons
+            Comma separated list of add-ons to install. Add-ons can be
+            specified as GitHub repositories ('username/repo_name'), relative
+            paths ('./my_addon'), or absolute paths ('/path/to/my/addon').
+            Add-on installation will also install all required add-on
+            dependencies. See add-on specification page for details:
+              https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons
+
+            Also see '--list-add-ons' for a details on installed add-ons, and a
+            list of all known BenchBot add-ons.
+
     -b,--branch
             Specify a branch other than master to install. The only use for
             this flag is active development. The general user will never need
             to use this flag.
 
-    -e,--envs-url
-            Specify a custom URL to look for an \"environment information file\".
-            An \"environment information file\" is a single line file with space-
-            separated fields: MD5 checksum of environments *.zip, URL pointing
-            to the environments *.zip, & plaintext version details. A general
-            user should never need this flag.
-
-            Multiple sets of environments can be installed by providing this
-            flag multiple times:
-                benchbot_install -e https://envs1.com -e https://envs2.com
-
     -f,--force-clean
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
 
+    --list--add-ons
+            List all currently installed add-ons with their dependency
+            structure noted. Also list all add-ons publicly declared on the
+            specification page (open an issue if you would like your add-on
+            mentioned here):
+              https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons
+
     --no-simulator
-            Runs installation without installing the Nvidia Isaac simulator.
-            This option is useful for avoiding the excessive space requirements
-            (>100GB) when using the BenchBot software stack on a machine that
-            will only be used with a real robot.
+            Runs installation without installing the Nvidia Isaac Unreal
+            simulator.  This option is useful for avoiding the excessive space
+            requirements (>100GB) when using the BenchBot software stack on a
+            machine that will only be used with a real robot.
 
     --no-update
             Skip checking for updates to the BenchBot software stack, & instead
             jump straight into the installation process.
+
+    -s,--simulator
+            Specify simulator to install (only 'isaac_unreal' is currently
+            supported). If this option isn't included, the default
+            'isaac_unreal' is installed. This flag will have more practical use
+            in the future when we add Omniverse support.
 
     -u,--uninstall
             Uninstall the BenchBot software stack from the machine. All BenchBot
