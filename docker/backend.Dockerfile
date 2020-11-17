@@ -32,17 +32,23 @@ RUN sudo rosdep init && rosdep update && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd 
 
 # Install & build Isaac (using local copies of licensed libraries)
+ARG SIMULATOR
+ARG ISAAC_SDK_DIR
 ARG ISAAC_SDK_TGZ
+ENV ISAAC_SDK_SRCS /isaac_srcs
+COPY --chown=benchbot:benchbot ${ISAAC_SDK_DIR} ${ISAAC_SDK_SRCS}
 ENV ISAAC_SDK_PATH /benchbot/isaac_sdk
-ADD --chown=benchbot:benchbot ${ISAAC_SDK_TGZ} ${ISAAC_SDK_PATH}
-RUN pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh && \
+RUN [ -z "$SIMULATOR" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
+    tar -xf "$ISAAC_SDK_SRCS/$ISAAC_SDK_TGZ" -C "$ISAAC_SDK_PATH" && \
+    pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh && \
     bazel build ... && bazel build ...
 
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH
 ENV BENCHBOT_SIMULATOR_PATH /benchbot/benchbot_simulator
-RUN git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
+RUN [ -z "$SIMULATOR" ] && exit 0 || \ 
+    git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
     source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
     ./bazelros build //apps/benchbot_simulator && pip install -r requirements.txt
@@ -62,4 +68,4 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
 # Record the type of backend built
-ENV BENCHBOT_BACKEND_TYPE full
+ENV BENCHBOT_SIMULATOR="${SIMULATOR}"

@@ -22,8 +22,9 @@ $URL_DEBUG $HOSTNAME_DEBUG"
 
 # Defaults for the installation process
 ADD_ONS_DEFAULT='roboticvisionorg/bao_ssu_challenge'
-NVIDIA_DEFAULT='nvidia-driver-455'
 CUDA_DEFAULT='cuda'
+NVIDIA_DEFAULT='nvidia-driver-455'
+SIMULATOR_DEFAULT='isaac_unreal'
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -972,7 +973,7 @@ if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 add_ons=
 no_simulator=
-simulator=
+simulator_choice="$SIMULATOR_DEFAULT"
 updates_skip=
 while true; do
   case "$1" in
@@ -987,7 +988,7 @@ while true; do
     -f|--force-clean)
       uninstall_benchbot; shift ;;
     -s|--simulator)
-      simulator="$2"; shift 2 ;;
+      simulator_choice="$2"; shift 2 ;;
     -u|--uninstall)
       uninstall_benchbot; exit ;;
     -v|--version)
@@ -1004,12 +1005,10 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-echo 
-exit 0
 
 # Sanitise argument values
 if [ -z "$add_ons" ]; then add_ons="$ADD_ONS_DEFAULT"; fi
-if [ ! -z "$no_simulator"]; then simulator= ; fi
+simulator=$([ -z "$no_simulator" ] && echo "$simulator_choice")
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1040,10 +1039,10 @@ fi
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
 # Patch in any values that can only be determined at runtime
-if [ ! -z "$no_simulator" ]; then
+if [ -z "$simulator" ]; then
   checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
 fi
-_sz=$([ -z "$no_simulator" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
+_sz=$([ ! -z "$simulator" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
 chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
 chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
@@ -1082,7 +1081,7 @@ fi
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-if [ -z "$no_simulator" ]; then
+if [ ! -z "$simulator" ]; then
   echo -e "\nFetching latest hash for BenchBot Simulator ... "
   benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
     latest_version_info)
@@ -1151,13 +1150,13 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build the BenchBot Backend Docker image
-backend_dockerfile=$([ -z "$no_simulator" ] && \
-  echo "$PATH_DOCKERFILE_BACKEND" || echo "$PATH_DOCKERFILE_BACKEND_LITE")
 backend_name="$(basename "$backend_dockerfile")"
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
-docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
-  --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
+docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
+  --build-arg SIMULATOR="$simulator" \
+  --build-arg ISAAC_SDK_DIR="$(dirname "$sdk_file")" \
+  --build-arg ISAAC_SDK_TGZ="$(basename "$sdk_file")" \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
   --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}"\
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
