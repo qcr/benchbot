@@ -50,7 +50,7 @@ OPTION DETAILS:
     -h,--help
             Show this help menu.
 
-    -a,--add-ons
+    -a,--addons
             Comma separated list of add-ons to install. Add-ons can be
             specified as GitHub repositories ('username/repo_name'), relative
             paths ('./my_addon'), or absolute paths ('/path/to/my/addon').
@@ -58,7 +58,7 @@ OPTION DETAILS:
             dependencies. See add-on specification page for details:
               https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons
 
-            Also see '--list-add-ons' for a details on installed add-ons, and a
+            Also see '--list-addons' for a details on installed add-ons, and a
             list of all known BenchBot add-ons.
 
     -b,--branch
@@ -70,7 +70,7 @@ OPTION DETAILS:
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
 
-    --list--add-ons
+    --list--addons
             List all currently installed add-ons with their dependency
             structure noted. Also list all add-ons publicly declared on the
             specification page (open an issue if you would like your add-on
@@ -965,7 +965,7 @@ trap cleanup_terminal EXIT
 
 # Safely parse options input
 input=$@
-_args="help,add-ons:,branch:,force-clean,uninstall,list-add-ons,no-simulator,\
+_args="help,addons:,branch:,force-clean,uninstall,list-addons,no-simulator,\
 no-update,simulator:,version"
 parse_out=$(getopt -o ha:b:fs:uv \
   --long $_args -n "$(basename "$abs_path")" -- "$@")
@@ -979,7 +979,7 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
-    -a|--add-ons)
+    -a|--addons)
       add_ons="$2"; shift 2 ;;
     -b|--branch)
       # This is a real dirty way to do this... sorry
@@ -993,8 +993,8 @@ while true; do
       uninstall_benchbot; exit ;;
     -v|--version)
       print_version_info; exit ;;
-    --list-add-ons)
-      list_add_ons; exit ;;
+    --list-addons)
+      list_addons; exit ;;
     --no-simulator)
       no_simulator=1; shift ;;
     --no-update)
