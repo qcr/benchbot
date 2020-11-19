@@ -73,9 +73,8 @@ OPTION DETAILS:
     --list--addons
             List all currently installed add-ons with their dependency
             structure noted. Also list all add-ons publicly declared on the
-            specification page (open an issue if you would like your add-on
-            mentioned here):
-              https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons
+            specification page (open an issue on GitHub if you would like your
+            add-on mentioned here).
 
     --no-simulator
             Runs installation without installing the Nvidia Isaac Unreal

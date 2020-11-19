@@ -294,4 +294,20 @@ updates."
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
 
+function _available_addons() {
+  # Returns a line-separated text summary of addons registered on the Wiki Page
+}
 
+function _installed_addons() {
+  # Returns a text summary of installed addons in the following format:
+  #   repo_username/repo_name installed_hash comma_separated_deps_list
+}
+
+function install_addon() {
+  
+
+}
+
+function list_addons() {
+
+}
