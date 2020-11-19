@@ -33,6 +33,7 @@ MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
 PATH_ROOT="$(realpath ..)"
 
 PATH_API="$PATH_ROOT/api"
+PATH_ADDONS="$PATH_ROOT/addons"
 PATH_BATCHES="$PATH_ROOT/batches"
 PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
 PATH_DOCKERFILE_BACKEND="$PATH_ROOT/docker/backend.Dockerfile"
@@ -296,18 +297,19 @@ updates."
 
 function _available_addons() {
   # Returns a line-separated text summary of addons registered on the Wiki Page
+  :
 }
 
 function _installed_addons() {
   # Returns a text summary of installed addons in the following format:
   #   repo_username/repo_name installed_hash comma_separated_deps_list
+  :
 }
 
 function install_addon() {
-  
-
+  :
 }
 
 function list_addons() {
-
+  :
 }

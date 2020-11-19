@@ -21,7 +21,7 @@ $URL_SUPERVISOR $HOSTNAME_SUPERVISOR
 $URL_DEBUG $HOSTNAME_DEBUG"
 
 # Defaults for the installation process
-ADD_ONS_DEFAULT='roboticvisionorg/bao_ssu_challenge'
+ADD_ONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
 NVIDIA_DEFAULT='nvidia-driver-455'
 SIMULATOR_DEFAULT='isaac_unreal'
@@ -1189,8 +1189,14 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "CLEANING UP OUTDATED BENCHBOT REMNANTS:"
 kill_benchbot "quiet"
 
+# PART 4: Installing requested BenchBot Add-ons
+header_block "PART 4: INSTALLING BENCHBOT ADD-ONS" $colour_blue
+
+printf "${colour_blue}%s${colour_nc}\n" \
+  "Installing add-ons based on the request string '$add_ons':"
+
 # PART 4: Running post build checks
-header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue
+header_block "PART 5: RUNNING POST-BUILD HOST CHECKS" $colour_blue
 
 for c in "${checks_list_post[@]}"; do
   if [[ "$c" =~ :$ ]]; then

@@ -598,7 +598,8 @@ ros_master_host="benchbot_roscore"
 docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
             -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
-            --network $DOCKER_NETWORK --name=\$name --hostname=\$name"
+            --network $DOCKER_NETWORK --name=\$name --hostname=\$name \
+            --mount source=$PATH_ADDONS,destination=/addons,readonly"
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
