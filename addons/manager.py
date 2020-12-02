@@ -1,6 +1,7 @@
 # Python manager for BenchBot Add-ons
 import json
 import re
+import requests
 import os
 from shutil import rmtree
 from subprocess import run
@@ -13,6 +14,10 @@ ENV_STATE_PATH = 'STATE_PATH'
 
 FILENAME_DEPENDENCIES = '.dependencies'
 FILENAME_REMOTE = '.remote'
+
+HASH_SHORT = 8
+
+URL_OFFICIAL_ADDONS = 'https://github.com/benchbot-addons'
 
 
 def _abs_path(path):
@@ -98,7 +103,8 @@ def install_addon(name):
             print("\tNo action - latest already installed.")
         else:
             run('git reset --hard origin/HEAD')
-            print("\tUpgraded from '%s' to '%s'." % (current[:8], latest[:8]))
+            print("\tUpgraded from '%s' to '%s'." %
+                  (current[:HASH_SHORT], latest[:HASH_SHORT]))
 
     # Fetch remote data if required
     file_remote = os.path.join(install_path, FILENAME_REMOTE)
@@ -141,11 +147,43 @@ def install_addons(string, remove_extras=False):
     installed_list = []
     for a in string.split(','):
         installed_list.extend(install_addon(a))
+    if remove_extras:
+        # TODO remove any not in installed_list
+        pass
     return installed_list
 
 
 def print_state():
-    pass
+    state = get_state()
+    print("Currently installed add-ons:")
+    if not state.keys():
+        print("\tNone.")
+    else:
+        for k, v in state.items():
+            print("\t%s (%s%s)" %
+                  (k, v['hash'][:HASH_SHORT],
+                   ', with remote content' if 'remote' in v else ''))
+    print(
+        "\nOur GitHub organisation (https://github.com/benchbot-addons) "
+        "contains all of our official add-ons.\nThe following are available, "
+        "with more details available at the above URL:")
+    for o in official_addons():
+        print("\t%s" % o)
+
+    print("\nIf you would like to add your community-created add-on to the "
+          "official list, please follow the\ninstructions here:\n\t"
+          "https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons")
+
+
+def official_addons():
+    # Get repository list from the GitHub organisation
+    offical_org = URL_OFFICIAL_ADDONS.split('/')[-1]
+    repo_data = requests.get('https://api.github.com/orgs/%s/repos' %
+                             offical_org,
+                             headers={
+                                 'Accept': 'application/vnd.github.v3+json'
+                             }).json()
+    return [d['full_name'] for d in repo_data]
 
 
 def remove_addon(name):
