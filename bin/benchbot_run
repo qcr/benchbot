@@ -237,6 +237,7 @@ function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
   # Print the list with details
+  echo "$_env_data_full_cached"
   echo "A specific environment can be selected by entering a string in the format 
 ENV_NAME:VARIATION_NUMBER. Scene change detection tasks require an environment 
 string of the form ENV_NAME:VARIATION_NUMBER_1:VARIATION_NUMBER_2, as a second
@@ -252,7 +253,7 @@ Docker image:
 
     Simulated: 
         "
-  if has_simulator; then
+  if [ ! -z "$(simulator_type)" ]; then
     for e in $(_env_list); do
       if [ -z "$(_env_type $e | grep "real")" ]; then
         echo "            $e"
@@ -488,7 +489,8 @@ if [ -z "$updates_exit" ]; then
       "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
     exit 1
   fi
-  if ! has_simulator && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+  if [ -z "$(simulator_type)" ] && \
+      [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
     printf "${colour_red}%s\n%s${colour_nc}\n" \
       "ERROR: Can't run a simulated robot (selected_robot = "$SELECTED_ROBOT") in an" \
       "installation that doesn't have a simulator installed."
@@ -554,7 +556,8 @@ fi
 selected_actions=$(echo "$SELECTED_TASK" | sed 's/.*:\(.*\):.*/\1/')
 selected_observations=$(echo "$SELECTED_TASK" | sed 's/.*:.*:\(.*\)/\1/')
 
-if has_simulator && [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+if [ ! -z "$(simulator_type)" ] && \
+    [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
   simulator_required=1
 fi
 
@@ -599,7 +602,7 @@ docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
             -e DISPLAY \
             -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
             --network $DOCKER_NETWORK --name=\$name --hostname=\$name \
-            --mount source=$PATH_ADDONS,destination=/addons,readonly"
+            --volume $PATH_ADDONS:/addons:ro"
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
