@@ -306,5 +306,9 @@ function list_addons() {
 }
 
 function remove_addons() {
-  :
+  pushd "$PATH_ADDONS" &> /dev/null
+  printf "\n" 
+  python3 -c 'from manager import remove_addons; remove_addons("'$1'")'
+  printf "\n\n"
+  popd &> /dev/null
 }

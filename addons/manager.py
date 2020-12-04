@@ -213,10 +213,33 @@ def remove_addon(name):
     dump_state(state)
 
 
-def remove_addons(string=None):
+def remove_addons(string=None, remove_dependents=True):
+    # Ensure a usable string
     if string is None or string == "":
         string = ",".join(get_state().keys())
     if string == "":
         return
-    for a in string.split(','):
+    addons = string.split(',')
+
+    # Add dependents to the list if requested
+    state = get_state()
+    deps = []
+    if remove_dependents:
+        for a in addons:
+            deps.extend([k for k in state.keys() if a in state[k]['deps']])
+    print("Removing the following requested add-ons:")
+    for a in addons:
+        print("\t%s" % a)
+    if deps:
+        print("and the following dependent add-ons:")
+        for d in deps:
+            print("\t%s" % d)
+    if input("Are you sure you wish to continue [y/N]? ") not in [
+            'y', 'Y', 'yes'
+    ]:
+        return
+    addons.extend(deps)
+    print("\n")
+
+    for a in addons:
         remove_addon(a)

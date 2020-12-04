@@ -55,7 +55,7 @@ OPTION DETAILS:
             specified as GitHub repositories ('username/repo_name'), relative
             paths ('./my_addon'), or absolute paths ('/path/to/my/addon').
             Add-on installation will also install all required add-on
-            dependencies. See add-on specification page for details:
+            dependencies. See add-on page for details:
               https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons
 
             Also see '--list-addons' for a details on installed add-ons, and a
@@ -72,9 +72,11 @@ OPTION DETAILS:
 
     --list-addons
             List all currently installed add-ons with their dependency
-            structure noted. Also list all add-ons publicly declared on the
-            specification page (open an issue on GitHub if you would like your
-            add-on mentioned here).
+            structure noted. Also list all official add-ons available in the
+            'benchbot-addons' GitHub organisation. If you would like to add a
+            community contribution to the community list, please follow the
+            instructions here:
+              https://github.com/RoboticVisionOrg/benchbot/wiki/BenchBot-Add-ons
 
     --no-simulator
             Runs installation without installing the Nvidia Isaac Unreal
@@ -85,6 +87,14 @@ OPTION DETAILS:
     --no-update
             Skip checking for updates to the BenchBot software stack, & instead
             jump straight into the installation process.
+
+    --remove-addons
+            Comma separated list of add-ons to remove (uses the same syntax as
+            the '--addons' flag). This command will also remove any dependent
+            add-ons as they will no longer work (e.g. if A depends on B, and
+            B is uninstalled, then there is no reason for A to remain). You
+            will be presented with a list of add-ons that will be removed, and
+            prompted before removal commences.
 
     -s,--simulator
             Specify simulator to install (only 'isaac_unreal' is currently
@@ -965,7 +975,7 @@ trap cleanup_terminal EXIT
 # Safely parse options input
 input=$@
 _args="help,addons:,branch:,force-clean,uninstall,list-addons,no-simulator,\
-no-update,simulator:,version"
+no-update,remove-addons:,simulator:,version"
 parse_out=$(getopt -o ha:b:fs:uv \
   --long $_args -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -998,6 +1008,8 @@ while true; do
       no_simulator=1; shift ;;
     --no-update)
       updates_skip=1; shift ;;
+    --remove-addons)
+      remove_addons "$2"; exit ;;
     --)
       shift ; break ;;
     *)
@@ -1207,7 +1219,7 @@ done
 printf "\n"
 header_block "PART 5: INSTALLING BENCHBOT ADD-ONS" $colour_blue
 
-printf "\n${colour_blue}%s${colour_nc}\n\n" \
+printf "\n${colour_blue}%s${colour_nc}\n" \
   "Installing add-ons based on the request string '$addons':"
 install_addons "$addons"
 
