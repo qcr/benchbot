@@ -21,7 +21,7 @@ $URL_SUPERVISOR $HOSTNAME_SUPERVISOR
 $URL_DEBUG $HOSTNAME_DEBUG"
 
 # Defaults for the installation process
-ADD_ONS_DEFAULT='benchbot-addons/ssu'
+ADDONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
 NVIDIA_DEFAULT='nvidia-driver-455'
 SIMULATOR_DEFAULT='isaac_unreal'
@@ -70,7 +70,7 @@ OPTION DETAILS:
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
 
-    --list--addons
+    --list-addons
             List all currently installed add-ons with their dependency
             structure noted. Also list all add-ons publicly declared on the
             specification page (open an issue on GitHub if you would like your
@@ -970,7 +970,7 @@ parse_out=$(getopt -o ha:b:fs:uv \
   --long $_args -n "$(basename "$abs_path")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
-add_ons=
+addons=
 no_simulator=
 simulator_choice="$SIMULATOR_DEFAULT"
 updates_skip=
@@ -979,7 +979,7 @@ while true; do
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
     -a|--addons)
-      add_ons="$2"; shift 2 ;;
+      addons="$2"; shift 2 ;;
     -b|--branch)
       # This is a real dirty way to do this... sorry
       BRANCH_DEFAULT="$2"; shift 2
@@ -1006,7 +1006,7 @@ while true; do
 done
 
 # Sanitise argument values
-if [ -z "$add_ons" ]; then add_ons="$ADD_ONS_DEFAULT"; fi
+if [ -z "$addons" ]; then addons="$ADDONS_DEFAULT"; fi
 simulator=$([ -z "$no_simulator" ] && echo "$simulator_choice")
 
 # Pre-install
@@ -1189,14 +1189,8 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "CLEANING UP OUTDATED BENCHBOT REMNANTS:"
 kill_benchbot "quiet"
 
-# PART 4: Installing requested BenchBot Add-ons
-header_block "PART 4: INSTALLING BENCHBOT ADD-ONS" $colour_blue
-
-printf "${colour_blue}%s${colour_nc}\n" \
-  "Installing add-ons based on the request string '$add_ons':"
-
 # PART 4: Running post build checks
-header_block "PART 5: RUNNING POST-BUILD HOST CHECKS" $colour_blue
+header_block "PART 4: RUNNING POST-BUILD HOST CHECKS" $colour_blue
 
 for c in "${checks_list_post[@]}"; do
   if [[ "$c" =~ :$ ]]; then
@@ -1208,6 +1202,14 @@ for c in "${checks_list_post[@]}"; do
     fi
   fi
 done
+
+# PART 5: Installing requested BenchBot Add-ons
+printf "\n"
+header_block "PART 5: INSTALLING BENCHBOT ADD-ONS" $colour_blue
+
+printf "\n${colour_blue}%s${colour_nc}\n\n" \
+  "Installing add-ons based on the request string '$addons':"
+install_addons "$addons"
 
 # We are finally done...
 echo -e "\nFinished!"

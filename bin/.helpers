@@ -289,24 +289,22 @@ updates."
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
 
-function _available_addons() {
-  # Returns a line-separated text summary of addons registered on the Wiki Page
-  :
-}
-
-function _installed_addons() {
-  # Returns a text summary of installed addons in the following format:
-  #   repo_username/repo_name installed_hash comma_separated_deps_list
-  :
-}
-
-function install_addon() {
-  :
+function install_addons() {
+  pushd "$PATH_ADDONS" &> /dev/null
+  printf "\n" 
+  python3 -c 'from manager import install_addons; install_addons("'$1'")'
+  printf "\n\n"
+  popd &> /dev/null
 }
 
 function list_addons() {
   pushd "$PATH_ADDONS" &> /dev/null
-  printf "\n%s\n\n" \
-    "$(python3 -c 'from manager import print_state; print_state()')"
+  printf "\n" 
+  python3 -c 'from manager import print_state; print_state()'
+  printf "\n\n"
   popd &> /dev/null
+}
+
+function remove_addons() {
+  :
 }
