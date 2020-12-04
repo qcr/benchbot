@@ -305,5 +305,8 @@ function install_addon() {
 }
 
 function list_addons() {
-  :
+  pushd "$PATH_ADDONS" &> /dev/null
+  printf "\n%s\n\n" \
+    "$(python3 -c 'from manager import print_state; print_state()')"
+  popd &> /dev/null
 }
