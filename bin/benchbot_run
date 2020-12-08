@@ -4,6 +4,8 @@
 ################### Load Helpers & Global BenchBot Settings ####################
 ################################################################################
 
+set -euo pipefail
+IFS=$'\n\t'
 abs_path=$(readlink -f $0)
 pushd $(dirname $abs_path) > /dev/null
 source .helpers
@@ -159,6 +161,8 @@ function opt_list_robots() {
         "
   echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running a real 
 robot platform in a simulated environment is an invalid configuration)."
+
+  run_manager_cmd 'find_all("robots")'
 }
 
 function opt_list_tasks() {
@@ -210,13 +214,13 @@ while true; do
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
     -e|--env)
-      _env_data_get ; opt_select_env "$2"; shift 2 ;;
+      opt_select_env "$2"; shift 2 ;;
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
     --list-envs)
-      _env_data_get ; opt_list_envs ; exit 0 ;;
+      opt_list_envs ; exit 0 ;;
     --list-robots)
-      _robot_data_get; opt_list_robots ; exit 0 ;;
+      opt_list_robots ; exit 0 ;;
     --list-tasks)
       opt_list_tasks ; exit 0 ;;
     -r|--robot)
@@ -233,7 +237,7 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-_robot_data_get; opt_select_robot "$robot_selection"
+opt_select_robot "$robot_selection"
 
 # Bail if we are running & we didn't get a valid robot, env, & task
 if [ -z "$updates_exit" ]; then
