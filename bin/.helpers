@@ -7,7 +7,7 @@
 BRANCH_DEFAULT="master"
 
 DOCKER_TAG_CORE="benchbot/core:base"
-DOCKER_TAG_SIMULATOR="benchbot/simulator:base"
+DOCKER_TAG_BACKEND="benchbot/backend:base"
 DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
 
@@ -17,13 +17,15 @@ FILENAME_ENV_METADATA=".benchbot_data_files"
 GIT_API="https://github.com/roboticvisionorg/benchbot_api"
 GIT_BATCHES="https://github.com/roboticvisionorg/benchbot_batches"
 GIT_BENCHBOT="https://github.com/roboticvisionorg/benchbot"
+GIT_CONTROLLER="https://github.com/roboticvisionorg/benchbot_robot_controller"
 GIT_EVAL="https://github.com/roboticvisionorg/benchbot_eval"
 GIT_EXAMPLES="https://github.com/roboticvisionorg/benchbot_examples"
 GIT_SIMULATOR="https://github.com/roboticvisionorg/benchbot_simulator"
 GIT_SUPERVISOR="https://github.com/roboticvisionorg/benchbot_supervisor"
 
+HOSTNAME_DEBUG="benchbot_debug"
 HOSTNAME_ROS="benchbot_ros"
-HOSTNAME_SIMULATOR="benchbot_simulator"
+HOSTNAME_ROBOT="benchbot_robot"
 HOSTNAME_SUPERVISOR="benchbot_supervisor"
 
 MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
@@ -33,7 +35,8 @@ PATH_ROOT="$(realpath ..)"
 PATH_API="$PATH_ROOT/api"
 PATH_BATCHES="$PATH_ROOT/batches"
 PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
-PATH_DOCKERFILE_SIMULATOR="$PATH_ROOT/docker/simulator.Dockerfile"
+PATH_DOCKERFILE_BACKEND="$PATH_ROOT/docker/backend.Dockerfile"
+PATH_DOCKERFILE_BACKEND_LITE="$PATH_ROOT/docker/backend_lite.Dockerfile"
 PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_EXAMPLES="$PATH_ROOT/examples"
@@ -41,13 +44,17 @@ PATH_GROUND_TRUTH="$PATH_ROOT/ground_truth"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
 
-PORT_SIMULATOR=10000
+PORT_ROBOT=10000
 PORT_SUPERVISOR=10000
 
+SIZE_GB_FULL=128
+SIZE_GB_LITE=15
+
+URL_DEBUG="172.20.0.200"
 URL_DOCKER_SUBNET="172.20.0.0/24"
 URL_DOCKER_GATEWAY="172.20.0.254"
 URL_ROS="172.20.0.100"
-URL_SIMULATOR="172.20.0.101"
+URL_ROBOT="172.20.0.101"
 URL_SUPERVISOR="172.20.0.102"
 
 # NOTE: link should end with */download (default CloudStor link returns a web 
@@ -57,9 +64,13 @@ URL_SUPERVISOR="172.20.0.102"
 # - md5sum of latest env_*.zip
 # - URL for latest env_*.zip -
 # - timestamp of latest (field is optional / not used)
-URLS_ENVS_INFO_DEFAULT=(
+URLS_ENVS_INFO_FULL_DEFAULT=(
   "https://cloudstor.aarnet.edu.au/plus/s/egb4u65MVZEVkPB/download" 
   "https://cloudstor.aarnet.edu.au/plus/s/tqz36vODDnOsJpQ/download"
+  "https://cloudstor.aarnet.edu.au/plus/s/b7JI8bHajapkcOe/download"
+)
+URLS_ENVS_INFO_LITE_DEFAULT=(
+  "https://cloudstor.aarnet.edu.au/plus/s/b7JI8bHajapkcOe/download"
 )
 
 ################################################################################
@@ -92,8 +103,25 @@ function header_block() {
 ######################## Helpers for managing BenchBot #########################
 ################################################################################
 
+function backend_type() {
+  echo "$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+    'echo "$BENCHBOT_BACKEND_TYPE"' | tr -d '[:space:]')"
+  return
+}
+
 function clear_stdin() {
   read -t 0.1 -d '' -n 10000 discard
+}
+
+function close_network() {
+  sudo sysctl net.ipv4.conf.all.forwarding=${1:-0}
+  sudo iptables --policy FORWARD ${2:-DROP}
+}
+
+function has_simulator() {
+  [ "$(backend_type)" == "full" ]
+  return
 }
 
 function eval_version() {
@@ -132,6 +160,11 @@ function kill_benchbot() {
   echo -e "\n${colour_blue}Deleted the following containers:${colour_nc}"
   docker system prune -f  # TODO this is still maybe a little too aggressive
   echo -e "\n${colour_blue}Finished cleaning!${colour_nc}\n"
+}
+
+function open_network() {
+  sudo sysctl net.ipv4.conf.all.forwarding=1
+  sudo iptables --policy FORWARD ACCEPT
 }
 
 function print_version_info() {
@@ -177,6 +210,17 @@ function is_latest_benchbot_api() {
   return
 }
 
+function is_latest_benchbot_controller() {
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+    'cd $BENCHBOT_CONTROLLER_PATH && git rev-parse HEAD' | tr -d '[:space:]')
+  latest_hash=$(git ls-remote "$GIT_CONTROLLER" "$1" | awk '{print $1}')
+  echo "Current BenchBot Robot Controller: $current_hash"
+  echo "Latest BenchBot Robot Controller: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
+  return
+}
+
 function is_latest_benchbot_eval() {
   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
   return
@@ -191,8 +235,8 @@ function is_latest_benchbot_examples() {
 function is_latest_benchbot_envs() {
   # Requires a URL as $1 & index number as $2
   # TODO this should loudly error if there are any URL failures!
-  current=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  current=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     '_md5s=($BENCHBOT_ENVS_MD5SUMS) && _urls=($BENCHBOT_ENVS_URLS) && \
     echo -n "${_md5s['$2']} ${_urls['$2']}"')
   latest=$(wget -qO- "$1" | cut -d ' ' -f 1,2)
@@ -204,8 +248,8 @@ function is_latest_benchbot_envs() {
 }
 
 function is_latest_benchbot_simulator() {
-  current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
   latest_hash=$(git ls-remote "$GIT_SIMULATOR" "$1" | awk '{print $1}')
   echo "Current BenchBot Simulator: $current_hash"
@@ -215,8 +259,8 @@ function is_latest_benchbot_simulator() {
 }
 
 function is_latest_benchbot_supervisor() {
-  current_hash=$(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'cd $BENCHBOT_SUPERVISOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
   latest_hash=$(git ls-remote "$GIT_SUPERVISOR" "$1" | awk '{print $1}')
   echo "Current BenchBot Supervisor: $current_hash"
@@ -266,8 +310,8 @@ updates."
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
   echo -ne "Checking BenchBot Environments version ...\t"
-  _urls=($(docker inspect "$DOCKER_TAG_SIMULATOR" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+  _urls=($(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'echo -n "$BENCHBOT_ENVS_SRCS"'))
   if [ -z "$_urls" ]; then
     environments_valid=1

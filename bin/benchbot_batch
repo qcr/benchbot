@@ -319,7 +319,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
   # mode)
   if [ ! -z "$(echo "$task" | grep -v "passive")" ] || \
       [ -z "$(docker run --rm --network $DOCKER_NETWORK -it \
-        "$DOCKER_TAG_SIMULATOR" /bin/bash -c \
+        "$DOCKER_TAG_BACKEND" /bin/bash -c \
         'curl '$HOSTNAME_SUPERVISOR':'$PORT_SUPERVISOR'/simulator/is_collided' \
         | grep "true")" ]; then
     results_list+=("${prefix}_$i.json")
