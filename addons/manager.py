@@ -102,7 +102,7 @@ def install_addon(name):
         if current == latest:
             print("\tNo action - latest already installed.")
         else:
-            run('git reset --hard origin/HEAD')
+            run('git reset --hard origin/HEAD', **cmd_args)
             print("\tUpgraded from '%s' to '%s'." %
                   (current[:HASH_SHORT], latest[:HASH_SHORT]))
 
