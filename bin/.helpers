@@ -294,9 +294,9 @@ updates."
 
 function run_manager_cmd() {
   pushd "$PATH_ADDONS" &> /dev/null
-  if [ ! -z "$2" ]; then printf "$2"; fi
+  if [ ! -z "${2-}" ]; then printf "$2"; fi
   python3 -c 'from manager import *; '"$1"
-  if [ ! -z "$3" ]; then printf "$3"; fi
+  if [ ! -z "${3-}" ]; then printf "$3"; fi
   popd &> /dev/null
 }
 

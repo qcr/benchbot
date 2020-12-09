@@ -5,6 +5,7 @@ import requests
 import os
 from shutil import rmtree
 from subprocess import run
+import yaml
 
 DEFAULT_INSTALL_LOCATION = '.'
 DEFAULT_STATE_PATH = '.state'
@@ -16,6 +17,10 @@ FILENAME_DEPENDENCIES = '.dependencies'
 FILENAME_REMOTE = '.remote'
 
 HASH_SHORT = 8
+
+SUPPORTED_TYPES = [
+    'environments', 'evaluation', 'ground_truths', 'robots', 'tasks'
+]
 
 URL_OFFICIAL_ADDONS = 'https://github.com/benchbot-addons'
 
@@ -46,6 +51,13 @@ def _state_path():
     return _abs_path(os.environ.get(ENV_STATE_PATH, DEFAULT_STATE_PATH))
 
 
+def _validate_type(type_string):
+    if type_string not in SUPPORTED_TYPES:
+        raise ValueError(
+            "Resource type '%s' is not one of the supported types:\n\t%s" %
+            (type_string, SUPPORTED_TYPES))
+
+
 def dump_state(state):
     # State is a dictionary with:
     # - keys for each installed addon
@@ -53,6 +65,27 @@ def dump_state(state):
     #   list
     with open(_state_path(), 'w+') as f:
         json.dump(state, f)
+
+
+def find_all(type_string):
+    _validate_type(type_string)
+    return [
+        s for s in run('find . -regex \'.*/%s/.*ya?ml\' | xargs readlink -f' %
+                       type_string,
+                       shell=True,
+                       cwd=_install_location(),
+                       capture_output=True).stdout.decode(
+                           'utf8').strip().splitlines()
+    ]
+
+
+def get_contents(type_string, name):
+    _validate_type(type_string)
+
+
+def get_field(type_string, field_name):
+    _validate_type(type_string)
+    return [yaml.safe_load(open(f))[field_name] for f in find_all(type_string)]
 
 
 def get_state():

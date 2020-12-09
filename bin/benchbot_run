@@ -139,19 +139,21 @@ function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
   # Print the list with details
-  echo "$_env_data_full_cached"
   echo "Either simulated or real world environments can be selected. Please see the
-'--list-robots' command for the available simulated and real robot platforms.
-Only simulated robots can be run in simulated environments, and only real
-robots in real environments (as you would expect).
+'--list-robots' command for the available robot platforms. Only simulated robots 
+can be run in simulated environments, and only real robots in real environments 
+(as you would expect).
 
 Support for the following environments is provided in your installed BenchBot
 Docker image:
-
-    Simulated: 
-
-    Real word: 
     "
+  run_manager_cmd '[print("\t%s" % e) for e in \
+    sorted(get_field("environments", "name"))]'
+  echo "
+See the '--show-environment ENVIRONMENT_NAME' command for specific details about
+each environment, or check you have the appropriate add-on installed if you are
+missing an environment.
+"
 }
 
 function opt_list_robots() {
@@ -159,18 +161,23 @@ function opt_list_robots() {
   # dynamic style of "robot" target creation
   echo "The following robot targets are supported in your BenchBot installation:
         "
-  echo -e "\nPlease ensure you run a robot in a valid environment (i.e. running a real 
-robot platform in a simulated environment is an invalid configuration)."
-
-  run_manager_cmd 'find_all("robots")'
+  run_manager_cmd '[print("\t%s" % r) for r in \
+    sorted(get_field("robots", "name"))]'
+  echo "
+See the '--show-robot ROBOT_NAME' command for specific details about each robot,
+or check you have the appropriate add-on installed if you are missing a robot.
+"
 }
 
 function opt_list_tasks() {
   # TODO this is hard coded for now... maybe should be done differently...
-  echo "The following tasks are supported by BenchBot: 
+  echo "The following tasks are supported in your BenchBot installation: 
   "
+  run_manager_cmd '[print("\t%s" % t) for t in \
+    sorted(get_field("tasks", "name"))]'
   echo "
-See the '--show-task TASK_NAME' command for specific details about each task.
+See the '--show-task TASK_NAME' command for specific details about each task, or
+check you have the appropriate add-on installed if you are missing a task.
 "
 }
 
