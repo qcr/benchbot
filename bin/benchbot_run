@@ -201,6 +201,27 @@ function opt_select_task() {
   return 1
 }
 
+function opt_show_env() {
+  if [ "$(run_manager_cmd 'print(exists("environments", "name", "'$1'"))')" \
+      != "True" ]; then
+    echo "Environment '$1' is not a supported environment. Please check --list-envs."
+    return 1
+  fi
+  location=$(run_manager_cmd 'print(get_match("environments", "name", "'$1'"))')
+  printf "Environment '$1' was found at the following location:\n\n\t%s\n\n" \
+    "$location"
+  printf "Printed below are the first 30 lines of the definition file:\n\n"
+  head -n 30 "$location"
+}
+
+function opt_show_robot() {
+  :
+}
+
+function opt_show_task() {
+  :
+}
+
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -208,7 +229,8 @@ function opt_select_task() {
 
 # Safely parse options input
 _args="help,env:,environment:,force-updateless,list-envs,list-environments,\
-list-robots,list-tasks,robot:,task:,updates-check,version"
+list-robots,list-tasks,robot:,show-env:,show-environment:,show-robot:,\
+show-task:,task:,updates-check,version"
 parse_out=$(getopt -o he:t:r:fuv --long $_args  -n "$(basename "$abs_path")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -225,13 +247,15 @@ while true; do
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
     --list-envs|--list-environments)
-      opt_list_envs ; exit 0 ;;
+      opt_list_envs ; exit $? ;;
     --list-robots)
-      opt_list_robots ; exit 0 ;;
+      opt_list_robots ; exit $? ;;
     --list-tasks)
-      opt_list_tasks ; exit 0 ;;
+      opt_list_tasks ; exit $? ;;
     -r|--robot)
       robot_selection="$2"; shift 2 ;;
+    --show-env|--show-environment)
+      opt_show_env "$2" ; exit $? ;;
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
     -u|--updates-check)

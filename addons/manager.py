@@ -67,6 +67,10 @@ def dump_state(state):
         json.dump(state, f, indent=4)
 
 
+def exists(type_string, field_name, field_value):
+    return get_match(type_string, field_name, field_value) is not None
+
+
 def find_all(type_string):
     _validate_type(type_string)
     return [
@@ -79,8 +83,10 @@ def find_all(type_string):
     ]
 
 
-def get_contents(type_string, name):
+def get_match(type_string, field_name, field_value):
     _validate_type(type_string)
+    return next((f for f in find_all(type_string)
+                 if yaml.safe_load(open(f))[field_name] == field_value), None)
 
 
 def get_field(type_string, field_name):
@@ -160,7 +166,7 @@ def install_addon(name):
                     target_abs = os.path.join(install_path, target)
                     if os.path.exists(target_abs):
                         print("\tRemoved existing target '%s'." % target)
-                        run('rm -r "%s"' % target_abs, **cmd_args)
+                        run('rm -rf "%s"' % target_abs, **cmd_args)
                     print("\tExtracting to '%s' ..." % target)
                     run('unzip -d "%s" ".tmp.zip"' % target, **cmd_args)
                     print("\tExtracted.")
