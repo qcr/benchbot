@@ -978,8 +978,8 @@ trap cleanup_terminal EXIT
 input=$@
 _args="help,addons:,branch:,force-clean,uninstall,list-addons,no-simulator,\
 no-update,remove-addons:,simulator:,version"
-parse_out=$(getopt -o ha:b:fs:uv \
-  --long $_args -n "$(basename "$abs_path")" -- "$@")
+parse_out=$(getopt -o ha:b:fs:uv --long $_args -n "$(basename "$abs_path")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 addons=

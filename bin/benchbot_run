@@ -39,7 +39,7 @@ OPTION DETAILS:
     -h,--help             
             Show this help menu.
 
-    -e, --env             
+    -e, --env, --environment
             Select an environment to launch in the simulator (this must be
             called with the --task option). Environments are identified via
             \"ENVIRONMENT_NAME:VARIATION_NUMBER\" where ENVIRONMENT_NAME is the
@@ -66,7 +66,7 @@ OPTION DETAILS:
             novel work will focus on the latest software stack. You should only
             use this flag when it is inconvenient to update immediately.
 
-    --list-envs
+    --list-envs, --list-environments
             Search for & list all installed environments. The listed
             environment names are in the format needed for the --env option.
 
@@ -208,9 +208,10 @@ function opt_select_task() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o he:t:r:fuv \
-  --long help,env:,force-updateless,list-envs,list-robots,list-tasks,robot:,task:,updates-check,version \
-  -n "$(basename "$abs_path")" -- "$@")
+_args="help,env:,environment:,force-updateless,list-envs,list-environments,\
+list-robots,list-tasks,robot:,task:,updates-check,version"
+parse_out=$(getopt -o he:t:r:fuv --long $_args  -n "$(basename "$abs_path")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_exit=
@@ -220,11 +221,11 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
-    -e|--env)
+    -e|--env|--environment)
       opt_select_env "$2"; shift 2 ;;
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
-    --list-envs)
+    --list-envs|--list-environments)
       opt_list_envs ; exit 0 ;;
     --list-robots)
       opt_list_robots ; exit 0 ;;
