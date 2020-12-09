@@ -183,21 +183,24 @@ check you have the appropriate add-on installed if you are missing a task.
 function opt_select_env() {
   # Only update the SELECTED_ENV variable if it is in the list of envs
   # TODO redo validation tests
-  echo "Environment '$1' is not a supported environment. Please check '--list-envs'."
+  printf "%s %s\n" "Environment '$1' is not a supported environment." \
+    "Please check '--list-envs'."
   return 1
 }
 
 function opt_select_robot() {
   # Only update the SELECTED_ROBOT variable if it is in the list of robots
   # TODO redo validation tests (note: carter fallback default)
-  echo "Robot '$1' is not a supported robot platform. Please check --'list-robots'."
+  printf "%s %s\n" "Robot '$1' is not a supported robot platform." \
+    "Please check --'list-robots'."
   return 1
 }
 
 function opt_select_task() {
   # Only update the SELECTED_TASK variable if it is in the list of tasks
   # TODO redo validation tests
-  echo "Task '$1' is not a supported task specification. Please check '--list-tasks'."
+  print "%s %s\n" "Task '$1' is not a supported task specification." \
+    "Please check '--list-tasks'."
   return 1
 }
 
@@ -205,7 +208,8 @@ function _show_content() {
   singular=${1::-1}
   if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
       != "True" ]; then
-    echo "${singular^} '$2' is not a supported ${singular}. Please check '--list-$1'."
+    printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
+      "Please check '--list-$1'."
     return 1
   fi
   location=$(run_manager_cmd 'print(get_match("'$1'", "name", "'$2'"))')
@@ -213,6 +217,7 @@ function _show_content() {
     "$location"
   printf "Printed below are the first 30 lines of the definition file:\n\n"
   head -n 30 "$location"
+  printf "\n"
 }
 
 function opt_show_env() {
@@ -261,6 +266,10 @@ while true; do
       robot_selection="$2"; shift 2 ;;
     --show-env|--show-environment)
       opt_show_env "$2" ; exit $? ;;
+    --show-robot)
+      opt_show_robot "$2"; exit $? ;;
+    --show-task)
+      opt_show_task "$2"; exit $? ;;
     -t|--task)
       opt_select_task "$2"; shift 2 ;;
     -u|--updates-check)
