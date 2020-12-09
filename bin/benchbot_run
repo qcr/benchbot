@@ -144,8 +144,7 @@ function opt_list_envs() {
 can be run in simulated environments, and only real robots in real environments 
 (as you would expect).
 
-Support for the following environments is provided in your installed BenchBot
-Docker image:
+The following environments are supported in your BenchBot installation:
     "
   run_manager_cmd '[print("\t%s" % e) for e in \
     sorted(get_field("environments", "name"))]'

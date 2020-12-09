@@ -4,7 +4,7 @@ import re
 import requests
 import os
 from shutil import rmtree
-from subprocess import run
+from subprocess import PIPE, run
 import yaml
 
 DEFAULT_INSTALL_LOCATION = '.'
@@ -64,18 +64,18 @@ def dump_state(state):
     # - each key has: 'hash', 'remote' (if remote content installed), & 'deps'
     #   list
     with open(_state_path(), 'w+') as f:
-        json.dump(state, f)
+        json.dump(state, f, indent=4)
 
 
 def find_all(type_string):
     _validate_type(type_string)
     return [
-        s for s in run('find . -regex \'.*/%s/.*ya?ml\' | xargs readlink -f' %
-                       type_string,
-                       shell=True,
-                       cwd=_install_location(),
-                       capture_output=True).stdout.decode(
-                           'utf8').strip().splitlines()
+        s for s in
+        run('find . -regex \'.*/%s/[^/]*ya?ml\' | xargs readlink -f' %
+            type_string,
+            shell=True,
+            cwd=_install_location(),
+            capture_output=True).stdout.decode('utf8').strip().splitlines()
     ]
 
 
@@ -143,15 +143,30 @@ def install_addon(name):
     file_remote = os.path.join(install_path, FILENAME_REMOTE)
     if os.path.exists(file_remote):
         with open(file_remote, 'r') as f:
-            remote = f.read()[0].strip()
-            print("\tFound remote content to install: %s" % remote)
-            if 'remote' not in state[name] or state[name]['remote'] != remote:
+            remote, target = f.readlines()[0].strip().split(' ')
+            print("\tFound remote content to install to '%s': %s" %
+                  (target, remote))
+            state = get_state()
+            if ('remote' not in state[name] or state[name]['remote'] != remote
+                    or 'remote_target' not in state[name]
+                    or state[name]['remote_target'] != target):
                 print("\tRemote content is new. Fetching ...")
-                # TODO actually get the content...
-                print("\tFetched.")
-                state = get_state()
-                state[name]['remote'] = remote
-                dump_state(state)
+                if (run('wget "%s" -O ".tmp.zip"' % remote, **{
+                        **cmd_args, 'capture_output': False
+                }).returncode != 0):
+                    print("\tFetching of remote content FAILED!!!")
+                else:
+                    print("\tFetched.")
+                    target_abs = os.path.join(install_path, target)
+                    if os.path.exists(target_abs):
+                        print("\tRemoved existing target '%s'." % target)
+                        run('rm -r "%s"' % target_abs, **cmd_args)
+                    print("\tExtracting to '%s' ..." % target)
+                    run('unzip -d "%s" ".tmp.zip"' % target, **cmd_args)
+                    print("\tExtracted.")
+                    state[name]['remote'] = remote
+                    state[name]['remote_target'] = target
+                    dump_state(state)
             else:
                 print("\tNo action - remote content is already installed.")
 
