@@ -183,43 +183,48 @@ check you have the appropriate add-on installed if you are missing a task.
 function opt_select_env() {
   # Only update the SELECTED_ENV variable if it is in the list of envs
   # TODO redo validation tests
-  echo "Environment '$1' is not a supported environment. Please check --list-envs."
+  echo "Environment '$1' is not a supported environment. Please check '--list-envs'."
   return 1
 }
 
 function opt_select_robot() {
   # Only update the SELECTED_ROBOT variable if it is in the list of robots
   # TODO redo validation tests (note: carter fallback default)
-  echo "Robot '$1' is not a supported robot platform. Please check --list-robots."
+  echo "Robot '$1' is not a supported robot platform. Please check --'list-robots'."
   return 1
 }
 
 function opt_select_task() {
   # Only update the SELECTED_TASK variable if it is in the list of tasks
   # TODO redo validation tests
-  echo "Task '$1' is not a supported task specification. Please check --list-tasks."
+  echo "Task '$1' is not a supported task specification. Please check '--list-tasks'."
   return 1
 }
 
-function opt_show_env() {
-  if [ "$(run_manager_cmd 'print(exists("environments", "name", "'$1'"))')" \
+function _show_content() {
+  singular=${1::-1}
+  if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
       != "True" ]; then
-    echo "Environment '$1' is not a supported environment. Please check --list-envs."
+    echo "${singular^} '$2' is not a supported ${singular}. Please check '--list-$1'."
     return 1
   fi
-  location=$(run_manager_cmd 'print(get_match("environments", "name", "'$1'"))')
-  printf "Environment '$1' was found at the following location:\n\n\t%s\n\n" \
+  location=$(run_manager_cmd 'print(get_match("'$1'", "name", "'$2'"))')
+  printf "${singular^} '$2' was found at the following location:\n\n\t%s\n\n" \
     "$location"
   printf "Printed below are the first 30 lines of the definition file:\n\n"
   head -n 30 "$location"
 }
 
+function opt_show_env() {
+  _show_content "environments" "$1"
+}
+
 function opt_show_robot() {
-  :
+  _show_content "robots" "$1"
 }
 
 function opt_show_task() {
-  :
+  _show_content "tasks" "$1"
 }
 
 
