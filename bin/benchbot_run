@@ -206,6 +206,7 @@ function opt_show_task() {
 }
 
 function validate_content() {
+  # $1 = content type; $2 = name; $3 = full name (optional)
   singular=${1::-1}
   full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
   if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
@@ -214,6 +215,40 @@ function validate_content() {
       "Please check '--list-$1'."
     printf "\n${colour_red}%s${colour_nc}\n" \
       "ERROR: Invalid ${singular} selected (${singular} = '$full')"
+  fi
+}
+
+function validate_types() {
+  # $1 = robot name; $2 = environment string, $3... environments
+  robot="$1"
+  env="$2" 
+  shift 2
+  envs=($@)
+  types=()
+  types+=("$(run_manager_cmd 'print(get_value(\
+    get_match("robots", "name", "'$robot'"), "type"))')")
+  for e in "${envs[@]}"; do
+    types+=($(run_manager_cmd 'print(get_value(get_match(\
+      "environments", "name", "'$e'"), "type"))'))
+  done
+
+  err=
+  for i in "${!types[@]}"; do
+    if [ "${types[$i]}" != "${types[0]}" ]; then err=1; fi
+  done
+
+  if [ ! -z "$err" ]; then
+    printf "%s %s\n%s\n\n" "Robot & environment types aren't consistent." \
+      "Please ensure each of the following" "have the same type:"
+    for i in "${!types[@]}"; do
+      if [ $i -eq 0 ]; then
+        printf "\tRobot '$robot' has type '${types[$i]}'\n"
+      else
+        printf "\tEnvironment '${envs[$((i-1))]}' has type '${types[$i]}'\n"
+      fi
+    done
+    printf "\n${colour_red}%s${colour_nc}\n" \
+      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
   fi
 }
 
@@ -284,6 +319,8 @@ if [ -z "$updates_exit" ]; then
   err="$(validate_content "robots" "$robot")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_content "tasks" "$task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(validate_types "$robot" "$environment" "${environments[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   # TODO handle other invalid requests:
   # - simulated robot in real environment (& vice versa)

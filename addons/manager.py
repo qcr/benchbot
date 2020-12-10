@@ -91,7 +91,7 @@ def get_match(type_string, field_name, field_value):
 
 def get_field(type_string, field_name):
     _validate_type(type_string)
-    return [yaml.safe_load(open(f))[field_name] for f in find_all(type_string)]
+    return [get_value(f, field_name) for f in find_all(type_string)]
 
 
 def get_state():
@@ -99,6 +99,10 @@ def get_state():
         with open(_state_path(), 'r') as f:
             return json.load(f)
     return {}
+
+
+def get_value(filename, field_name):
+    return yaml.safe_load(open(filename)).get(field_name, None)
 
 
 def install_addon(name):
