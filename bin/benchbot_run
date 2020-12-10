@@ -207,12 +207,13 @@ function opt_show_task() {
 
 function validate_content() {
   singular=${1::-1}
+  full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
   if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
       != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
       "Please check '--list-$1'."
     printf "\n${colour_red}%s${colour_nc}\n" \
-      "ERROR: No valid ${singular} selected (${singular} = '$2')"
+      "ERROR: Invalid ${singular} selected (${singular} = '$full')"
   fi
 }
 
@@ -269,11 +270,17 @@ while true; do
   esac
 done
 
+# Extract a list of environments from the provided environment string
+_pre="$(echo "$environment" | sed 's/:.*//')"
+environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
+
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
   # Process environment, task, & robot selections
-  err="$(validate_content "environments" "$environment")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  for e in "${environments[@]}"; do
+    err="$(validate_content "environments" "$e" "$environment")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  done
   err="$(validate_content "robots" "$robot")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_content "tasks" "$task")"
