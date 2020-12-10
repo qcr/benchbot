@@ -122,9 +122,6 @@ _robot_err=\
 should not happen unless something is installed incorrectly. Please see the
 complete log below for a dump of the crash output:"
 
-SELECTED_ENV=
-SELECTED_TASK=
-
 function exit_gracefully() {
   if [ -z "$simulator_required" ]; then
     printf "\n\n${colour_blue}%s${colour_nc}\n" \
@@ -180,37 +177,13 @@ check you have the appropriate add-on installed if you are missing a task.
 "
 }
 
-function opt_select_env() {
-  # Only update the SELECTED_ENV variable if it is in the list of envs
-  # TODO redo validation tests
-  printf "%s %s\n" "Environment '$1' is not a supported environment." \
-    "Please check '--list-envs'."
-  return 1
-}
-
-function opt_select_robot() {
-  # Only update the SELECTED_ROBOT variable if it is in the list of robots
-  # TODO redo validation tests (note: carter fallback default)
-  printf "%s %s\n" "Robot '$1' is not a supported robot platform." \
-    "Please check --'list-robots'."
-  return 1
-}
-
-function opt_select_task() {
-  # Only update the SELECTED_TASK variable if it is in the list of tasks
-  # TODO redo validation tests
-  print "%s %s\n" "Task '$1' is not a supported task specification." \
-    "Please check '--list-tasks'."
-  return 1
-}
-
 function _show_content() {
   singular=${1::-1}
   if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
       != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
       "Please check '--list-$1'."
-    return 1
+    exit 1
   fi
   location=$(run_manager_cmd 'print(get_match("'$1'", "name", "'$2'"))')
   printf "${singular^} '$2' was found at the following location:\n\n\t%s\n\n" \
@@ -232,6 +205,17 @@ function opt_show_task() {
   _show_content "tasks" "$1"
 }
 
+function validate_content() {
+  singular=${1::-1}
+  if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
+      != "True" ]; then
+    printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
+      "Please check '--list-$1'."
+    printf "\n${colour_red}%s${colour_nc}\n" \
+      "ERROR: No valid ${singular} selected (${singular} = '$2')"
+  fi
+}
+
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -247,13 +231,15 @@ if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 updates_exit=
 updates_skip=
-robot_selection=
+environment=
+robot=
+task=
 while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
     -e|--env|--environment)
-      opt_select_env "$2"; shift 2 ;;
+      environment="$2"; shift 2 ;;
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
     --list-envs|--list-environments)
@@ -263,7 +249,7 @@ while true; do
     --list-tasks)
       opt_list_tasks ; exit $? ;;
     -r|--robot)
-      robot_selection="$2"; shift 2 ;;
+      robot="$2"; shift 2 ;;
     --show-env|--show-environment)
       opt_show_env "$2" ; exit $? ;;
     --show-robot)
@@ -271,7 +257,7 @@ while true; do
     --show-task)
       opt_show_task "$2"; exit $? ;;
     -t|--task)
-      opt_select_task "$2"; shift 2 ;;
+      task="$2"; shift 2 ;;
     -u|--updates-check)
       updates_exit=1 ; shift ;;
     -v|--version)
@@ -282,39 +268,48 @@ while true; do
       echo "$(basename "$abs_path"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-opt_select_robot "$robot_selection"
+
+# Bail if any of the requested configurations are invalid
+if [ -z "$updates_exit" ]; then
+  # Process environment, task, & robot selections
+  err="$(validate_content "environments" "$environment")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(validate_content "robots" "$robot")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(validate_content "tasks" "$task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+fi
+exit 0
 
 # Bail if we are running & we didn't get a valid robot, env, & task
-if [ -z "$updates_exit" ]; then
-  if [ -z "$SELECTED_ROBOT" ]; then
-    printf "${colour_red}%s${colour_nc}\n" \
-      "ERROR: No valid robot selected (selected_robot = "$SELECTED_ROBOT")"
-    exit 1
-  fi
-  if [ -z "$SELECTED_ENV" ]; then 
-    printf "${colour_red}%s${colour_nc}\n" \
-      "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
-    exit 1
-  fi
-  if [ -z "$SELECTED_TASK" ]; then 
-    printf "${colour_red}%s${colour_nc}\n" \
-      "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
-    exit 1
-  fi
-  if [ -z "$(simulator_type)" ] && \
-      [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
-    printf "${colour_red}%s\n%s${colour_nc}\n" \
-      "ERROR: Can't run a simulated robot (selected_robot = "$SELECTED_ROBOT") in an" \
-      "installation that doesn't have a simulator installed."
-    exit 1
-  fi
-  if [[ "$(_robot_type "$SELECTED_ROBOT")" \
-      != *"$(_env_type "$SELECTED_ENV")"* ]]; then
-    printf "${colour_red}%s\n%s${colour_nc}\n" \
-      "ERROR: Type mismatch between selected robot & environment" \
-      "(selected_robot = "$SELECTED_ROBOT", selected_env= "$SELECTED_ENV")"
-    exit 1
-  fi
+if [ -z "$SELECTED_ROBOT" ]; then
+  printf "${colour_red}%s${colour_nc}\n" \
+    "ERROR: No valid robot selected (selected_robot = "$SELECTED_ROBOT")"
+  exit 1
+fi
+if [ -z "$SELECTED_ENV" ]; then 
+  printf "${colour_red}%s${colour_nc}\n" \
+    "ERROR: No valid environment selected (selected_env = "$SELECTED_ENV")"
+  exit 1
+fi
+if [ -z "$SELECTED_TASK" ]; then 
+  printf "${colour_red}%s${colour_nc}\n" \
+    "ERROR: No valid task selected (selected_task = "$SELECTED_TASK")"
+  exit 1
+fi
+if [ -z "$(simulator_type)" ] && \
+    [[ "$(_robot_type "$SELECTED_ROBOT")" == *"sim"* ]]; then
+  printf "${colour_red}%s\n%s${colour_nc}\n" \
+    "ERROR: Can't run a simulated robot (selected_robot = "$SELECTED_ROBOT") in an" \
+    "installation that doesn't have a simulator installed."
+  exit 1
+fi
+if [[ "$(_robot_type "$SELECTED_ROBOT")" \
+    != *"$(_env_type "$SELECTED_ENV")"* ]]; then
+  printf "${colour_red}%s\n%s${colour_nc}\n" \
+    "ERROR: Type mismatch between selected robot & environment" \
+    "(selected_robot = "$SELECTED_ROBOT", selected_env= "$SELECTED_ENV")"
+  exit 1
 fi
 
 # Ensure task & environment combo is valid
