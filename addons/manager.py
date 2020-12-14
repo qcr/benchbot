@@ -105,6 +105,10 @@ def get_value(filename, field_name):
     return yaml.safe_load(open(filename)).get(field_name, None)
 
 
+def get_value_by_name(type_string, name, field_name):
+    return get_value(get_match(type_string, "name", name), field_name)
+
+
 def install_addon(name):
     url, repo_user, repo_name, name = _parse_name(name)
     install_path = _addon_path(repo_user, repo_name)

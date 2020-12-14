@@ -26,7 +26,7 @@ $URL_DEBUG $HOSTNAME_DEBUG"
 ADDONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
 NVIDIA_DEFAULT='nvidia-driver-455'
-SIMULATOR_DEFAULT='isaac_unreal'
+SIMULATOR_DEFAULT='sim_unreal'
 
 ################################################################################
 ########################### Definitions for messages ###########################

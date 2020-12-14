@@ -225,11 +225,11 @@ function validate_types() {
   shift 2
   envs=($@)
   types=()
-  types+=("$(run_manager_cmd 'print(get_value(\
-    get_match("robots", "name", "'$robot'"), "type"))')")
+  types+=("$(run_manager_cmd 'print(\
+    get_value_by_name("robots", "'$robot'", "type"))')")
   for e in "${envs[@]}"; do
-    types+=($(run_manager_cmd 'print(get_value(get_match(\
-      "environments", "name", "'$e'"), "type"))'))
+    types+=($(run_manager_cmd 'print(\
+      get_value_by_name("environments", "'$e'", "type"))'))
   done
 
   err=
@@ -309,6 +309,10 @@ done
 _pre="$(echo "$environment" | sed 's/:.*//')"
 environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
 
+# Determine type of run being performed
+  type="$(run_manager_cmd 'print(\
+    get_value_by_name("robots", "'$robot'", "type"))')"
+
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
   # Process environment, task, & robot selections
@@ -323,7 +327,6 @@ if [ -z "$updates_exit" ]; then
   err="$(validate_types "$robot" "$environment" "${environments[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   # TODO handle other invalid requests:
-  # - simulated robot in real environment (& vice versa)
   # - simulated robot / environment when none is installed
   # - number of selected variations don't match the number in selected task
   #   (will have to update environment check logic above...)
