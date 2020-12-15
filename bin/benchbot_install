@@ -998,7 +998,8 @@ while true; do
     -b|--branch)
       # This is a real dirty way to do this... sorry
       BRANCH_DEFAULT="$2"; shift 2
-      echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
+      printf "\n${colour_yellow}%s${colour_nc}\n" \
+        "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
     -s|--simulators)
