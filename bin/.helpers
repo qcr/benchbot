@@ -158,7 +158,7 @@ function print_version_info() {
 function simulator_type() {
   echo "$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
-    'echo "$BENCHBOT_SIMULATOR"' | tr -d '[:space:]')"
+    'echo "$BENCHBOT_SIMULATORS"' | tr -d '[:space:]')"
   return
 }
 

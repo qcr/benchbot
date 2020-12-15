@@ -32,13 +32,14 @@ RUN sudo rosdep init && rosdep update && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd 
 
 # Install & build Isaac (using local copies of licensed libraries)
-ARG SIMULATOR
+# TODO adapt this to handle multiple simulators
+ARG SIMULATORS
 ARG ISAAC_SDK_DIR
 ARG ISAAC_SDK_TGZ
 ENV ISAAC_SDK_SRCS="/isaac_srcs"
 COPY --chown=benchbot:benchbot ${ISAAC_SDK_DIR} ${ISAAC_SDK_SRCS}
 ENV ISAAC_SDK_PATH="/benchbot/isaac_sdk"
-RUN [ -z "$SIMULATOR" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
+RUN [ -z "$SIMULATORS" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
     tar -xf "$ISAAC_SDK_SRCS/$ISAAC_SDK_TGZ" -C "$ISAAC_SDK_PATH" && \
     pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh && \
     bazel build ... && bazel build ...
@@ -68,4 +69,4 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
 # Record the type of backend built
-ENV BENCHBOT_SIMULATOR="${SIMULATOR}"
+ENV BENCHBOT_SIMULATORS="${SIMULATORS}"

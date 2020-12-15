@@ -98,11 +98,12 @@ OPTION DETAILS:
             will be presented with a list of add-ons that will be removed, and
             prompted before removal commences.
 
-    -s,--simulator
-            Specify simulator to install (only 'isaac_unreal' is currently
-            supported). If this option isn't included, the default
-            'isaac_unreal' is installed. This flag will have more practical use
-            in the future when we add Omniverse support.
+    -s,--simulators
+            Specify simulator/s to install (only 'sim_unreal' is currently
+            supported). Comma-separated lists are accepted to specify multiple
+            simulators. If this option isn't included, the default 'sim_unreal'
+            is installed. This flag will have more practical use in the future
+            when we add Omniverse support.
 
     -u,--uninstall
             Uninstall the BenchBot software stack from the machine. All BenchBot
@@ -975,16 +976,16 @@ function uninstall_benchbot() {
 trap cleanup_terminal EXIT
 
 # Safely parse options input
-input=$@
+input=("$@")
 _args="help,addons:,addons-only:,branch:,force-clean,uninstall,list-addons,\
-no-simulator,no-update,remove-addons:,simulator:,version"
+no-simulator,no-update,remove-addons:,simulators:,version"
 parse_out=$(getopt -o ha:A:b:fs:uv --long $_args -n "$(basename "$abs_path")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 addons=
 no_simulator=
-simulator_choice="$SIMULATOR_DEFAULT"
+simulators="$SIMULATOR_DEFAULT"
 updates_skip=
 while true; do
   case "$1" in
@@ -1000,8 +1001,8 @@ while true; do
       echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
-    -s|--simulator)
-      simulator_choice="$2"; shift 2 ;;
+    -s|--simulators)
+      simulators="$2"; shift 2 ;;
     -u|--uninstall)
       uninstall_benchbot; exit ;;
     -v|--version)
@@ -1023,7 +1024,7 @@ done
 
 # Sanitise argument values
 if [ -z "$addons" ]; then addons="$ADDONS_DEFAULT"; fi
-simulator=$([ -z "$no_simulator" ] && echo "$simulator_choice")
+if [ ! -z "$no_simulator" ]; then simulators=""; fi
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1043,7 +1044,7 @@ if [ -z "$updates_skip" ]; then
       "restarting install script ...\n${colour_nc}"
     git fetch --all && git checkout -- . && git checkout "$benchbot_latest_hash"
     echo -e "\n${colour_yellow}Done.${colour_nc}"
-    popd > /dev/null && exec $0 $input --no-update
+    popd > /dev/null && exec $0 ${input[@]} --no-update
   else
     echo -e "$_benchbot_info"
     exit 1
@@ -1054,10 +1055,11 @@ fi
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
 # Patch in any values that can only be determined at runtime
-if [ -z "$simulator" ]; then
+# TODO clean this all up for use with multiple simulators...
+if [ -z "$simulators" ]; then
   checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
 fi
-_sz=$([ ! -z "$simulator" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
+_sz=$([ ! -z "$simulators" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
 chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
 chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
@@ -1068,10 +1070,12 @@ for c in "${checks_list_pre[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
   elif [ ! -z "$c" ]; then
+    set +e
     handle_requirement "$c"
     res=$?
+    set -e
     if [ $res -eq 2 ]; then
-      popd > /dev/null && exec $0 $input --no-update
+      popd > /dev/null && exec $0 ${input[@]}
     elif [ $res -eq 1 ]; then
       exit 1
     fi
@@ -1096,15 +1100,16 @@ fi
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-if [ ! -z "$simulator" ]; then
+# TODO adapt this to handle multiple simulators...
+if [ ! -z "$simulators" ]; then
   echo -e "\nFetching latest hash for BenchBot Simulator ... "
   benchbot_simulator_hash=$((is_latest_benchbot_simulator $BRANCH_DEFAULT || \
     true) | latest_version_info)
-if [ -z "$benchbot_simulator_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
-  exit 1
-fi
+  if [ -z "$benchbot_simulator_hash" ]; then
+    printf "\n\n${colour_red}%s${colour_nc}\n\n" \
+      "Failed (check Internet connection!). Exiting."
+    exit 1
+  fi
   echo -e "\t\t$benchbot_simulator_hash."
 fi
 echo "Fetching latest hash for BenchBot Robot Controller ... "
@@ -1165,10 +1170,11 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build the BenchBot Backend Docker image
+# TODO adapt this to handle multiple simulators
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
-  --build-arg SIMULATOR="$simulator" \
+  --build-arg SIMULATORS="$simulators" \
   --build-arg ISAAC_SDK_DIR="$(dirname "$sdk_file")" \
   --build-arg ISAAC_SDK_TGZ="$(basename "$sdk_file")" \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
