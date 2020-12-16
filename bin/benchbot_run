@@ -136,6 +136,8 @@ function opt_list_envs() {
   # TODO check if installed (docker image exists); provide a message if not
   # telling them how to fix the issue
   # Print the list with details
+  l="$(run_manager_cmd '[print("\t%s" % e) for e in \
+    sorted(get_field("environments", "name"))]')"
   echo "Either simulated or real world environments can be selected. Please see the
 '--list-robots' command for the available robot platforms. Only simulated robots 
 can be run in simulated environments, and only real robots in real environments 
@@ -143,8 +145,7 @@ can be run in simulated environments, and only real robots in real environments
 
 The following environments are supported in your BenchBot installation:
     "
-  run_manager_cmd '[print("\t%s" % e) for e in \
-    sorted(get_field("environments", "name"))]'
+  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
   echo "
 See the '--show-environment ENVIRONMENT_NAME' command for specific details about
 each environment, or check you have the appropriate add-on installed if you are
@@ -155,10 +156,11 @@ missing an environment.
 function opt_list_robots() {
   # TODO this will need to be redone in a more flexible way to support a more
   # dynamic style of "robot" target creation
+  l="$(run_manager_cmd '[print("\t%s" % r) for r in \
+    sorted(get_field("robots", "name"))]')"
   echo "The following robot targets are supported in your BenchBot installation:
         "
-  run_manager_cmd '[print("\t%s" % r) for r in \
-    sorted(get_field("robots", "name"))]'
+  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
   echo "
 See the '--show-robot ROBOT_NAME' command for specific details about each robot,
 or check you have the appropriate add-on installed if you are missing a robot.
@@ -167,10 +169,11 @@ or check you have the appropriate add-on installed if you are missing a robot.
 
 function opt_list_tasks() {
   # TODO this is hard coded for now... maybe should be done differently...
+  l="$(run_manager_cmd '[print("\t%s" % t) for t in \
+    sorted(get_field("tasks", "name"))]')"
   echo "The following tasks are supported in your BenchBot installation: 
   "
-  run_manager_cmd '[print("\t%s" % t) for t in \
-    sorted(get_field("tasks", "name"))]'
+  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
   echo "
 See the '--show-task TASK_NAME' command for specific details about each task, or
 check you have the appropriate add-on installed if you are missing a task.
@@ -203,6 +206,11 @@ function opt_show_robot() {
 
 function opt_show_task() {
   _show_content "tasks" "$1"
+}
+
+function validate_environment_count() {
+  # $1 = number of selected environments, $2 task
+  echo "$(run_manager_cmd 'print(get_value_by_name("tasks", "'$2'", "name"))')"
 }
 
 function validate_content() {
@@ -347,7 +355,7 @@ if [ -z "$updates_exit" ]; then
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_type "$type")"; echo "$err"
   if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
-  # TODO handle other invalid requests:
+  err="$(validate_environment_count ${#environments[@]} "$task")"
   # - number of selected variations don't match the number in selected task
   #   (will have to update environment check logic above...)
 fi
