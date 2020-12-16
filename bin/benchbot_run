@@ -210,7 +210,14 @@ function opt_show_task() {
 
 function validate_environment_count() {
   # $1 = number of selected environments, $2 task
-  echo "$(run_manager_cmd 'print(get_value_by_name("tasks", "'$2'", "name"))')"
+  scene_count="$(run_manager_cmd 'print(\
+    get_value_by_name("tasks", "'$2'", "scene_count"))')"
+  if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
+  if [ $scene_count -ne $1 ]; then
+    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
+      "ERROR: Selected '$1' environments for a task which requires '$scene_count'" \
+      "environments ('$task')"
+  fi
 }
 
 function validate_content() {
@@ -356,8 +363,7 @@ if [ -z "$updates_exit" ]; then
   err="$(validate_type "$type")"; echo "$err"
   if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
   err="$(validate_environment_count ${#environments[@]} "$task")"
-  # - number of selected variations don't match the number in selected task
-  #   (will have to update environment check logic above...)
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 fi
 
 ################################################################################
