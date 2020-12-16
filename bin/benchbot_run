@@ -410,7 +410,6 @@ printf "    %-22s" "Simulator required:"
 printf "%s (%s)\n"  $([ -z "$simulator_required" ] && echo "No" || echo "Yes") \
   "$type"
 echo ""
-exit 0
 
 # Create the network for BenchBot software stack
 echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
@@ -428,37 +427,41 @@ fi
 # Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root > /dev/null
 ros_master_host="benchbot_roscore"
-docker_run="docker run -t --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix \
-            -e DISPLAY \
-            -e ROS_MASTER_URI=http://$ros_master_host:11311 -e ROS_HOSTNAME=\$name \
-            --network $DOCKER_NETWORK --name=\$name --hostname=\$name \
-            --volume $PATH_ADDONS:/addons:ro"
+docker_run="docker run -t --gpus all \
+            --env DISPLAY \
+            --env ROS_MASTER_URI=http://$ros_master_host:11311 \
+            --env ROS_HOSTNAME=\$name \
+            --network $DOCKER_NETWORK \
+            --name=\$name \
+            --hostname=\$name \
+            --volume /tmp/.X11-unix:/tmp/.X11-unix \
+            --volume $PATH_ADDONS:$PATH_ADDONS_INTERNAL:ro"
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
 echo -e "\n${colour_blue}Starting container for BenchBot ROS:${colour_nc}"
-name="$ros_master_host"
-${docker_run//'$name'/$name} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+cmd="${docker_run//'$name'/$ros_master_host}"
+${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 if [ ! -z "$simulator_required" ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Starting container for BenchBot Robot Controller:"
-  name="benchbot_robot"
-  ${docker_run//'$name'/$name} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+  cmd="${docker_run//'$name'/benchbot_robot}"
+  ${cmd// /$'\t'} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
     "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
-name="benchbot_supervisor"
-${docker_run//'$name'/$name} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+cmd="${docker_run//'$name'/benchbot_supervisor}"
+${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'python -m benchbot_supervisor \
   --task-file "'"$SELECTED_TASK"'" --robot-file "'"${SELECTED_ROBOT/:/_}"'.yaml" \
   --environment-files '"$( IFS=$':'; echo "${selected_env_files[*]}")"
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
-name="benchbot_debug"
-${docker_run//'$name'/$name} --ip "$URL_DEBUG" -it -d $DOCKER_TAG_BACKEND /bin/bash
+cmd="${docker_run//'$name'/benchbot_debug}"
+${cmd// /$'\t'} --ip "$URL_DEBUG" -it -d $DOCKER_TAG_BACKEND /bin/bash
 xhost -local:root > /dev/null
 
 # Print the output of the Supervisor, watching for failures

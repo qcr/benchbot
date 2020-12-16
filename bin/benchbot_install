@@ -1183,7 +1183,8 @@ docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
-  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
+  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" \
+  --build-arg ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT
 build_ret=$?
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \

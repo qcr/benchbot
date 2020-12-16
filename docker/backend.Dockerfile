@@ -68,5 +68,10 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
+# Create a place to mount our add-ons
+ARG ADDONS_PATH
+ENV BENCHBOT_ADDONS_PATH=$ADDONS_PATH
+RUN mkdir -p $BENCHBOT_ADDONS_PATH
+
 # Record the type of backend built
 ENV BENCHBOT_SIMULATORS="${SIMULATORS}"
