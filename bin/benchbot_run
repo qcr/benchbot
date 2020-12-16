@@ -326,6 +326,7 @@ done
 # Extract a list of environments from the provided environment string
 _pre="$(echo "$environment" | sed 's/:.*//')"
 environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
+if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
 
 # Determine type of run being performed
 type="$(run_manager_cmd 'print(\
