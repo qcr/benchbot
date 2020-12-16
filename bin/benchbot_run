@@ -346,6 +346,7 @@ if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
 # Determine type of run being performed
 type="$(run_manager_cmd 'print(\
   get_value_by_name("robots", "'$robot'", "type"))')"
+simulator_required=1; if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
 
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
@@ -385,10 +386,6 @@ if [ ! -z "$updates_exit" ]; then exit 0; fi
 trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
-# Pull out all useful data from the selected settings
-# TODO do this through add-on manager
-simulator_required=1
-
 # Print some configuration information
 printf "${colour_blue}%s${colour_nc}
 
@@ -397,16 +394,21 @@ printf "${colour_blue}%s${colour_nc}
     Selected environment: $environment
     Scene/s:              " \
       "Running the BenchBot system with the following settings:"
-for i in "${!selected_map_paths[@]}"; do
+for i in "${!environments[@]}"; do
   if [ $i -ne 0 ]; then
     printf "%*s" 26
   fi
-  printf "%s\n" "${selected_map_paths[$i]}"
+  printf "%s, starting @ pose %s\n" "${environments[$i]}" \
+    "$(run_manager_cmd 'print(get_value_by_name("environments", \
+      "'${environments[$i]}'", "start_pose"))')"
   printf "%*s" 26
-  printf "(starting @ %s)\n" "${selected_poses[$i]}"
+  printf "(map_path = '%s')\n" \
+    "$(run_manager_cmd 'print(get_value_by_name("environments", \
+    "'${environments[$i]}'", "map_path"))')"
 done
 printf "    %-22s" "Simulator required:"
-printf "%s\n"  $([ -z "$simulator_required" ] && echo "No" || echo "Yes")
+printf "%s (%s)\n"  $([ -z "$simulator_required" ] && echo "No" || echo "Yes") \
+  "$type"
 echo ""
 exit 0
 
