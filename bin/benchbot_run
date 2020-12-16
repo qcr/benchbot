@@ -218,6 +218,24 @@ function validate_content() {
   fi
 }
 
+function validate_type() {
+  # $1 = type
+  if [ "$1" == "real" ]; then
+    printf "\n${colour_yellow}%s\n%s${colour_nc}\n" \
+      "WARNING: Requested running with '$1'. Assuming you have an available" \
+      "real robot & environment."
+    return
+  fi
+
+  simulators="$(simulator_type)"
+  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
+      [ "$simulators" != *"$1,"* ]; then
+    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
+      "ERROR: Requested running with '$1', but that simulator isn't installed." \
+      "Installed simulator/s are: '$simulators'"
+  fi
+}
+
 function validate_types() {
   # $1 = robot name; $2 = environment string, $3... environments
   robot="$1"
@@ -310,8 +328,8 @@ _pre="$(echo "$environment" | sed 's/:.*//')"
 environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
 
 # Determine type of run being performed
-  type="$(run_manager_cmd 'print(\
-    get_value_by_name("robots", "'$robot'", "type"))')"
+type="$(run_manager_cmd 'print(\
+  get_value_by_name("robots", "'$robot'", "type"))')"
 
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
@@ -326,8 +344,9 @@ if [ -z "$updates_exit" ]; then
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_types "$robot" "$environment" "${environments[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(validate_type "$type")"; echo "$err"
+  if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
   # TODO handle other invalid requests:
-  # - simulated robot / environment when none is installed
   # - number of selected variations don't match the number in selected task
   #   (will have to update environment check logic above...)
 fi
