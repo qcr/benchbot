@@ -74,6 +74,8 @@ RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
 ARG BENCHBOT_CONTROLLER_GIT
 ARG BENCHBOT_CONTROLLER_HASH
 ENV BENCHBOT_CONTROLLER_PATH /benchbot/benchbot_robot_controller
+RUN pushd ros_ws/src && git clone -b develop https://github.com/RoboticVisionOrg/benchbot_msgs.git && \
+    cd .. && source devel/setup.bash && catkin_make && popd
 RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pushd $BENCHBOT_CONTROLLER_PATH && git checkout $BENCHBOT_CONTROLLER_HASH && \
     pip install -r $BENCHBOT_CONTROLLER_PATH/requirements.txt && pushd $ROS_WS_PATH && \
