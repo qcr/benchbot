@@ -303,7 +303,7 @@ function run_manager_cmd() {
 function install_addons() {
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Installing add-ons based on the request string '${1}':"
-  run_manager_cmd 'install_addons("'$1'")' '\n' '\n\n'
+  run_manager_cmd 'install_addons("'$1'")' '\n' '\n'
 }
 
 function list_addons() {

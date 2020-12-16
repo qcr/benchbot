@@ -1232,4 +1232,4 @@ header_block "PART 5: INSTALLING BENCHBOT ADD-ONS" $colour_blue
 install_addons "$addons"
 
 # We are finally done...
-echo -e "\nFinished!"
+echo -e "Finished!"
