@@ -74,12 +74,13 @@ def exists(type_string, field_name, field_value):
 def find_all(type_string):
     _validate_type(type_string)
     return [
-        s for s in
-        run('find . -regex \'.*/%s/[^/]*ya?ml\' | xargs readlink -f' %
-            type_string,
-            shell=True,
-            cwd=_install_location(),
-            capture_output=True).stdout.decode('utf8').strip().splitlines()
+        s
+        for s in run('find . -regex \'.*/%s/[^/]*ya?ml\' | xargs readlink -f' %
+                     type_string,
+                     shell=True,
+                     cwd=_install_location(),
+                     stdout=PIPE,
+                     stderr=PIPE).stdout.decode('utf8').strip().splitlines()
     ]
 
 
@@ -128,7 +129,8 @@ def install_addon(name):
     cmd_args = {
         'shell': True,
         'cwd': install_path,
-        'capture_output': True,
+        'stdout': PIPE,
+        'stderr': PIPE,
     }
     if not os.path.exists(os.path.join(install_path, '.git')):
         ret = run('git clone %s .' % url, **cmd_args)
@@ -166,7 +168,8 @@ def install_addon(name):
                     or state[name]['remote_target'] != target):
                 print("\tRemote content is new. Fetching ...")
                 if (run('wget "%s" -O ".tmp.zip"' % remote, **{
-                        **cmd_args, 'capture_output': False
+                        **cmd_args, 'stdout': None,
+                        'stderr': None
                 }).returncode != 0):
                     print("\tFetching of remote content FAILED!!!")
                 else:
