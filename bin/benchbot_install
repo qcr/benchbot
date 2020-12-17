@@ -1102,13 +1102,13 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
 # TODO adapt this to handle multiple simulators...
+hash_fail_msg="Failed (check Internet connection & valid branch name!). Exiting."
 if [ ! -z "$simulators" ]; then
   echo -e "\nFetching latest hash for BenchBot Simulator ... "
   benchbot_simulator_hash=$((is_latest_benchbot_simulator $BRANCH_DEFAULT || \
     true) | latest_version_info)
   if [ -z "$benchbot_simulator_hash" ]; then
-    printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-      "Failed (check Internet connection!). Exiting."
+    printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
     exit 1
   fi
   echo -e "\t\t$benchbot_simulator_hash."
@@ -1117,8 +1117,7 @@ echo "Fetching latest hash for BenchBot Robot Controller ... "
 benchbot_controller_hash=$((is_latest_benchbot_controller $BRANCH_DEFAULT || \
   true) | latest_version_info)
 if [ -z "$benchbot_controller_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_controller_hash."
@@ -1126,8 +1125,7 @@ echo "Fetching latest hash for BenchBot Supervisor ... "
 benchbot_supervisor_hash=$((is_latest_benchbot_supervisor $BRANCH_DEFAULT || \
   true) | latest_version_info)
 if [ -z "$benchbot_supervisor_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_supervisor_hash."
@@ -1135,8 +1133,7 @@ echo "Fetching latest hash for BenchBot API ... "
 benchbot_api_hash=$((is_latest_benchbot_api $BRANCH_DEFAULT || true) | \
   latest_version_info)
 if [ -z "$benchbot_api_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_api_hash."
