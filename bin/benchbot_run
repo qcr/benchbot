@@ -342,6 +342,7 @@ done
 _pre="$(echo "$environment" | sed 's/:.*//')"
 environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
 if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
+environments_string="$(printf '%s\n' "${environments[@]}")"
 
 # Determine type of run being performed
 type="$(run_manager_cmd 'print(\
@@ -455,9 +456,16 @@ fi
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
 cmd="${docker_run//'$name'/benchbot_supervisor}"
 ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-  "$cmd_prefix"'python -m benchbot_supervisor \
-  --task-file "'"$SELECTED_TASK"'" --robot-file "'"${SELECTED_ROBOT/:/_}"'.yaml" \
-  --environment-files '"$( IFS=$':'; echo "${selected_env_files[*]}")"
+  "$cmd_prefix"'pushd $BENCHBOT_ADDONS_PATH && \
+  task_file=$(./call_manager '"'"'print(get_match("tasks", "name", \
+  "'"$task"'"))'"'"') &&
+  robot_file=$(./call_manager '"'"'print(get_match("robots", "name", \
+  "'"$robot"'"))'"'"') &&
+  env_files=$(./call_manager '"'"'print(":".join(\
+    [get_match("environments", "name", e) for e in \
+     "'"${environments_string//$'\n'/;}"'".split(";")]))'"'"') &&
+  python -m benchbot_supervisor --task-file "$task_file" \
+  --robot-file "$robot_file" --environment-files "$env_files"'
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 cmd="${docker_run//'$name'/benchbot_debug}"
