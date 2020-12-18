@@ -48,7 +48,7 @@ RUN [ -z "$SIMULATORS" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
 ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH
 ENV BENCHBOT_SIMULATOR_PATH="/benchbot/benchbot_simulator"
-RUN [ -z "$SIMULATOR" ] && exit 0 || \ 
+RUN [ -z "$SIMULATORS" ] && exit 0 || \ 
     git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
     source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
