@@ -384,6 +384,7 @@ fi
 if [ ! -z "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
+kill_benchbot
 trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
@@ -464,7 +465,7 @@ ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   env_files=$(./call_manager '"'"'print(":".join(\
     [get_match("environments", "name", e) for e in \
      "'"${environments_string//$'\n'/;}"'".split(";")]))'"'"') &&
-  python -m benchbot_supervisor --task-file "$task_file" \
+  python3 -m benchbot_supervisor --task-file "$task_file" \
   --robot-file "$robot_file" --environment-files "$env_files"'
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
@@ -490,4 +491,4 @@ if [ ! -z "$simulator_required" ] && \
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
   docker logs benchbot_robot
 fi
-exit_gracefully 1
+# exit_gracefully 1
