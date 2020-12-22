@@ -36,7 +36,7 @@ USAGE:
 
 OPTION DETAILS:
 
-    -h,--help             
+    -h, --help             
             Show this help menu.
 
     -e, --env, --environment
@@ -57,7 +57,7 @@ OPTION DETAILS:
 
                     office:1:3
 
-            (Use --list-envs to see a list of available environments)
+            (use --list-envs to see a list of available environments)
 
     -f, --force-updateless
             BenchBot will exit if it detects updates to the software stack. Set
@@ -89,7 +89,23 @@ OPTION DETAILS:
             target robot will be used by default, otherwise the 'real' target
             robot will be the default.
 
-            (Use --list-robots to see a list of available robots)
+            (use --list-robots to see a list of available robots)
+
+    --show-env, --show-environment
+            Prints information about the provided environment name if
+            installed. The corresponding YAML's location will be displayed,
+            with a snippet of its contents.
+
+    --show-robot
+            Prints information about the provided robot name if installed. The
+            corresponding YAML's location will be displayed, with a snippet
+            of its contents.
+
+    --show-task
+            Prints information about the provided task name if installed. The
+            corresponding YAML's location will be displayed, with a snippet
+            of its contents.
+
 
     -t, --task             
             Configure BenchBot for a specific task style (this must be called
@@ -102,13 +118,13 @@ OPTION DETAILS:
             is a semantic SLAM task with passive robot control and observations
             using a ground truth robot pose. 
 
-            (Use --list-tasks to see a list of supported task options)
+            (use --list-tasks to see a list of supported task options)
 
-    -u,--update-check
+    -u, --update-check
             Check for available updates to the BenchBot software stack and exit
             immediately.
 
-    -v,--version
+    -v, --version
             Print version info for current installation.
 
 FURTHER DETAILS:
