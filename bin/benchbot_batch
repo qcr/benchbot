@@ -69,7 +69,7 @@ USAGE:
 
 OPTION DETAILS:
 
-    -h,--help             
+    -h, --help             
             Show this help menu.
 
     -c, --containerised
@@ -124,10 +124,10 @@ OPTION DETAILS:
             & 'benchbot_run --list-tasks' for a complete list of supported
             tasks.
 
-    -v,--version
+    -v, --version
             Print version info for current installation.
 
-    -z,--zip
+    -z, --zip
             Produce a ZIP file of the results once all environments in the
             batch have been run. The ZIP file will be named using the value
             provided by the '-p, --prefix' argument (i.e. 'PREFIX.zip'), with

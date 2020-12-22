@@ -49,10 +49,10 @@ USAGE:
 
 OPTION DETAILS:
 
-    -h,--help
+    -h, --help
             Show this help menu.
 
-    -a,--addons
+    -a, --addons
             Comma separated list of add-ons to install. Add-ons can be
             specified as GitHub repositories ('username/repo_name'), relative
             paths ('./my_addon'), or absolute paths ('/path/to/my/addon').
@@ -63,12 +63,12 @@ OPTION DETAILS:
             Also see '--list-addons' for a details on installed add-ons, and a
             list of all known BenchBot add-ons.
 
-    -b,--branch
+    -b, --branch
             Specify a branch other than master to install. The only use for
             this flag is active development. The general user will never need
             to use this flag.
 
-    -f,--force-clean
+    -f, --force-clean
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
 
@@ -98,20 +98,20 @@ OPTION DETAILS:
             will be presented with a list of add-ons that will be removed, and
             prompted before removal commences.
 
-    -s,--simulators
+    -s, --simulators
             Specify simulator/s to install (only 'sim_unreal' is currently
             supported). Comma-separated lists are accepted to specify multiple
             simulators. If this option isn't included, the default 'sim_unreal'
             is installed. This flag will have more practical use in the future
             when we add Omniverse support.
 
-    -u,--uninstall
+    -u, --uninstall
             Uninstall the BenchBot software stack from the machine. All BenchBot
             related Docker images will be removed from the system, the API 
             removed from pip, & downloaded files removed from the BenchBot
             install. This flag is incompatible with all other flags.
 
-    -v,--version
+    -v, --version
             Print version info for current installation.
 
 FURTHER DETAILS:

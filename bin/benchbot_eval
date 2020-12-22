@@ -17,17 +17,27 @@ popd > /dev/null
 ################################################################################
 
 usage_text="$(basename "$0") -- Script for evaluating the performance of your solution
-to a Scene Understanding Challenge against a running simulator. The script
-simply calls the 'benchbot_eval' python module with your provided results
-file/s.
+to a task against a running environment. This script simply calls the installed
+'benchbot_eval' python module with your provided results file/s.
+
+Results files are validated before evaluation. A results file must specify:
+
+    - the name of the task the results were gathered for
+    - the environment name/s the results were gathered in (i.e. if a task
+      requires multiple scenes. This is NOT for denoting multiple different
+      results, which should each be in their own file)
+    - the format type of the results
+    - each field required by the specified format type
+
+Errors will be presented if validation fails, and evaluation will not proceed.
 
 Evaluation is performed on a set of results which are gathered from a set of
-environments. For example, you can evaluate your algorithm just in house:1, or
-evaluate the performance holistically in all 5 of the house scenes. As such,
-the following modes are supported by benchbot_eval:
+runs. For example, you can evaluate your algorithm just in house:1, or evaluate
+the performance holistically in all 5 of the house scenes. As such, the
+following modes are supported by benchbot_eval:
 
-    - Providing a single JSON results file (the score in this environment will
-    simply be returned as your final score)
+    - Providing a single JSON results file (the score in this run will simply
+    be returned as your final score)
 
     - Providing a list of JSON results files (the final score returned will be
     the average of the scores for each individual results file)
@@ -35,11 +45,6 @@ the following modes are supported by benchbot_eval:
     - Providing a *.zip file containing JSON results (the final score returned
     will be the same as above, across all JSON files found in the *.zip
     archive)
-
-Note: results must be of the format specified in the README here:
-    https://github.com/roboticvisionorg/benchbot_eval#the-results-format
-The evaluation will error if missing any required fields (in particular the
-fields describing task type).
 
 USAGE:
 
@@ -60,13 +65,16 @@ USAGE:
 
 OPTION DETAILS:
 
-    -h,--help             
+    -h, --help             
             Show this help menu.
 
-    -o,--output-location
+    -o, --output-location
             Change the location where the evaluation scores json is saved. If
             not provided, results are saved as 'scores.json' in the current
             directory.
+
+    -m, --method
+            Method used to perform evaluation of the results. 
 
     --required-envs
             A comma-separated list of environments required for evaluation
@@ -87,8 +95,12 @@ OPTION DETAILS:
             name. A list of supported task names can be found by running
             'benchbot_run --list-tasks'.
 
-    -v,--version
+    -v, --version
             Print version info for current installation.
+
+    -V, --validate-only
+            Only perform validation of each provided results file, then exit
+            without performing evaluation
 
 FURTHER DETAILS:
 
@@ -127,6 +139,7 @@ required_envs_file=
 required_task=
 results_files=
 scores_location='scores.json'
+validate_only=
 while true; do
   case "$1" in
     -h|--help)
@@ -141,6 +154,8 @@ while true; do
       required_task="$2"; shift 2 ;;
     -v|--version)
       print_version_info; exit ;;
+    -V|--validate-only)
+      validate_only=1; shift ;;
     --)
       shift ; results_files=("$@"); break;; 
     *)
@@ -172,16 +187,17 @@ else
   done
 fi
 
-# Get an absolute path for ground truth (as everything else is relative to where
-# the script was run...)
-gt_abs=$(realpath "$PATH_GROUND_TRUTH")
-if [ ! -d "$gt_abs" ]; then
-  printf "${colour_red}${_ground_truth_err}${colour_nc}\n" "$gt_abs"
-  exit 1
-fi
+################################################################################
+##################### Validate the provided results files ######################
+################################################################################
+
+header_block "Running validation over ${#results_files[@]} input files" \
+  $colour_green
+
+if [ ! -z "$validate_only" ]; then exit 0; fi
 
 ################################################################################
-################# Run evaluation on the provided results file ##################
+##################### Evaluate the provided results files ######################
 ################################################################################
 
 header_block "Running evaluation over ${#results_files[@]} input files" \
