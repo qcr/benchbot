@@ -68,13 +68,21 @@ OPTION DETAILS:
     -h, --help             
             Show this help menu.
 
+    --list-methods
+            List all supported evaluation methods. The listed methods are
+            printed in the format needed for the --method option.
+
+    -m, --method
+            Name of method to be used for evaluation of results. All ground
+            truths in the method's 'ground_truth_format' will be passed to the
+            evaluation script.
+             
+            (use --list-methods to see a list of supported evaluation methods)
+
     -o, --output-location
             Change the location where the evaluation scores json is saved. If
             not provided, results are saved as 'scores.json' in the current
             directory.
-
-    -m, --method
-            Method used to perform evaluation of the results. 
 
     --required-envs
             A comma-separated list of environments required for evaluation
@@ -94,6 +102,11 @@ OPTION DETAILS:
             Forces the script to only accept results for the supplied task
             name. A list of supported task names can be found by running
             'benchbot_run --list-tasks'.
+
+    --show-method
+            Prints information about the provided method name if installed. The
+            corresponding YAML's location will be displayed, with a snippet of
+            its contents.
 
     -v, --version
             Print version info for current installation.
@@ -129,11 +142,12 @@ location ('%s'). This should be created as part of the
 ################################################################################
 
 # Safely parse options input
-long_args='help,output-location:,required-envs:,required-envs-file:,\
-required-task:,version'
-parse_out=$(getopt -o ho:v --long "$long_args" -n "$(basename "$0")" -- "$@")
+_args='help,list-methods,method:,output-location:,required-envs:,\
+required-envs-file:,required-task:,show-method:,validate-only,version'
+parse_out=$(getopt -o ho:m:vV --long "$_args" -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+method=
 required_envs=
 required_envs_file=
 required_task=
@@ -144,6 +158,10 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    --list-methods)
+      opt_list_methods; exit $? ;;
+    -m|--method)
+      method="$2"; shift 2 ;;
     -o|--output-location)
       scores_location="$2"; shift 2 ;;
     --required-envs)
@@ -152,6 +170,8 @@ while true; do
       required_envs_file="$2"; shift 2 ;;
     --required-task)
       required_task="$2"; shift 2 ;;
+    --show-method)
+      opt_show_method "$2"; exit $? ;;
     -v|--version)
       print_version_info; exit ;;
     -V|--validate-only)
