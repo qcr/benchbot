@@ -290,12 +290,6 @@ updates."
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
 
-function run_manager_cmd() {
-  pushd "$PATH_ADDONS" &> /dev/null
-  bash call_manager "${1}" "${2-}" "${3-}"
-  popd &> /dev/null
-}
-
 function install_addons() {
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Installing add-ons based on the request string '${1}':"
@@ -309,3 +303,26 @@ function list_addons() {
 function remove_addons() {
   run_manager_cmd 'remove_addons("'$1'")' '\n' '\n\n'
 }
+
+function run_manager_cmd() {
+  pushd "$PATH_ADDONS" &> /dev/null
+  bash call_manager "${1}" "${2-}" "${3-}"
+  popd &> /dev/null
+}
+
+function show_content() {
+  singular=${1::-1}
+  if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
+      != "True" ]; then
+    printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
+      "Please check '--list-$1'."
+    exit 1
+  fi
+  location=$(run_manager_cmd 'print(get_match("'$1'", "name", "'$2'"))')
+  printf "${singular^} '$2' was found at the following location:\n\n\t%s\n\n" \
+    "$location"
+  printf "Printed below are the first 30 lines of the definition file:\n\n"
+  head -n 30 "$location"
+  printf "\n"
+}
+

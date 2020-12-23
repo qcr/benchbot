@@ -136,28 +136,26 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+mode_duplicate_err="ERROR: Multiple submission modes were selected. Please ensure only 
+one of -n|-c|-s is provided."
+
 mode_selection_err="ERROR: No valid submission mode was selected (-n|-c|-s). Please see 
 'benchbot_submit --help' for further details."
 
-SELECTED_MODE=
-SELECTED_OPTIONS=
+function opt_list_examples() {
+  l="$(run_manager_cmd '[print("\t%s" % e) for e in \
+    sorted(get_field("examples", "name"))]')"
+  echo "The following BenchBot examples are available in your installation:"
+  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
+  echo "
+See the '--show-example EXAMPLE_NAME' command for specific details about each
+example, or check you have the appropriate add-on installed if your are missing
+an example.
+"
+}
 
-function opt_select_mode() {
-  if [ ! -z $SELECTED_MODE ]; then
-    return 0
-  fi
-  case "$1" in
-    -n|--native)
-      SELECTED_MODE="native" ;;
-    -c|--containerised)
-      SELECTED_MODE="containerised" ;;
-    -s|--submission)
-      SELECTED_MODE="submission" ;;
-    *)
-      echo "$(basename "$0"): '$1' mode is unsupported" ; exit 1 ;;
-  esac
-  shift
-  SELECTED_OPTIONS=( $(echo "$@" | sed 's/ --//') )
+function opt_show_example() {
+  show_content "examples" "$1"
 }
 
 function remove_submission_container() {
@@ -174,34 +172,49 @@ function remove_submission_container() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o ehc:n:r:s:v --long \
-  evaluate-results,help,containerised:,native:,results-location:,submission:,version \
-  -n "$(basename "$0")" -- "$@")
+_args="evaluate-results,example:,help,containerised,list-examples,native,\
+results-location:,show-example,submission,version"
+parse_out=$(getopt -o eE:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
-results_location=
 evaluate=
+example=
+mode=
+mode_args=
+mode_dup=
+results_location=
 while true; do
   case "$1" in
     -e|--evaluate-results)
       evaluate=true ; shift ;;
+    -E|--example)
+      example="$2"; shift 2 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    --list-examples)
+      opt_list_examples ; exit $? ;;
     -n|--native|-c|--containerised|-s|--submission)
-      opt_select_mode "$@"; break ;;
+      if [ ! -z "$mode" ]; then mode_dup=1; fi
+      mode="$1"; shift ;;
     -r|--results-location)
       results_location="$2"; shift 2 ;;
+    --show-example)
+      opt_show_example "$2"; exit $? ;;
     -v|--version)
       print_version_info; exit ;;
     --)
-      shift ; break ;;
+      mode_args="$@" ; break ;;
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-if [ -z $SELECTED_MODE ]; then
-  echo -e "${colour_nc}$mode_selection_err${colour_nc}"
+exit 0
+
+# Bail if any of the requested configurations are invalid
+if [ -z $mode ]; then
+  printf "${colour_red}$mode_selection_err${colour_nc}\n"
   exit 1
+elif []
 fi
 
 # Bail if we have received mode options we can't do anything with
