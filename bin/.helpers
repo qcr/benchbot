@@ -22,7 +22,6 @@ GIT_BATCHES="https://github.com/roboticvisionorg/benchbot_batches"
 GIT_BENCHBOT="https://github.com/roboticvisionorg/benchbot"
 GIT_CONTROLLER="https://github.com/roboticvisionorg/benchbot_robot_controller"
 GIT_EVAL="https://github.com/roboticvisionorg/benchbot_eval"
-GIT_EXAMPLES="https://github.com/roboticvisionorg/benchbot_examples"
 GIT_SIMULATOR="https://github.com/roboticvisionorg/benchbot_simulator"
 GIT_SUPERVISOR="https://github.com/roboticvisionorg/benchbot_supervisor"
 
@@ -202,12 +201,6 @@ function is_latest_benchbot_controller() {
 
 function is_latest_benchbot_eval() {
   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
-  return
-}
-
-function is_latest_benchbot_examples() {
-  _is_latest_local_git "$PATH_EXAMPLES" "$GIT_EXAMPLES" "$1" \
-    "BenchBot Examples"
   return
 }
 

@@ -581,8 +581,6 @@ checks_list_post=(
   "apicloned"
   "apiuptodate"
   "apiinstalled"
-  "examplescloned"
-  "examplesuptodate"
   "evalcloned"
   "evaluptodate"
   "evalinstalled"
@@ -685,45 +683,6 @@ chk_apiinstalled_fix=\
 'pushd '"$PATH_API"' &&  
 python3 -m pip install -e . && popd'
 chk_apiinstalled_reboot=1
-
-chk_examplescloned_name='BenchBot examples cloned'
-chk_examplescloned_pass='Yes'
-chk_examplescloned_fail='No'
-chk_examplescloned_check=\
-'git -C '"$PATH_EXAMPLES"' rev-parse --show-toplevel 2>/dev/null'
-chk_examplescloned_eval='[ "$check_result" == "$(realpath '"$PATH_EXAMPLES"')" ]'
-chk_examplescloned_issue="\
-  The BenchBot examples python library is not cloned on the host system. Having
-  it installed provides hands on examples to get up & running with the BenchBot
-  system, including introductions to all of the different challenge modes."
-chk_examplescloned_fix=\
-'rm -rf '"$PATH_EXAMPLES"' && 
-git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
-pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
-chk_examplescloned_reboot=1
-
-chk_examplesuptodate_name='BenchBot examples up-to-date'
-chk_examplesuptodate_pass='Up-to-date'
-chk_examplesuptodate_fail='Outdated'
-chk_examplesuptodate_check=\
-'[ -d '"$PATH_EXAMPLES"' ] && git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
-git ls-remote '"$GIT_EXAMPLES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_examplesuptodate_eval='[ ! -z "$check_result" ] &&
-  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
-chk_examplesuptodate_issue="\
-  The version of the BenchBot examples python library on the host system is out
-  of date. The current version hash & latest version hash respectively are:
-
-"'$check_result'"
-
-  Please move to the latest version."
-chk_examplesuptodate_fix=\
-'pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout -- . &&
-(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
-git pull && popd'
-chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
 chk_evalcloned_pass='Yes'
