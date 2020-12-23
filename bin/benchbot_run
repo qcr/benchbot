@@ -57,7 +57,7 @@ OPTION DETAILS:
 
                     office:1:3
 
-            (use --list-envs to see a list of available environments)
+            (use '--list-envs' to see a list of available environments)
 
     -f, --force-updateless
             BenchBot will exit if it detects updates to the software stack. Set
@@ -68,16 +68,19 @@ OPTION DETAILS:
 
     --list-envs, --list-environments
             Search for & list all installed environments. The listed
-            environment names are in the format needed for the --env option.
+            environment names are in the format needed for the '--env' option.
+            Use '--show-environment' to see more details about an environment.
 
     --list-robots
             List all supported robot targets. This list will adjust to include
             what is available in your current installation (i.e. there will be
-            no simulated robots listed if you installed with '--no-simulator')
+            no simulated robots listed if you installed with '--no-simulator').
+            Use '--show-robot' to see more details about a robot.
 
     --list-tasks   
             Lists all supported task combinations. The listed tasks are printed
-            in the format needed for the --task option.
+            in the format needed for the '--task' option. Use '--show-task' to
+            see more details about a task.
 
     -r, --robot
             Configure the BenchBot supervisor for a specific robot. This
@@ -89,7 +92,7 @@ OPTION DETAILS:
             target robot will be used by default, otherwise the 'real' target
             robot will be the default.
 
-            (use --list-robots to see a list of available robots)
+            (use '--list-robots' to see a list of available robots)
 
     --show-env, --show-environment
             Prints information about the provided environment name if
@@ -109,16 +112,16 @@ OPTION DETAILS:
 
     -t, --task             
             Configure BenchBot for a specific task style (this must be called
-            with the --env option). Tasks are specified based on their name in
+            with the '--env' option). Tasks are specified based on their name in
             the YAML file. The naming convention generally follows the format
             \"TYPE:OPTION_1:OPTION_2:...\". For example:
 
-                    semantic_slam:passive:ground_truth\"
+                    semantic_slam:passive:ground_truth
 
             is a semantic SLAM task with passive robot control and observations
             using a ground truth robot pose. 
 
-            (use --list-tasks to see a list of supported task options)
+            (use '--list-tasks' to see a list of supported task options)
 
     -u, --update-check
             Check for available updates to the BenchBot software stack and exit

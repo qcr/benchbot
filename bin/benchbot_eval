@@ -70,14 +70,15 @@ OPTION DETAILS:
 
     --list-methods
             List all supported evaluation methods. The listed methods are
-            printed in the format needed for the --method option.
+            printed in the format needed for the '--method' option. Use
+            '--show-method' to see more details about a method.
 
     -m, --method
             Name of method to be used for evaluation of results. All ground
             truths in the method's 'ground_truth_format' will be passed to the
             evaluation script.
              
-            (use --list-methods to see a list of supported evaluation methods)
+            (use '--list-methods' to see a list of supported evaluation methods)
 
     -o, --output-location
             Change the location where the evaluation scores json is saved. If
