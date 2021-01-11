@@ -167,6 +167,20 @@ function remove_submission_container() {
   fi
 }
 
+function validate_example() {
+  # $1 example name
+  text="examples"
+  singular=${text::-1}
+  if [ ! -z "$1" ] && \
+      [ "$(run_manager_cmd 'print(exists("'$text'", "name", "'$1'"))')" \
+      != "True" ]; then
+    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
+      "Please check '--list-$text'."
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid ${singular} selected (${singular} = '$1')"
+  fi
+}
+
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
@@ -208,9 +222,12 @@ while true; do
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-exit 0
 
 # Bail if any of the requested configurations are invalid
+err="$(validate_example "$example")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+exit 0
+
 if [ -z $mode ]; then
   printf "${colour_red}$mode_selection_err${colour_nc}\n"
   exit 1
