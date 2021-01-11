@@ -173,7 +173,7 @@ function remove_submission_container() {
 
 # Safely parse options input
 _args="evaluate-results,example:,help,containerised,list-examples,native,\
-results-location:,show-example,submission,version"
+results-location:,show-example:,submission,version"
 parse_out=$(getopt -o eE:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
