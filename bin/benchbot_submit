@@ -315,58 +315,29 @@ if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 err="$(validate_results "$mode" "$evaluate" "$results_location")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 warning_mode "$example" "$mode_args"
-exit 0
 
 ################################################################################
 ################## Submit your BenchBot solution as requested ##################
 ################################################################################
 
-# TODO refactor this!
-# We are going to submit; pull all useful data from selected settings out
-# before beginning
-selected_command=
-selected_code_dir=
-selected_out_location=
-case "$SELECTED_MODE" in
+# Before we start a submission, figure out all of our derived configuration
+config_cmd=
+config_dir=
+config_out=
+case "$mode" in
   native)
-    selected_command="${SELECTED_OPTIONS[@]}" ;;
+    config_cmd="$(submission_command "$example" "$mode_args")" ;;
   containerised|submission)
-    selected_code_dir="${SELECTED_OPTIONS[0]}" ;;&
+    config_dir="$(submission_directory "$example" "$mode_args")" ;;&
   submission)
-    if [ ${#SELECTED_OPTIONS[@]} -gt 1 ]; then
-      selected_out_location="${SELECTED_OPTIONS[1]}"
-    fi
-    abs_path=$(realpath "$selected_code_dir")
-    if [ -z "$selected_out_location" ]; then
-      selected_out_location="$abs_path"
-    fi
-    if [ -d "$selected_out_location" ]; then
-      selected_out_location="$selected_out_location/$(basename "$abs_path")"
-    fi
-    if [[ ! "$selected_out_location" =~ "." ]]; then
-      selected_out_location+=".tgz"
-    fi ;;
+    config_out="submission.tgz" ;;
 esac
 
 
-trap remove_submission_container EXIT
-
-# Print some configuration information
+# Now print relevant configuration information
 echo "Submitting to the BenchBot system with the following settings:
 
-    Submission mode:             $SELECTED_MODE"
-if [ -n "$selected_command" ]; then
-  echo \
-"    Command to execute:          $selected_command"
-fi
-if [ -n "$selected_code_dir" ]; then
-  echo \
-"    Dockerfile to build:         $selected_code_dir/Dockerfile"
-fi
-if [ -n "$selected_out_location" ]; then
-  echo \
-"    Bundling output filename:    $selected_out_location"
-fi
+    Submission mode:             $mode"
 echo \
 "    Perform evaluation:          "\
 "$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
@@ -375,9 +346,24 @@ if [ -n "$results_location" ]; then
 "    Results save location:       $results_location"
 fi
 echo ""
+if [ -n "$config_cmd" ]; then
+  echo \
+"    Command to execute:          $config_cmd"
+fi
+if [ -n "$config_dir" ]; then
+  echo \
+"    Dockerfile to build:         $config_dir/Dockerfile"
+fi
+if [ -n "$config_out" ]; then
+  echo \
+"    Bundling output filename:    $config_out"
+fi
+echo ""
+exit 0
 
 # Actually perform the submission
 header_block "Running submission in '$SELECTED_MODE' mode" ${colour_green}
+trap remove_submission_container EXIT
 
 # Clear out any previous results in default location
 if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
