@@ -142,6 +142,17 @@ one of -n|-c|-s is provided."
 mode_selection_err="ERROR: No valid submission mode was selected (-n|-c|-s). Please see 
 'benchbot_submit --help' for further details."
 
+function expand_mode() {
+  mode="${1//-}"
+  if [[ "$mode" == n* ]]; then 
+    echo "native";
+  elif [[ "$mode" == c* ]]; then
+    echo "containerised";
+  elif [[ "$mode" == s* ]]; then
+    echo "submission";
+  fi
+}
+
 function opt_list_examples() {
   l="$(run_manager_cmd '[print("\t%s" % e) for e in \
     sorted(get_field("examples", "name"))]')"
@@ -167,6 +178,30 @@ function remove_submission_container() {
   fi
 }
 
+function submission_command() {
+  # $1 example name, $2 mode_args
+  if [[ -z "$2" && ! -z "$1" ]]; then
+    echo "pushd $(dirname $(run_manager_cmd 'print(get_match(\
+      "examples", "name", "'$1'"))')); $(run_manager_cmd 'print(\
+      get_value_by_name("examples", "'$1'", "native_command"))'); popd"
+  else
+    echo "$2"
+  fi
+}
+
+function submission_directory() {
+  # $1 example name, $2 mode_args
+  if [[ -z "$2"  && ! -z "$1" ]]; then
+    pushd "$(dirname $(run_manager_cmd 'print(get_match(\
+      "examples", "name", "'$1'"))'))" > /dev/null
+    echo "$(realpath $(run_manager_cmd 'print(get_value_by_name(\
+      "examples", "'$1'", "container_directory"))'))"
+    popd > /dev/null
+  else
+    echo "$2"
+  fi
+}
+
 function validate_example() {
   # $1 example name
   text="examples"
@@ -178,6 +213,54 @@ function validate_example() {
       "Please check '--list-$text'."
     printf "\n${colour_red}%s${colour_nc}" \
       "ERROR: Invalid ${singular} selected (${singular} = '$1')"
+  fi
+}
+
+function validate_mode() {
+  # $1 example name, $2 duplicate mode flag, $3 mode (expanded), $4 mode_args
+  err=
+  cmd="$(submission_command "$1" "$4")"
+  dir="$(submission_directory "$1" "$4")"
+  if [ -z "$3" ]; then
+    err="$(printf "%s %s\n" "No mode was selected. Please select a submission" \
+      "mode from 'native', 'containerised', or 'submission'")"
+  elif [ ! -z "$2"]; then
+    err="$(printf "%s %s\n" "Selected more than 1 mode, please only select" \
+      "one of 'native', 'containerised', or 'submission'.")"
+  elif [ -z "$1" ] && [ -z "$4" ]; then
+    err="$(printf "%s %s\n" "Mode '$3' requires arguments, but none were" \
+      "provided. Please see '--help' for details.")"
+  elif [[ ("$3" == c* || "$3" == s*) && ! -d "$dir" ]]; then
+    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a directory as an" \
+      "argument. The provided directory does not exist:" "$dir")"
+  elif [[ "$3" == c* && ! -f "$dir/Dockerfile" ]]; then
+    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a Dockerfile to run." \
+      "The provided Dockerfile does not exist:" "$dir/Dockerfile")"
+  fi
+
+  if [ ! -z "$err" ]; then 
+    printf "$err\n"; 
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Mode selection was invalid. See errors above."
+  fi
+}
+
+function validate_results() {
+  # $1 mode (expanded), $2 evaluate, $3 results_location
+  if [[ "$1" == s* && ( ! -z "$2" || ! -z "$3" ) ]]; then
+    printf "%s %s\n" "Cannot create results or perform evaluation in '$1'" \
+      "mode. Please run again in a different mode."
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Requested results evaluation from 'submission' mode."
+  fi
+}
+
+function warning_mode() {
+  # $1 example name, $2 mode_args
+  if [[ ! -z "$1" && ! -z "$2" ]]; then
+    printf "${colour_yellow}%s\n%s\n${colour_nc}" \
+      "WARNING: You selected an example & provided arguments for the mode" \
+      "(usually you only want one or the other)"
   fi
 }
 
@@ -217,44 +300,28 @@ while true; do
     -v|--version)
       print_version_info; exit ;;
     --)
-      mode_args="$@" ; break ;;
+      mode_args=$(echo "$@" | sed 's/-- *//'); break ;;
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+mode="$(expand_mode "$mode")"
 
 # Bail if any of the requested configurations are invalid
 err="$(validate_example "$example")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_mode "$example" "$mode_dup" "$mode" "$mode_args")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_results "$mode" "$evaluate" "$results_location")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+warning_mode "$example" "$mode_args"
 exit 0
 
-if [ -z $mode ]; then
-  printf "${colour_red}$mode_selection_err${colour_nc}\n"
-  exit 1
-elif []
-fi
+################################################################################
+################## Submit your BenchBot solution as requested ##################
+################################################################################
 
-# Bail if we have received mode options we can't do anything with
-# TODO handle passing evaluate and / or results when running in submission mode
-case "$SELECTED_MODE" in
-  containerised|submission)
-    if [ ! -d "${SELECTED_OPTIONS[0]}" ]; then
-      printf "${colour_red}%s%s${colour_nc}\n" \
-        "$(basename "$0"): directory '${SELECTED_OPTIONS[0]}' provided with "\
-        "mode\n'$SELECTED_MODE' does not exist. Exiting..."
-      exit 1
-    fi ;;&
-  submission)
-    if [ -z "$evaluate" ] || [ -z "$results_location" ]; then
-      printf "${colour_red}%s%s%s${colour_nc}\n" \
-        "$(basename "$0"): cannot create results or perform evaluation from " \
-        "\nsubmission mode as no code is run. Please run again in a different " \
-        "\nmode."
-      exit 1
-    fi
-    ;;
-esac
-
+# TODO refactor this!
 # We are going to submit; pull all useful data from selected settings out
 # before beginning
 selected_command=
@@ -281,10 +348,6 @@ case "$SELECTED_MODE" in
     fi ;;
 esac
 
-
-################################################################################
-################## Submit your BenchBot solution as requested ##################
-################################################################################
 
 trap remove_submission_container EXIT
 
