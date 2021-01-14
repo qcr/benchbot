@@ -142,6 +142,10 @@ one of -n|-c|-s is provided."
 mode_selection_err="ERROR: No valid submission mode was selected (-n|-c|-s). Please see 
 'benchbot_submit --help' for further details."
 
+_list_examples_pre=\
+"The following BenchBot examples are available in your installation:
+    "
+
 function expand_mode() {
   mode="${1//-}"
   if [[ "$mode" == n* ]]; then 
@@ -151,22 +155,6 @@ function expand_mode() {
   elif [[ "$mode" == s* ]]; then
     echo "submission";
   fi
-}
-
-function opt_list_examples() {
-  l="$(run_manager_cmd '[print("\t%s" % e) for e in \
-    sorted(get_field("examples", "name"))]')"
-  echo "The following BenchBot examples are available in your installation:"
-  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
-  echo "
-See the '--show-example EXAMPLE_NAME' command for specific details about each
-example, or check you have the appropriate add-on installed if your are missing
-an example.
-"
-}
-
-function opt_show_example() {
-  show_content "examples" "$1"
 }
 
 function remove_submission_container() {
@@ -291,14 +279,14 @@ while true; do
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-examples)
-      opt_list_examples ; exit $? ;;
+      list_content "examples" "$_list_examples_pre" "an"; exit $? ;;
     -n|--native|-c|--containerised|-s|--submission)
       if [ ! -z "$mode" ]; then mode_dup=1; fi
       mode="$1"; shift ;;
     -r|--results-location)
       results_location="$2"; shift 2 ;;
     --show-example)
-      opt_show_example "$2"; exit $? ;;
+      show_content "examples" "$2"; exit $? ;;
     -v|--version)
       print_version_info; exit ;;
     --)
