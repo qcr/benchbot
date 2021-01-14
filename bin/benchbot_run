@@ -319,6 +319,10 @@ type="$(run_manager_cmd 'print(\
   get_value_by_name("robots", "'$robot'", "type"))')"
 simulator_required=1; if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
 
+# Determine results format required by task
+result_format="$(run_manager_cmd 'print(\
+  get_value_by_name("tasks", "'$task'", "result_format"))')"
+
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
   # Process environment, task, & robot selections
@@ -329,6 +333,8 @@ if [ -z "$updates_exit" ]; then
   err="$(validate_content "robots" "$robot")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_content "tasks" "$task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(validate_content "formats" "$result_format")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_types "$robot" "$environment" "${environments[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
@@ -362,6 +368,7 @@ header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 printf "${colour_blue}%s${colour_nc}
 
     Selected task:        $task
+    Task results format:  $result_format
     Selected robot:       $robot
     Selected environment: $environment
     Scene/s:              " \
@@ -430,6 +437,8 @@ ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'pushd $BENCHBOT_ADDONS_PATH && \
   task_file=$(./call_manager '"'"'print(get_match("tasks", "name", \
   "'"$task"'"))'"'"') &&
+  result_format_file=$(./call_manager '"'"'print(get_match("formats", "name", \
+  "'"$result_format"'"))'"'"') &&
   robot_file=$(./call_manager '"'"'print(get_match("robots", "name", \
   "'"$robot"'"))'"'"') &&
   env_files=$(./call_manager '"'"'print(":".join(\
