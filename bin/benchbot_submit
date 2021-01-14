@@ -367,6 +367,7 @@ header_block "Running submission in '$mode' mode" ${colour_green}
 trap 'remove_submission_container "'$mode'"' EXIT
 
 # Clear out any previous results in default location
+results_src=
 if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
   results_src=$(python3 -c \
     'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
