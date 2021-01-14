@@ -19,8 +19,8 @@ FILENAME_REMOTE = '.remote'
 HASH_SHORT = 8
 
 SUPPORTED_TYPES = [
-    'environments', 'evaluation', 'examples', 'ground_truths', 'robots',
-    'tasks'
+    'environments', 'evaluation', 'examples', 'formats', 'ground_truths',
+    'robots', 'tasks'
 ]
 
 URL_OFFICIAL_ADDONS = 'https://github.com/benchbot-addons'
