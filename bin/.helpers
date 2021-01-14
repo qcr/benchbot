@@ -288,6 +288,21 @@ function list_addons() {
   run_manager_cmd  'print_state()' '\n' '\n\n'
 }
 
+function list_content() {
+  # $1 content type, $2 list prefix text, $3 optional "an" instead of "a"
+  singular=${1::-1}
+  l="$(run_manager_cmd '[print("\t%s" % r) for r in \
+    sorted(get_field("'$1'", "name"))]')"
+  echo "$2"
+  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
+  echo "
+See the '--show-"$singular" "${singular^^}"_NAME' command for specific "\
+"details about
+each "$singular", or check you have the appropriate add-on installed if you are 
+missing "${3:-a}" "${singular}".
+"
+}
+
 function remove_addons() {
   run_manager_cmd 'remove_addons("'$1'")' '\n' '\n\n'
 }
@@ -299,6 +314,7 @@ function run_manager_cmd() {
 }
 
 function show_content() {
+  # $1 content type, $2 name of selected content
   singular=${1::-1}
   if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
       != "True" ]; then

@@ -136,6 +136,29 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
+_list_environments_pre=\
+"Either simulated or real world environments can be selected. Please see the
+'--list-robots' command for the available robot platforms. Only simulated robots 
+can be run in simulated environments, and only real robots in real environments 
+(as you would expect).
+
+The following environments are supported in your BenchBot installation:
+    "
+
+_list_formats_pre=\
+"Formats are used by a task to declare the formats of results in a re-usable
+manner. You should ensure that tasks you use point to installed results
+formats. The following formats are supported in your BenchBot installation:
+    "
+
+_list_robots_pre=\
+"The following robot targets are supported in your BenchBot installation:
+    "
+
+_list_tasks_pre=\
+"The following tasks are supported in your BenchBot installation:
+    "
+
 _robot_err=\
 "ERROR: The BenchBot Robot Controller container has exited unexpectedly. This 
 should not happen unless something is installed incorrectly. Please see the
@@ -149,66 +172,6 @@ function exit_gracefully() {
   fi
   kill_benchbot
   exit ${1:-0}
-}
-
-function opt_list_envs() {
-  # TODO check if installed (docker image exists); provide a message if not
-  # telling them how to fix the issue
-  # Print the list with details
-  l="$(run_manager_cmd '[print("\t%s" % e) for e in \
-    sorted(get_field("environments", "name"))]')"
-  echo "Either simulated or real world environments can be selected. Please see the
-'--list-robots' command for the available robot platforms. Only simulated robots 
-can be run in simulated environments, and only real robots in real environments 
-(as you would expect).
-
-The following environments are supported in your BenchBot installation:
-    "
-  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
-  echo "
-See the '--show-environment ENVIRONMENT_NAME' command for specific details about
-each environment, or check you have the appropriate add-on installed if you are
-missing an environment.
-"
-}
-
-function opt_list_robots() {
-  # TODO this will need to be redone in a more flexible way to support a more
-  # dynamic style of "robot" target creation
-  l="$(run_manager_cmd '[print("\t%s" % r) for r in \
-    sorted(get_field("robots", "name"))]')"
-  echo "The following robot targets are supported in your BenchBot installation:
-        "
-  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
-  echo "
-See the '--show-robot ROBOT_NAME' command for specific details about each robot,
-or check you have the appropriate add-on installed if you are missing a robot.
-"
-}
-
-function opt_list_tasks() {
-  # TODO this is hard coded for now... maybe should be done differently...
-  l="$(run_manager_cmd '[print("\t%s" % t) for t in \
-    sorted(get_field("tasks", "name"))]')"
-  echo "The following tasks are supported in your BenchBot installation: 
-  "
-  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
-  echo "
-See the '--show-task TASK_NAME' command for specific details about each task, or
-check you have the appropriate add-on installed if you are missing a task.
-"
-}
-
-function opt_show_env() {
-  show_content "environments" "$1"
-}
-
-function opt_show_robot() {
-  show_content "robots" "$1"
-}
-
-function opt_show_task() {
-  show_content "tasks" "$1"
 }
 
 function validate_environment_count() {
@@ -295,8 +258,8 @@ function validate_types() {
 
 # Safely parse options input
 _args="help,env:,environment:,force-updateless,list-envs,list-environments,\
-list-robots,list-tasks,robot:,show-env:,show-environment:,show-robot:,\
-show-task:,task:,updates-check,version"
+list-formats,list-robots,list-tasks,robot:,show-env:,show-environment:,\
+show-format:,show-robot:,show-task:,task:,updates-check,version"
 parse_out=$(getopt -o he:t:r:fuv --long $_args  -n "$(basename "$abs_path")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -315,19 +278,23 @@ while true; do
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
     --list-envs|--list-environments)
-      opt_list_envs ; exit $? ;;
+      list_content "environments" "$_list_environments_pre" "an"; exit $? ;;
+    --list-formats)
+      list_content "formats" "$_list_formats_pre"; exit $? ;;
     --list-robots)
-      opt_list_robots ; exit $? ;;
+      list_content "robots" "$_list_robots_pre"; exit $? ;;
     --list-tasks)
-      opt_list_tasks ; exit $? ;;
+      list_content "tasks" "$_list_tasks_pre"; exit $? ;;
     -r|--robot)
       robot="$2"; shift 2 ;;
     --show-env|--show-environment)
-      opt_show_env "$2" ; exit $? ;;
+      show_content "environments" "$2"; exit $? ;;
+    --show-format)
+      show_content "formats" "$2"; exit $? ;;
     --show-robot)
-      opt_show_robot "$2"; exit $? ;;
+      show_content "robots" "$2"; exit $? ;;
     --show-task)
-      opt_show_task "$2"; exit $? ;;
+      show_content "tasks" "$2"; exit $? ;;
     -t|--task)
       task="$2"; shift 2 ;;
     -u|--updates-check)
