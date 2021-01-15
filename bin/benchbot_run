@@ -445,7 +445,8 @@ ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
     [get_match("environments", "name", e) for e in \
      "'"${environments_string//$'\n'/;}"'".split(";")]))'"'"') &&
   python3 -m benchbot_supervisor --task-file "$task_file" \
-  --robot-file "$robot_file" --environment-files "$env_files"'
+  --result-format-file "$result_format_file" --robot-file "$robot_file" \
+  --environment-files "$env_files"'
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 cmd="${docker_run//'$name'/benchbot_debug}"
