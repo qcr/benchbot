@@ -471,4 +471,4 @@ if [ ! -z "$simulator_required" ] && \
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
   docker logs benchbot_robot
 fi
-# exit_gracefully 1
+exit_gracefully 1
