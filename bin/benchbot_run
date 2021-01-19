@@ -320,8 +320,8 @@ type="$(run_manager_cmd 'print(\
 simulator_required=1; if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
 
 # Determine results format required by task
-result_format="$(run_manager_cmd 'print(\
-  get_value_by_name("tasks", "'$task'", "result_format"))')"
+results_format="$(run_manager_cmd 'print(\
+  get_value_by_name("tasks", "'$task'", "results_format"))')"
 
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
@@ -334,7 +334,7 @@ if [ -z "$updates_exit" ]; then
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_content "tasks" "$task")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  err="$(validate_content "formats" "$result_format")"
+  err="$(validate_content "formats" "$results_format")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_types "$robot" "$environment" "${environments[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
@@ -368,7 +368,7 @@ header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 printf "${colour_blue}%s${colour_nc}
 
     Selected task:        $task
-    Task results format:  $result_format
+    Task results format:  $results_format
     Selected robot:       $robot
     Selected environment: $environment
     Scene/s:              " \
@@ -437,15 +437,15 @@ ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'pushd $BENCHBOT_ADDONS_PATH && \
   task_file=$(./call_manager '"'"'print(get_match("tasks", "name", \
   "'"$task"'"))'"'"') &&
-  result_format_file=$(./call_manager '"'"'print(get_match("formats", "name", \
-  "'"$result_format"'"))'"'"') &&
+  results_format_file=$(./call_manager '"'"'print(get_match("formats", "name", \
+  "'"$results_format"'"))'"'"') &&
   robot_file=$(./call_manager '"'"'print(get_match("robots", "name", \
   "'"$robot"'"))'"'"') &&
   env_files=$(./call_manager '"'"'print(":".join(\
     [get_match("environments", "name", e) for e in \
      "'"${environments_string//$'\n'/;}"'".split(";")]))'"'"') &&
   python3 -m benchbot_supervisor --task-file "$task_file" \
-  --result-format-file "$result_format_file" --robot-file "$robot_file" \
+  --results-format-file "$results_format_file" --robot-file "$robot_file" \
   --environment-files "$env_files"'
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
