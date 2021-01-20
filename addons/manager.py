@@ -68,8 +68,8 @@ def dump_state(state):
         json.dump(state, f, indent=4)
 
 
-def exists(type_string, field_name, field_value):
-    return get_match(type_string, field_name, field_value) is not None
+def exists(type_string, name_value_tuples):
+    return get_match(type_string, name_value_tuples) is not None
 
 
 def find_all(type_string):
@@ -85,15 +85,25 @@ def find_all(type_string):
     ]
 
 
-def get_match(type_string, field_name, field_value):
+def get_match(type_string, name_value_tuples):
     _validate_type(type_string)
-    return next((f for f in find_all(type_string)
-                 if yaml.safe_load(open(f))[field_name] == field_value), None)
+    for fn in find_all(type_string):
+        with open(fn, 'r') as f:
+            d = yaml.safe_load(f)
+            if all(str(d[nv[0]]) == nv[1] for nv in name_value_tuples):
+                return fn
+    return None
 
 
 def get_field(type_string, field_name):
     _validate_type(type_string)
     return [get_value(f, field_name) for f in find_all(type_string)]
+
+
+def get_fields(type_string, field_names):
+    _validate_type(type_string)
+    files = find_all(type_string)
+    return [[get_value(f, fn) for fn in field_names] for f in files]
 
 
 def get_state():
