@@ -4,6 +4,8 @@
 ################### Load Helpers & Global BenchBot Settings ####################
 ################################################################################
 
+set -euo pipefail
+IFS=$'\n\t'
 abs_path=$(readlink -f $0)
 pushd $(dirname $abs_path) > /dev/null
 source .helpers
@@ -15,17 +17,29 @@ popd > /dev/null
 ################################################################################
 
 usage_text="$(basename "$0") -- Script for evaluating the performance of your solution
-to a Scene Understanding Challenge against a running simulator. The script
-simply calls the 'benchbot_eval' python module with your provided results
-file/s.
+to a task in a running environment. This script simply calls the installed
+'benchbot_eval' python module with your provided results file/s.
+
+Results files are validated before evaluation. A results file must specify:
+
+    - details of the task in which the results were gathered
+    - details for each of the environments the were gathered in (i.e. if a task
+      requires multiple scenes. This is NOT for denoting multiple different
+      results, which should each be in their own file)
+    - the set of results in the format described by format type (in task
+      details)
+
+Errors will be presented if validation fails, and evaluation will not proceed.
+There are helper functions available in the BenchBot API for creating results
+('BenchBot.empty_results()' & 'BenchBot.results_functions()').
 
 Evaluation is performed on a set of results which are gathered from a set of
-environments. For example, you can evaluate your algorithm just in house:1, or
-evaluate the performance holistically in all 5 of the house scenes. As such,
-the following modes are supported by benchbot_eval:
+runs. For example, you can evaluate your algorithm just in house:1, or evaluate
+the performance holistically in all 5 of the house scenes. As such, the
+following modes are supported by benchbot_eval:
 
-    - Providing a single JSON results file (the score in this environment will
-    simply be returned as your final score)
+    - Providing a single JSON results file (the score in this run will simply
+    be returned as your final score)
 
     - Providing a list of JSON results files (the final score returned will be
     the average of the scores for each individual results file)
@@ -33,11 +47,6 @@ the following modes are supported by benchbot_eval:
     - Providing a *.zip file containing JSON results (the final score returned
     will be the same as above, across all JSON files found in the *.zip
     archive)
-
-Note: results must be of the format specified in the README here:
-    https://github.com/roboticvisionorg/benchbot_eval#the-results-format
-The evaluation will error if missing any required fields (in particular the
-fields describing task type).
 
 USAGE:
 
@@ -58,10 +67,22 @@ USAGE:
 
 OPTION DETAILS:
 
-    -h,--help             
+    -h, --help             
             Show this help menu.
 
-    -o,--output-location
+    --list-methods
+            List all supported evaluation methods. The listed methods are
+            printed in the format needed for the '--method' option. Use
+            '--show-method' to see more details about a method.
+
+    -m, --method
+            Name of method to be used for evaluation of results. All ground
+            truths in the method's 'ground_truth_format' will be passed to the
+            evaluation script.
+             
+            (use '--list-methods' to see a list of supported evaluation methods)
+
+    -o, --output-location
             Change the location where the evaluation scores json is saved. If
             not provided, results are saved as 'scores.json' in the current
             directory.
@@ -85,8 +106,17 @@ OPTION DETAILS:
             name. A list of supported task names can be found by running
             'benchbot_run --list-tasks'.
 
-    -v,--version
+    --show-method
+            Prints information about the provided method name if installed. The
+            corresponding YAML's location will be displayed, with a snippet of
+            its contents.
+
+    -v, --version
             Print version info for current installation.
+
+    -V, --validate-only
+            Only perform validation of each provided results file, then exit
+            without performing evaluation
 
 FURTHER DETAILS:
 
@@ -97,38 +127,105 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
-_invalid_location_err=\
-"ERROR: The provided results file '%s' either does not exist, or is not a file. 
-Please ensure all provided results files are valid."
-
-_missing_results_err=\
-"ERROR: No results file was provided. Please run again with a valid results
-file as input."
-
 _ground_truth_err=\
 "ERROR: The script was unable to find ground truth files in the expected 
 location ('%s'). This should be created as part of the
 'benchbot_install' process. Please re-run the installer."
+
+_list_methods_pre=\
+"The following evaluation methods are available in your installation:
+    "
+
+function validate_method() {
+  # $1 evaluation method, $2 validate only
+  err=
+  if [ -z "$1" ] && [ -z "$2" ]; then
+    err="$(printf "%s %s\n" "Evaluation was requested but no evaluation"\
+      "method was selected. A selection is required.")"
+  elif [ -z "$2" ] && \
+      [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
+      "name", "'$1'"))')" != "True" ]; then
+    err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
+      "Please check '--list-methods'.")"
+  fi
+
+  if [ ! -z "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
+  fi
+}
+
+function validate_required_envs() {
+  # $1 required envs, $2 required envs file
+  if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: Only '--required-envs' or '--required-envs-file' is valid,"\
+      "not both."
+  fi
+}
+
+function validate_required_task() {
+  # $1 required task name
+  text="tasks"
+  singular=${text::-1}
+  if [ ! -z "$1" ] && \
+      [ "$(run_manager_cmd 'print(exists("'$text'", "name", "'$1'"))')" \
+      != "True" ]; then
+    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
+      "Please check 'benchbot_run --list-$text'."
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid ${singular} selected (${singular} = '$1')"
+  fi
+}
+
+function validate_results_files() {
+  # $@ results files list
+  err=
+  if [ $# -eq 0 ]; then
+    err="$(printf "%s %s\n" "No results file/s were provided. Please run" \
+      "again with a results file.")"
+  else
+    for r in "$@"; do
+      if [ ! -f "$r" ]; then
+        err="$(printf "%s %s\n" "Results file '$r' either doesn't exist," \
+        "or isn't a file.")"
+      fi
+    done
+  fi
+
+  if [ ! -z "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Results file/s provided were invalid. See errors above."
+  fi
+}
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
 
 # Safely parse options input
-long_args='help,output-location:,required-envs:,required-envs-file:,\
-required-task:,version'
-parse_out=$(getopt -o ho:v --long "$long_args" -n "$(basename "$0")" -- "$@")
+_args='help,list-methods,method:,output-location:,required-envs:,\
+required-envs-file:,required-task:,show-method:,validate-only,version'
+parse_out=$(getopt -o ho:m:vV --long "$_args" -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+method=
 required_envs=
 required_envs_file=
 required_task=
 results_files=
 scores_location='scores.json'
+validate_only=
 while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    --list-methods)
+      list_content "evaluation_methods" "$_list_methods_pre"; exit $? ;;
+    -m|--method)
+      method="$2"; shift 2 ;;
     -o|--output-location)
       scores_location="$2"; shift 2 ;;
     --required-envs)
@@ -137,8 +234,12 @@ while true; do
       required_envs_file="$2"; shift 2 ;;
     --required-task)
       required_task="$2"; shift 2 ;;
+    --show-method)
+      show_content "evaluation_methods" "$2"; exit $? ;;
     -v|--version)
       print_version_info; exit ;;
+    -V|--validate-only)
+      validate_only=1; shift ;;
     --)
       shift ; results_files=("$@"); break;; 
     *)
@@ -146,47 +247,33 @@ while true; do
   esac
 done
 
-# Accept only --required-envs or --required-envs-file
-if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
-  printf "${colour_red}%s\n%s${colour_nc}\n" \
-    "ERROR: Both '--required-envs' && '--required-envs-file' provided; please " \
-    "only provide 1!"
-  exit 1
-elif [ ! -z "$required_envs_file" ]; then
+# Bail if any of the requested configurations are invalid
+err="$(validate_required_envs "$required_envs" "$required_envs_file")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+if [ ! -z "$required_envs_file" ]; then
   required_envs=($(cat "$required_envs_file" | tr '\n' ' ' | \
         sed 's/[[:space:]]*$//'))
 fi
-
-# Bail if any of the results files don't exist, or we got no results files
-if [ -z "$results_files" ]; then
-  printf "${colour_red}${_missing_results_err}${colour_nc}\n"
-  exit 1
-else
-  for r in "${results_files[@]}"; do
-    if [ ! -f "$r" ]; then
-      printf "${colour_red}${_invalid_location_err}${colour_nc}\n" "$r"
-      exit 1
-    fi
-  done
-fi
-
-# Get an absolute path for ground truth (as everything else is relative to where
-# the script was run...)
-gt_abs=$(realpath "$PATH_GROUND_TRUTH")
-if [ ! -d "$gt_abs" ]; then
-  printf "${colour_red}${_ground_truth_err}${colour_nc}\n" "$gt_abs"
-  exit 1
-fi
+err="$(validate_required_task "$required_task")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_method "$method" "$validate_only")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_results_files "${results_files[@]}")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 
 ################################################################################
-################# Run evaluation on the provided results file ##################
+##################### Validate the provided results files ######################
 ################################################################################
 
-header_block "Running evaluation over ${#results_files[@]} input files" \
+header_block "Running validation over ${#results_files[@]} input files" \
   $colour_green
 
-# Form some strings of python code from our input arguments
-python_results='["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"]'
+# Build up some strings we can pass directly to Python
+python_results_files='["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"]'
+python_formats_files="$(run_manager_cmd 'print(find_all("formats"))')"
+python_ground_truths_files="$(run_manager_cmd \
+  'print(find_all("ground_truths"))')"
+
 python_req_task=
 if [ ! -z "$required_task" ]; then
   python_req_task=', required_task="'"$required_task"'"'
@@ -197,6 +284,28 @@ if [ ! -z "$required_envs" ]; then
     sed 's/ /","/g')'"]'
 fi
 
+# Validate provided results using the Validator class from 'benchbot_eval'
+# Python module
+python3 -c 'from benchbot_eval import Validator; \
+  Validator('"$python_results_files"', '"$python_formats_files"', \
+  '"$python_ground_truths_files$python_req_task$python_req_envs"').\
+  validate_results_data()'
+
+
+# TODO loop through each provided result_file, running the validation function
+# from the format definition (if it exists)
+
+if [ ! -z "$validate_only" ]; then exit 0; fi
+
+################################################################################
+##################### Evaluate the provided results files ######################
+################################################################################
+
+header_block "Running evaluation over ${#results_files[@]} input files" \
+  $colour_green
+
+# Form some strings of python code from our input arguments
+python_results=
 # Run the python command & exit
 python3 -c 'from benchbot_eval import Evaluator; \
   Evaluator('"$python_results"', "'"$gt_abs"'", "'$scores_location'"\

@@ -1,5 +1,5 @@
 *.sw*
-id_rsa
+__pycache__/
 
 # We never want to track BenchBot components
 api/
@@ -7,3 +7,8 @@ batches/
 eval/
 examples/
 ground_truth/
+
+# Ignore built add-on information
+addons/
+!addons/manager.py
+!addons/call_manager
