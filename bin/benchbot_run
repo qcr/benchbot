@@ -42,17 +42,16 @@ OPTION DETAILS:
     -e, --env, --environment
             Select an environment to launch in the simulator (this must be
             called with the --task option). Environments are identified via
-            \"ENVIRONMENT_NAME:VARIATION_NUMBER\" where ENVIRONMENT_NAME is the
-            name of simulated environment & VARIATION_NUMBER environment
-            variation to use. For example, the third variation of the office
-            environment would be: 
+            \"ENVIRONMENT_NAME:VARIANT\" where ENVIRONMENT_NAME is the name of
+            environment & VARIANT is the environment variation to use. For
+            example, the variant 3 of the office environment would be: 
 
                     office:3
 
             Some tasks may require more than one environment variation (e.g.
             scene change detection). Multiple variations are specified using
-            the format \"ENVIRONMENT_NAME:VARIATION_ONE:VARIATION_TWO\".  For
-            example using the first, and then third variation of the office
+            the format \"ENVIRONMENT_NAME:VARIANT_ONE:VARIANT_TWO\".  For
+            example using the first, and then third variant of the office
             environment would be specified via:
 
                     office:1:3
@@ -278,7 +277,7 @@ while true; do
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
     --list-envs|--list-environments)
-      list_content "environments" "$_list_environments_pre" "an"; exit $? ;;
+      list_environments "$_list_environments_pre" "an"; exit $? ;;
     --list-formats)
       list_content "formats" "$_list_formats_pre"; exit $? ;;
     --list-robots)
@@ -288,7 +287,7 @@ while true; do
     -r|--robot)
       robot="$2"; shift 2 ;;
     --show-env|--show-environment)
-      show_content "environments" "$2"; exit $? ;;
+      show_environment "$2"; exit $? ;;
     --show-format)
       show_content "formats" "$2"; exit $? ;;
     --show-robot)

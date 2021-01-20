@@ -303,6 +303,23 @@ missing "${3:-a}" "${singular}".
 "
 }
 
+function list_environments() {
+  # $1 list prefix text, $2 optional "an" instead of "a"
+  text="environments"
+  singular=${text::-1}
+  l="$(run_manager_cmd '[print("\t%s" % r) for r in sorted([\
+    ":".join(str(f) for f in e) \
+    for e in get_fields("'$text'", ["name", "variant"])])]')"
+  echo "$1"
+  if [ -z "$l" ]; then echo -e "\tNONE!"; else echo "$l"; fi
+  echo "
+See the '--show-"$singular" "${singular^^}"_NAME' command for specific "\
+"details about
+each "$singular", or check you have the appropriate add-on installed if you are 
+missing "${2:-a}" "${singular}".
+"
+}
+
 function remove_addons() {
   run_manager_cmd 'remove_addons("'$1'")' '\n' '\n\n'
 }
@@ -316,13 +333,13 @@ function run_manager_cmd() {
 function show_content() {
   # $1 content type, $2 name of selected content
   singular=${1::-1}
-  if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
+  if [ "$(run_manager_cmd 'print(exists("'$1'", [("name", "'$2'")]))')" \
       != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
       "Please check '--list-$1'."
     exit 1
   fi
-  location=$(run_manager_cmd 'print(get_match("'$1'", "name", "'$2'"))')
+  location=$(run_manager_cmd 'print(get_match("'$1'", [("name", "'$2'")]))')
   printf "${singular^} '$2' was found at the following location:\n\n\t%s\n\n" \
     "$location"
   printf "Printed below are the first 30 lines of the definition file:\n\n"
@@ -330,3 +347,24 @@ function show_content() {
   printf "\n"
 }
 
+function show_environment() {
+  # $1 name of selected environment
+  text="environments"
+  singular=${text::-1}
+  name="$(echo $1 | sed 's/:[^:]*$//')"
+  variant="$(echo $1 | sed 's/^.*://')"
+  if [ "$(run_manager_cmd 'print(exists("'$text'", \
+      [("name", "'$name'"), ("variant", "'$variant'")]))')" != "True" ]; then
+    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
+      "Please check '--list-$text'."
+    exit 1
+  fi
+  location=$(run_manager_cmd 'print(get_match("'$text'", \
+    [("name", "'$name'"), ("variant", "'$variant'")]))')
+  printf "${singular^} '$1' was found at the following location:\n\n\t%s\n\n" \
+    "$location"
+  printf "Printed below are the first 30 lines of the definition file:\n\n"
+  head -n 30 "$location"
+  printf "\n"
+  :
+}
