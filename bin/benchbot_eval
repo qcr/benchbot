@@ -17,19 +17,21 @@ popd > /dev/null
 ################################################################################
 
 usage_text="$(basename "$0") -- Script for evaluating the performance of your solution
-to a task against a running environment. This script simply calls the installed
+to a task in a running environment. This script simply calls the installed
 'benchbot_eval' python module with your provided results file/s.
 
 Results files are validated before evaluation. A results file must specify:
 
-    - the name of the task the results were gathered for
-    - the environment name/s the results were gathered in (i.e. if a task
+    - details of the task in which the results were gathered
+    - details for each of the environments the were gathered in (i.e. if a task
       requires multiple scenes. This is NOT for denoting multiple different
       results, which should each be in their own file)
-    - the format type of the results
-    - each field required by the specified format type
+    - the set of results in the format described by format type (in task
+      details)
 
 Errors will be presented if validation fails, and evaluation will not proceed.
+There are helper functions available in the BenchBot API for creating results
+('BenchBot.empty_results()' & 'BenchBot.results_functions()').
 
 Evaluation is performed on a set of results which are gathered from a set of
 runs. For example, you can evaluate your algorithm just in house:1, or evaluate
@@ -138,6 +140,10 @@ _ground_truth_err=\
 location ('%s'). This should be created as part of the
 'benchbot_install' process. Please re-run the installer."
 
+_list_methods_pre=\
+"The following evaluation methods are available in your installation:
+    "
+
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
@@ -160,7 +166,7 @@ while true; do
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-methods)
-      opt_list_methods; exit $? ;;
+      list_content "evaluation_methods" "$_list_methods_pre"; exit $? ;;
     -m|--method)
       method="$2"; shift 2 ;;
     -o|--output-location)
@@ -172,7 +178,7 @@ while true; do
     --required-task)
       required_task="$2"; shift 2 ;;
     --show-method)
-      opt_show_method "$2"; exit $? ;;
+      show_content "evaluation_methods" "$2"; exit $? ;;
     -v|--version)
       print_version_info; exit ;;
     -V|--validate-only)
