@@ -68,6 +68,14 @@ def dump_state(state):
         json.dump(state, f, indent=4)
 
 
+def env_name(env_string):
+    return re.sub(':[^:]*$', '', env_string)
+
+
+def env_variant(env_string):
+    return re.sub('^.*:', '', env_string)
+
+
 def exists(type_string, name_value_tuples):
     return get_match(type_string, name_value_tuples) is not None
 
@@ -118,7 +126,10 @@ def get_value(filename, field_name):
 
 
 def get_value_by_name(type_string, name, field_name):
-    return get_value(get_match(type_string, "name", name), field_name)
+    return get_value(
+        get_match(type_string, [("name", env_name(name)),
+                                ("variant", env_variant(name))] if type_string
+                  == "environments" else [("name", name)]), field_name)
 
 
 def install_addon(name):

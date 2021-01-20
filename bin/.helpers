@@ -278,6 +278,16 @@ updates."
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
 
+function env_name() {
+  # $1 env string
+  echo $1 | sed 's/:[^:]*$//'
+}
+
+function env_variant() {
+  # $1 env string
+  echo $1 | sed 's/^.*://'
+}
+
 function install_addons() {
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Installing add-ons based on the request string '${1}':"
@@ -351,8 +361,8 @@ function show_environment() {
   # $1 name of selected environment
   text="environments"
   singular=${text::-1}
-  name="$(echo $1 | sed 's/:[^:]*$//')"
-  variant="$(echo $1 | sed 's/^.*://')"
+  name="$(env_name $1)"
+  variant="$(env_variant $1)"
   if [ "$(run_manager_cmd 'print(exists("'$text'", \
       [("name", "'$name'"), ("variant", "'$variant'")]))')" != "True" ]; then
     printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \

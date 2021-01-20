@@ -173,24 +173,34 @@ function exit_gracefully() {
   exit ${1:-0}
 }
 
+function validate_environment() {
+  # $1 = name; $2 = full name
+  validate_content "environments" "$1" "$2" \
+    "$(run_manager_cmd 'print(exists("environments", \
+    [("name", "'$(env_name $1)'"), ("variant", "'$(env_variant $1)'")]))')"
+}
+
 function validate_environment_count() {
   # $1 = number of selected environments, $2 task
   scene_count="$(run_manager_cmd 'print(\
     get_value_by_name("tasks", "'$2'", "scene_count"))')"
   if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
   if [ $scene_count -ne $1 ]; then
-    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
+    printf "${colour_red}%s\n       %s${colour_nc}\n" \
       "ERROR: Selected '$1' environments for a task which requires '$scene_count'" \
       "environments ('$task')"
   fi
 }
 
 function validate_content() {
-  # $1 = content type; $2 = name; $3 = full name (optional)
+  # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
+  # with this value (optional)
   singular=${1::-1}
   full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
-  if [ "$(run_manager_cmd 'print(exists("'$1'", "name", "'$2'"))')" \
-      != "True" ]; then
+  check="$([ -z "${4-}" ] && \
+    echo "$(run_manager_cmd 'print(exists("'$1'", [("name", "'$2'")]))')" || \
+    echo "$4")"
+  if [ "$check" != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
       "Please check '--list-$1'."
     printf "\n${colour_red}%s${colour_nc}\n" \
@@ -313,28 +323,24 @@ environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g;
 if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
 environments_string="$(printf '%s\n' "${environments[@]}")"
 
-# Determine type of run being performed
-type="$(run_manager_cmd 'print(\
-  get_value_by_name("robots", "'$robot'", "type"))')"
-simulator_required=1; if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
-
-# Determine results format required by task
-results_format="$(run_manager_cmd 'print(\
-  get_value_by_name("tasks", "'$task'", "results_format"))')"
-
 # Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
-  # Process environment, task, & robot selections
-  for e in "${environments[@]}"; do
-    err="$(validate_content "environments" "$e" "$environment")"
-    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  done
   err="$(validate_content "robots" "$robot")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  type="$(run_manager_cmd 'print(\
+    get_value_by_name("robots", "'$robot'", "type"))')"
+  simulator_required=1
   err="$(validate_content "tasks" "$task")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  results_format="$(run_manager_cmd 'print(\
+    get_value_by_name("tasks", "'$task'", "results_format"))')"
   err="$(validate_content "formats" "$results_format")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
+  for e in "${environments[@]}"; do
+    err="$(validate_environment "$e" "$environment")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  done
   err="$(validate_types "$robot" "$environment" "${environments[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(validate_type "$type")"; echo "$err"
@@ -434,15 +440,15 @@ echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}
 cmd="${docker_run//'$name'/benchbot_supervisor}"
 ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'pushd $BENCHBOT_ADDONS_PATH && \
-  task_file=$(./call_manager '"'"'print(get_match("tasks", "name", \
-  "'"$task"'"))'"'"') &&
-  results_format_file=$(./call_manager '"'"'print(get_match("formats", "name", \
-  "'"$results_format"'"))'"'"') &&
-  robot_file=$(./call_manager '"'"'print(get_match("robots", "name", \
-  "'"$robot"'"))'"'"') &&
-  env_files=$(./call_manager '"'"'print(":".join(\
-    [get_match("environments", "name", e) for e in \
-     "'"${environments_string//$'\n'/;}"'".split(";")]))'"'"') &&
+  task_file=$(./call_manager '"'"'print(get_match("tasks", \
+  [("name", "'"$task"'")]))'"'"') &&
+  results_format_file=$(./call_manager '"'"'print(get_match("formats", \
+  [("name", "'"$results_format"'")]))'"'"') &&
+  robot_file=$(./call_manager '"'"'print(get_match("robots", \
+  [("name", "'"$robot"'")]))'"'"') &&
+  env_files=$(./call_manager '"'"'print(":".join([get_match("environments", \
+    [("name", env_name(e)), ("variant", env_variant(e))]) for e in \
+    "'"${environments_string//$'\n'/;}"'".split(";")]))'"'"') &&
   python3 -m benchbot_supervisor --task-file "$task_file" \
   --results-format-file "$results_format_file" --robot-file "$robot_file" \
   --environment-files "$env_files"'
