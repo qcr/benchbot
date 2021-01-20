@@ -229,7 +229,7 @@ function validate_mode() {
   fi
 
   if [ ! -z "$err" ]; then 
-    printf "$err\n"; 
+    printf "$err\n"
     printf "\n${colour_red}%s${colour_nc}" \
       "ERROR: Mode selection was invalid. See errors above."
   fi

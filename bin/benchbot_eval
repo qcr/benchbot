@@ -127,14 +127,6 @@ FURTHER DETAILS:
         b.talbot@qut.edu.au
     "
 
-_invalid_location_err=\
-"ERROR: The provided results file '%s' either does not exist, or is not a file. 
-Please ensure all provided results files are valid."
-
-_missing_results_err=\
-"ERROR: No results file was provided. Please run again with a valid results
-file as input."
-
 _ground_truth_err=\
 "ERROR: The script was unable to find ground truth files in the expected 
 location ('%s'). This should be created as part of the
@@ -143,6 +135,71 @@ location ('%s'). This should be created as part of the
 _list_methods_pre=\
 "The following evaluation methods are available in your installation:
     "
+
+function validate_method() {
+  # $1 evaluation method, $2 validate only
+  err=
+  if [ -z "$1" ] && [ -z "$2" ]; then
+    err="$(printf "%s %s\n" "Evaluation was requested but no evaluation"\
+      "method was selected. A selection is required.")"
+  elif [ -z "$2" ] && \
+      [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
+      "name", "'$1'"))')" != "True" ]; then
+    err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
+      "Please check '--list-methods'.")"
+  fi
+
+  if [ ! -z "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
+  fi
+}
+
+function validate_required_envs() {
+  # $1 required envs, $2 required envs file
+  if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: Only '--required-envs' or '--required-envs-file' is valid,"\
+      "not both."
+  fi
+}
+
+function validate_required_task() {
+  # $1 required task name
+  text="tasks"
+  singular=${text::-1}
+  if [ ! -z "$1" ] && \
+      [ "$(run_manager_cmd 'print(exists("'$text'", "name", "'$1'"))')" \
+      != "True" ]; then
+    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
+      "Please check 'benchbot_run --list-$text'."
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid ${singular} selected (${singular} = '$1')"
+  fi
+}
+
+function validate_results_files() {
+  # $@ results files list
+  err=
+  if [ $# -eq 0 ]; then
+    err="$(printf "%s %s\n" "No results file/s were provided. Please run" \
+      "again with a results file.")"
+  else
+    for r in "$@"; do
+      if [ ! -f "$r" ]; then
+        err="$(printf "%s %s\n" "Results file '$r' either doesn't exist," \
+        "or isn't a file.")"
+      fi
+    done
+  fi
+
+  if [ ! -z "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Results file/s provided were invalid. See errors above."
+  fi
+}
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -190,29 +247,19 @@ while true; do
   esac
 done
 
-# Accept only --required-envs or --required-envs-file
-if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
-  printf "${colour_red}%s\n%s${colour_nc}\n" \
-    "ERROR: Both '--required-envs' && '--required-envs-file' provided; please " \
-    "only provide 1!"
-  exit 1
-elif [ ! -z "$required_envs_file" ]; then
+# Bail if any of the requested configurations are invalid
+err="$(validate_required_envs "$required_envs" "$required_envs_file")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+if [ ! -z "$required_envs_file" ]; then
   required_envs=($(cat "$required_envs_file" | tr '\n' ' ' | \
         sed 's/[[:space:]]*$//'))
 fi
-
-# Bail if any of the results files don't exist, or we got no results files
-if [ -z "$results_files" ]; then
-  printf "${colour_red}${_missing_results_err}${colour_nc}\n"
-  exit 1
-else
-  for r in "${results_files[@]}"; do
-    if [ ! -f "$r" ]; then
-      printf "${colour_red}${_invalid_location_err}${colour_nc}\n" "$r"
-      exit 1
-    fi
-  done
-fi
+err="$(validate_required_task "$required_task")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_method "$method" "$validate_only")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_results_files "${results_files[@]}")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 
 ################################################################################
 ##################### Validate the provided results files ######################
@@ -220,6 +267,9 @@ fi
 
 header_block "Running validation over ${#results_files[@]} input files" \
   $colour_green
+
+# TODO loop through each provided result_file, running the validation function
+# from the format definition (if it exists)
 
 if [ ! -z "$validate_only" ]; then exit 0; fi
 
