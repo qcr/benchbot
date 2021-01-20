@@ -172,7 +172,7 @@ function submission_command() {
   # $1 example name, $2 mode_args
   if [[ -z "$2" && ! -z "$1" ]]; then
     echo "pushd $(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", "name", "'$1'"))')); $(run_manager_cmd 'print(\
+      "examples", [("name", "'$1'")]))')); $(run_manager_cmd 'print(\
       get_value_by_name("examples", "'$1'", "native_command"))'); popd"
   else
     echo "$2"
@@ -183,7 +183,7 @@ function submission_directory() {
   # $1 example name, $2 mode_args
   if [[ -z "$2"  && ! -z "$1" ]]; then
     pushd "$(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", "name", "'$1'"))'))" > /dev/null
+      "examples", [("name", "'$1'")]))'))" > /dev/null
     echo "$(realpath $(run_manager_cmd 'print(get_value_by_name(\
       "examples", "'$1'", "container_directory"))'))"
     popd > /dev/null
@@ -197,7 +197,7 @@ function validate_example() {
   text="examples"
   singular=${text::-1}
   if [ ! -z "$1" ] && \
-      [ "$(run_manager_cmd 'print(exists("'$text'", "name", "'$1'"))')" \
+    [ "$(run_manager_cmd 'print(exists("'$text'", [("name", "'$1'")]))')" \
       != "True" ]; then
     printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
       "Please check '--list-$text'."
