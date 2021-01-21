@@ -185,7 +185,7 @@ def install_addon(name):
             print("\tFound remote content to install to '%s': %s" %
                   (target, remote))
             state = get_state()
-            if ('name' not in state or 'remote' not in state[name]
+            if (name not in state or 'remote' not in state[name]
                     or state[name]['remote'] != remote
                     or 'remote_target' not in state[name]
                     or state[name]['remote_target'] != target):
