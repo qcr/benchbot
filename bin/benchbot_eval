@@ -165,20 +165,6 @@ function validate_required_envs() {
   fi
 }
 
-function validate_required_task() {
-  # $1 required task name
-  text="tasks"
-  singular=${text::-1}
-  if [ ! -z "$1" ] && \
-      [ "$(run_manager_cmd 'print(exists("'$text'", "name", "'$1'"))')" \
-      != "True" ]; then
-    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
-      "Please check 'benchbot_run --list-$text'."
-    printf "\n${colour_red}%s${colour_nc}" \
-      "ERROR: Invalid ${singular} selected (${singular} = '$1')"
-  fi
-}
-
 function validate_results_files() {
   # $@ results files list
   err=
@@ -253,8 +239,16 @@ if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 if [ ! -z "$required_envs_file" ]; then
   required_envs=($(cat "$required_envs_file" | sed 's/[[:space:]]*$//'))
 fi
-err="$(validate_required_task "$required_task")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+if [ ! -z "$required_envs" ]; then
+  for e in "${required_envs[@]}"; do
+    err="$(validate_environment "$e")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  done
+fi
+if [ ! -z "$required_task" ]; then
+  err="$(validate_content "tasks" "$required_task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+fi
 err="$(validate_method "$method" "$validate_only")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 err="$(validate_results_files "${results_files[@]}")"
