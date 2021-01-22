@@ -144,7 +144,7 @@ function validate_method() {
       "method was selected. A selection is required.")"
   elif [ -z "$2" ] && \
       [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
-      "name", "'$1'"))')" != "True" ]; then
+      [("name", "'$1'")]))')" != "True" ]; then
     err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
       "Please check '--list-methods'.")"
   fi
@@ -229,7 +229,7 @@ while true; do
     -o|--output-location)
       scores_location="$2"; shift 2 ;;
     --required-envs)
-      required_envs=(${2//,/ }); shift 2 ;;
+      required_envs=($(echo "$2" | tr ',' '\n')); shift 2 ;;
     --required-envs-file)
       required_envs_file="$2"; shift 2 ;;
     --required-task)
@@ -251,8 +251,7 @@ done
 err="$(validate_required_envs "$required_envs" "$required_envs_file")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 if [ ! -z "$required_envs_file" ]; then
-  required_envs=($(cat "$required_envs_file" | tr '\n' ' ' | \
-        sed 's/[[:space:]]*$//'))
+  required_envs=($(cat "$required_envs_file" | sed 's/[[:space:]]*$//'))
 fi
 err="$(validate_required_task "$required_task")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
