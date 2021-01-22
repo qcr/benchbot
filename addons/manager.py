@@ -185,7 +185,8 @@ def install_addon(name):
             print("\tFound remote content to install to '%s': %s" %
                   (target, remote))
             state = get_state()
-            if ('remote' not in state[name] or state[name]['remote'] != remote
+            if (name not in state or 'remote' not in state[name]
+                    or state[name]['remote'] != remote
                     or 'remote_target' not in state[name]
                     or state[name]['remote_target'] != target):
                 print("\tRemote content is new. Fetching ...")
@@ -203,6 +204,8 @@ def install_addon(name):
                     print("\tExtracting to '%s' ..." % target)
                     run('unzip -d "%s" ".tmp.zip"' % target, **cmd_args)
                     print("\tExtracted.")
+                    if name not in state:
+                        state[name] = {}
                     state[name]['remote'] = remote
                     state[name]['remote_target'] = target
                     dump_state(state)

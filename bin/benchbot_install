@@ -950,8 +950,8 @@ if [ -z "$updates_skip" ]; then
   header_block "CHECKING BENCHBOT SCRIPTS VERSION" ${colour_blue}
 
   echo -e "\nFetching latest hash for Benchbot scripts ... "
-  _benchbot_info=$(is_latest_benchbot $BRANCH_DEFAULT)
-  is_latest=$?
+  _benchbot_info=$(is_latest_benchbot $BRANCH_DEFAULT) && is_latest=0 || \
+    is_latest=1
   benchbot_latest_hash=$(echo "$_benchbot_info" | latest_version_info | \
     cut -d ' ' -f 1)
   echo -e "\t\t$benchbot_latest_hash."
