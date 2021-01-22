@@ -284,10 +284,6 @@ python3 -c 'from benchbot_eval import Validator; \
   '"$python_ground_truths_files$python_req_task$python_req_envs"').\
   validate_results_data()'
 
-
-# TODO loop through each provided result_file, running the validation function
-# from the format definition (if it exists)
-
 if [ ! -z "$validate_only" ]; then exit 0; fi
 
 ################################################################################
@@ -297,12 +293,8 @@ if [ ! -z "$validate_only" ]; then exit 0; fi
 header_block "Running evaluation over ${#results_files[@]} input files" \
   $colour_green
 
-# Form some strings of python code from our input arguments
-python_results=
-# Run the python command & exit
-python3 -c 'from benchbot_eval import Evaluator; \
-  Evaluator('"$python_results"', "'"$gt_abs"'", "'$scores_location'"\
-  '"$python_req_task$python_req_envs"').evaluate()'
+# Evaluate results using the pickled Validator state from the step above
+python3 -c 'from benchbot_eval import Evaluator; Evaluator().evaluate()'
 result=$?
 if [ $result -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
