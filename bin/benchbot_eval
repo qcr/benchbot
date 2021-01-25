@@ -261,12 +261,9 @@ if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 header_block "Running validation over ${#results_files[@]} input files" \
   $colour_green
 
-# Build up some strings we can pass directly to Python
+# Build up some strings for Python
 python_results_files='["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"]'
 python_formats_files="$(run_manager_cmd 'print(find_all("formats"))')"
-python_ground_truths_files="$(run_manager_cmd \
-  'print(find_all("ground_truths"))')"
-
 python_req_task=
 if [ ! -z "$required_task" ]; then
   python_req_task=', required_task="'"$required_task"'"'
@@ -281,7 +278,7 @@ fi
 # Python module
 python3 -c 'from benchbot_eval import Validator; \
   Validator('"$python_results_files"', '"$python_formats_files"', \
-  '"$python_ground_truths_files$python_req_task$python_req_envs"')'
+  '"$python_req_task$python_req_envs"')'
 
 if [ ! -z "$validate_only" ]; then exit 0; fi
 
@@ -292,8 +289,15 @@ if [ ! -z "$validate_only" ]; then exit 0; fi
 header_block "Running evaluation over ${#results_files[@]} input files" \
   $colour_green
 
+# Build some strings for Python
+python_method="$(run_manager_cmd \
+  'print(get_match("evaluation_methods", [("name", "'$method'")]))')"
+python_ground_truths_files="$(run_manager_cmd \
+  'print(find_all("ground_truths"))')"
+
 # Evaluate results using the pickled Validator state from the step above
-python3 -c 'from benchbot_eval import Evaluator; Evaluator().evaluate()'
+python3 -c 'from benchbot_eval import Evaluator; \
+  Evaluator("'$python_method'", '$python_ground_truths_files').evaluate()'
 result=$?
 if [ $result -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
