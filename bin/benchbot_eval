@@ -281,8 +281,7 @@ fi
 # Python module
 python3 -c 'from benchbot_eval import Validator; \
   Validator('"$python_results_files"', '"$python_formats_files"', \
-  '"$python_ground_truths_files$python_req_task$python_req_envs"').\
-  validate_results_data()'
+  '"$python_ground_truths_files$python_req_task$python_req_envs"')'
 
 if [ ! -z "$validate_only" ]; then exit 0; fi
 
