@@ -865,7 +865,7 @@ function handle_requirement() {
   # Perform the check, printing the result & resolving issues if possible
   retval=0
   printf "\t$name: "
-  check_result=$(eval "$check")
+  check_result=$(eval "$check") && true
   printf "\033[46G"
   if $(eval $evaluate); then 
     printf "${colour_green}%35s" "${pass//'$check_result'/$check_result}"
