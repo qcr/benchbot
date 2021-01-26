@@ -578,6 +578,9 @@ checks_list_post=(
   "Validating the build against the host system:"
   "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
   "Validating BenchBot libraries on the host system:"
+  "addonscloned"
+  "addonsuptodate"
+  "addonsinstalled"
   "apicloned"
   "apiuptodate"
   "apiinstalled"
@@ -624,6 +627,66 @@ if [ -z "$v" ]; then v="cuda-10-1"; fi &&
 sudo apt remove -y "$v" && sudo apt -y autoremove && sudo apt install -y "$v"'
 chk_cudadriverdep_reboot=1
 
+chk_addonscloned_name='BenchBot Add-ons Manager cloned'
+chk_addonscloned_pass='Yes'
+chk_addonscloned_fail='No'
+chk_addonscloned_check=\
+'git -C '"$PATH_ADDONS"' rev-parse --show-toplevel 2>/dev/null'
+chk_addonscloned_eval='[ "$check_result" == "$(realpath '"$PATH_ADDONS"')" ]'
+chk_addonscloned_issue="\
+  The BenchBot Add-ons Manager Python library is not cloned on the host system.
+  Having it installed is required for using add-ons, which contain all of the
+  pre-made content for BenchBot (robots, environments, task definitions,
+  evaluation methods, etc.)."
+chk_addonscloned_fix=\
+'rm -rf '"$PATH_ADDONS"' && 
+git clone '"$GIT_ADDONS $PATH_ADDONS"' &&
+pushd '"$PATH_ADDONS"' && 
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
+chk_addonscloned_reboot=1
+
+chk_addonsuptodate_name='BenchBot Add-ons Manager up-to-date'
+chk_addonsuptodate_pass='Up-to-date'
+chk_addonsuptodate_fail='Outdated'
+chk_addonsuptodate_check=\
+'[ -d '"$PATH_ADDONS"' ] && git -C '"$PATH_ADDONS"' rev-parse HEAD && 
+git ls-remote '"$GIT_ADDONS"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_addonsuptodate_eval='[ ! -z "$check_result" ] && 
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_addonsuptodate_issue="\
+  The version of the BenchBot Add-ons Manager Python library on the host system
+  is out of date. The current version hash & latest version hash respectively
+  are:
+
+"'$check_result'"
+
+  Please move to the latest version."
+chk_addonsuptodate_fix=\
+'pushd '"$PATH_ADDONS"' && 
+git fetch --all && git checkout -- . &&
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
+chk_addonsuptodate_reboot=1
+
+chk_addonsinstalled_name='BenchBot Add-ons Manager installed'
+chk_addonsinstalled_pass='Available'
+chk_addonsinstalled_fail='Not found'
+chk_addonsinstalled_check=\
+'python3 -c '"'"'import benchbot_addons; print(benchbot_addons.__file__);'"'"' \
+  2>/dev/null'
+chk_addonsinstalled_eval='[ ! -z "$check_result" ]'
+chk_addonsinstalled_issue="\
+  BenchBot Add-ons Manager was not found in Python. It is either not installed,
+  or the current terminal is not correctly sourcing your installed Python
+  packages (could be a virtual environment, conda, ROS, etc).
+
+  Please do not run the automatic fix if you intend to source a different Python
+  environment before running BenchBot."
+chk_addonsinstalled_fix=\
+'pushd '"$PATH_ADDONS"' &&  
+python3 -m pip install -e . && popd'
+chk_addonsinstalled_reboot=1
+
 chk_apicloned_name='BenchBot API cloned'
 chk_apicloned_pass='Yes'
 chk_apicloned_fail='No'
@@ -631,7 +694,7 @@ chk_apicloned_check=\
 'git -C '"$PATH_API"' rev-parse --show-toplevel 2>/dev/null'
 chk_apicloned_eval='[ "$check_result" == "$(realpath '"$PATH_API"')" ]'
 chk_apicloned_issue="\
-  The BenchBot API python library is not cloned on the host system. Having it
+  The BenchBot API Python library is not cloned on the host system. Having it
   installed significantly improves the development experience, & allows you to
   run your submissions natively without containerisation."
 chk_apicloned_fix=\
@@ -650,7 +713,7 @@ git ls-remote '"$GIT_API"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
 chk_apiuptodate_eval='[ ! -z "$check_result" ] && 
   [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_apiuptodate_issue="\
-  The version of the BenchBot API python library on the host system is out of
+  The version of the BenchBot API Python library on the host system is out of
   date. The current version hash & latest version hash respectively are:
 
 "'$check_result'"
@@ -671,11 +734,11 @@ chk_apiinstalled_check=\
   2>/dev/null'
 chk_apiinstalled_eval='[ ! -z "$check_result" ]'
 chk_apiinstalled_issue="\
-  BenchBot API was not found in python. It is either not installed, or the 
-  current terminal is not correctly sourcing your installed python packages 
+  BenchBot API was not found in Python. It is either not installed, or the 
+  current terminal is not correctly sourcing your installed Python packages 
   (could be a virtual environment, conda, ROS, etc).
 
-  Please do not run the automatic fix if you intend to source a different python
+  Please do not run the automatic fix if you intend to source a different Python
   environment before running BenchBot."
 chk_apiinstalled_fix=\
 'pushd '"$PATH_API"' &&  
@@ -689,9 +752,9 @@ chk_evalcloned_check=\
 'git -C '"$PATH_EVAL"' rev-parse --show-toplevel 2>/dev/null'
 chk_evalcloned_eval='[ "$check_result" == "$(realpath '"$PATH_EVAL"')" ]'
 chk_evalcloned_issue="\
-  The BenchBot evaluation python library is not cloned on the host system. Having it
-  installed allows you to evaluate the performance of your semantic scene
-  understanding algorithms directly from your machine."
+  The BenchBot evaluation Python library is not cloned on the host system.
+  Having it installed allows you to evaluate the performance of your semantic
+  scene understanding algorithms directly from your machine."
 chk_evalcloned_fix=\
 'rm -rf '"$PATH_EVAL"' && 
 git clone '"$GIT_EVAL $PATH_EVAL"' &&
@@ -708,7 +771,7 @@ git ls-remote '"$GIT_EVAL"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
 chk_evaluptodate_eval='[ ! -z "$check_result" ] &&
   [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_evaluptodate_issue="\
-  The version of the BenchBot evaluation python library on the host system is
+  The version of the BenchBot evaluation Python library on the host system is
   out of date. The current version hash & latest version hash respectively are:
 
 "'$check_result'"
@@ -729,11 +792,11 @@ chk_evalinstalled_check=\
   2>/dev/null'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
-  BenchBot evaluation was not found in python. It is either not installed, or
-  the current terminal is not correctly sourcing your installed python packages
+  BenchBot evaluation was not found in Python. It is either not installed, or
+  the current terminal is not correctly sourcing your installed Python packages
   (could be a virtual environment, conda, ROS, etc).
 
-  Please do not run the automatic fix if you intend to source a different python
+  Please do not run the automatic fix if you intend to source a different Python
   environment before running BenchBot."
 chk_evalinstalled_fix=\
 'pushd '"$PATH_EVAL"' && 

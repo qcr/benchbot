@@ -17,6 +17,7 @@ DOCKER_NETWORK="benchbot_network"
 FILENAME_ENV_GROUND_TRUTH=".benchbot_object_maps"
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
+GIT_ADDONS="https://github.com/roboticvisionorg/benchbot_addons"
 GIT_API="https://github.com/roboticvisionorg/benchbot_api"
 GIT_BENCHBOT="https://github.com/roboticvisionorg/benchbot"
 GIT_CONTROLLER="https://github.com/roboticvisionorg/benchbot_robot_controller"
