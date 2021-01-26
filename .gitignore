@@ -2,13 +2,9 @@
 __pycache__/
 
 # We never want to track BenchBot components
+addons/
 api/
 batches/
 eval/
 examples/
 ground_truth/
-
-# Ignore built add-on information
-addons/
-!addons/manager.py
-!addons/call_manager
