@@ -70,9 +70,9 @@ OPTION DETAILS:
     -h, --help             
             Show this help menu.
 
-    --list-env-batches
+    --list-batches
             Lists all supported environment batches. These can be used with the
-            '--required-envs-batch' option. Use '--show-env-batch' to see more
+            '--required-envs-batch' option. Use '--show-batch' to see more
             details about a batch.
 
     --list-methods
@@ -100,7 +100,7 @@ OPTION DETAILS:
             specifying valid environments, & 'benchbot_run --list-envs' for a
             complete list of supported environments.
 
-    --required-env-batch
+    --required-envs-batch
             An environments batch specifying a single required environment name
             on each line.  Evaluation will not run unless a result is supplied
             for each of these environments.  See '--required-envs' above for
@@ -111,7 +111,7 @@ OPTION DETAILS:
             name. A list of supported task names can be found by running
             'benchbot_run --list-tasks'.
 
-    --show-env-batch
+    --show-batch
             Prints information about the provided batch name if installed. The
             corresponding file's location will be displayed, with a snippet of
             its contents.

@@ -24,8 +24,8 @@ DEFAULT_PREFIX="batch"
 usage_text="$(basename "$0") -- Helper script for running a solution against multiple
 environments in a single command. Use this script when you have developed a
 task solution that you would like to extensively test, or when you would like
-create a submission to a challenge. The './batches/' directory contains
-official environment lists, like those used for evaluating tasks in challenges.
+create a submission to a challenge. Addons can include 'batches' which are
+environment lists, like those used for evaluating tasks in official challenges.
 
 The $(basename "$0") script is roughly equivalent to the following:
 
@@ -55,19 +55,21 @@ USAGE:
           [-n|--native] COMMAND_TO_RUN
 
     Run a submission for the scd:active:dead_reckoning task in a containerised
-    environment, for a list of scenes specified in a file called 'my/env_mix',
-    saving the results with the prefix 'mix'. Then evaluate the results to
-    produce a final score:
+    environment, for a list of scenes specified in the environment batch called
+    'challenge_1', saving the results with the prefix 'mix'. Then evaluate the
+    results to produce a final score:
         $(basename "$0") [-t|--task] scd:active:dead_reckoning \\
-          [-E|--envs-file] my/env_mix [-p|--prefix] mix [-s|--score-results] \\
+          [-E|--envs-batch] challenge_1 [-p|--prefix] mix [-s|--score-results] \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
 
-        ... (contents of 'my/env_mix') ...
-        miniroom:1:2
-        house:2:3
-        apartment:3:4
-        office:4:5
-        company:5:1
+        ... (contents of 'challenge_1' batch) ...
+        name: challenge:1
+        environments:
+          - miniroom:1:2
+          - house:2:3
+          - apartment:3:4
+          - office:4:5
+          - company:5:1
 
 OPTION DETAILS:
 
@@ -88,11 +90,16 @@ OPTION DETAILS:
             specifying valid environments, & 'benchbot_run --list-envs' for a
             complete list of supported environments.
 
-    -E, --envs-file
-            A file specifying a single valid environment name on each line. The
-            $(basename "$0") script will iterate over each specified
+    -E, --envs-batch
+            The name of an environment batch specifying a list of environments.
+            The $(basename "$0") script will iterate over each specified
             environment. See '-e, --envs' above for further details on valid
             environment specifications.
+
+    --list-batches
+            Lists all supported environment batches. These can be used with the
+            '--required-envs-batch' option. Use '--show-batch' to see more
+            details about a batch.
 
     -n, --native
             Runs everything after this flag as a command directly on your
@@ -118,6 +125,11 @@ OPTION DETAILS:
             into a final set of scores for your algorithm, on the tested task.
             Scores are combined using the approach described in 'benchbot_eval
             --help'.
+
+    --show-batch
+            Prints information about the provided batch name if installed. The
+            corresponding file's location will be displayed, with a snippet of
+            its contents.
 
     -t, --task             
             Configure BenchBot for a specific task style. Every environment in
