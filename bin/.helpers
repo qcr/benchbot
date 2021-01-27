@@ -300,8 +300,9 @@ function list_addons() {
 }
 
 function list_content() {
-  # $1 content type, $2 list prefix text, $3 optional "an" instead of "a"
-  singular=${1::-1}
+  # $1 content type, $2 list prefix text, $3 optional "an" instead of "a", $4
+  # optional remove n characters to get singular version
+  singular=${1::-${4:-1}}
   l="$(run_manager_cmd '[print("\t%s" % r) for r in \
     sorted(get_field("'$1'", "name"))]')"
   echo "$2"

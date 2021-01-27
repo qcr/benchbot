@@ -70,6 +70,11 @@ OPTION DETAILS:
     -h, --help             
             Show this help menu.
 
+    --list-env-batches
+            Lists all supported environment batches. These can be used with the
+            '--required-envs-batch' option. Use '--show-env-batch' to see more
+            details about a batch.
+
     --list-methods
             List all supported evaluation methods. The listed methods are
             printed in the format needed for the '--method' option. Use
@@ -95,16 +100,21 @@ OPTION DETAILS:
             specifying valid environments, & 'benchbot_run --list-envs' for a
             complete list of supported environments.
 
-    --required-envs-file
-            A file specifying a single required environment name on each line.
-            Evaluation will not run unless a result is supplied for each of
-            these environments.  See '--required-envs' above for further
-            details on valid environment specifications.
+    --required-env-batch
+            An environments batch specifying a single required environment name
+            on each line.  Evaluation will not run unless a result is supplied
+            for each of these environments.  See '--required-envs' above for
+            further details on valid environment specifications.
 
     --required-task
             Forces the script to only accept results for the supplied task
             name. A list of supported task names can be found by running
             'benchbot_run --list-tasks'.
+
+    --show-env-batch
+            Prints information about the provided batch name if installed. The
+            corresponding file's location will be displayed, with a snippet of
+            its contents.
 
     --show-method
             Prints information about the provided method name if installed. The
@@ -132,6 +142,9 @@ _ground_truth_err=\
 location ('%s'). This should be created as part of the
 'benchbot_install' process. Please re-run the installer."
 
+_list_batches_pre=\
+"The following environment batches are available in your installation:
+    "
 _list_methods_pre=\
 "The following evaluation methods are available in your installation:
     "
@@ -192,14 +205,15 @@ function validate_results_files() {
 ################################################################################
 
 # Safely parse options input
-_args='help,list-methods,method:,output-location:,required-envs:,\
-required-envs-file:,required-task:,show-method:,validate-only,version'
+_args='help,list-batches,list-methods,method:,output-location:,\
+required-envs:,required-env-batch:,required-task:,show-batch:,\
+show-method:,validate-only,version'
 parse_out=$(getopt -o ho:m:vV --long "$_args" -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 method=
 required_envs=
-required_envs_file=
+required_envs_batch=
 required_task=
 results_files=
 scores_location='scores.json'
@@ -208,6 +222,8 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    --list-batches)
+      list_content "batches" "$_list_batches_pre" "a" 2; exit $? ;;
     --list-methods)
       list_content "evaluation_methods" "$_list_methods_pre"; exit $? ;;
     -m|--method)
@@ -216,10 +232,12 @@ while true; do
       scores_location="$2"; shift 2 ;;
     --required-envs)
       required_envs=($(echo "$2" | tr ',' '\n')); shift 2 ;;
-    --required-envs-file)
-      required_envs_file="$2"; shift 2 ;;
+    --required-env-batch)
+      required_envs_batch="$2"; shift 2 ;;
     --required-task)
       required_task="$2"; shift 2 ;;
+    --show-batch)
+      show_content "batches" "$2"; exit $? ;;
     --show-method)
       show_content "evaluation_methods" "$2"; exit $? ;;
     -v|--version)
