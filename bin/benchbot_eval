@@ -289,7 +289,7 @@ header_block "Running evaluation over ${#results_files[@]} input files" \
 
 # Evaluate results using the pickled Validator state from the step above
 python3 -c 'from benchbot_eval import Evaluator; \
-  Evaluator("'$method'").evaluate()'
+  Evaluator("'$method'", "'$scores_location'").evaluate()'
 result=$?
 if [ $result -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
