@@ -119,6 +119,13 @@ OPTION DETAILS:
                 semslam.zip
                 semslam_scores.json
 
+    -r, --robot
+            Configure BenchBot to use a specifc robot. Every environment in the
+            requested batch will be run with this robot (so make sure they
+            support the robot). See '-r, --robot' in 'benchbot_run --help' for
+            further details on specifying valid robots, & 'benchbot_run
+            --list-robots' for a complete list of supported robots.
+
     -s, --score-results
             Perform evaluation on the batch of results produced by $(basename "$0").
             The scores from each results file in the batch are then combined
@@ -166,6 +173,10 @@ Quitting batch execution."
 submission_err="ERROR: Submission for environment '%s' failed with the error printed
 above. Quitting batch execution."
 
+_list_batches_pre=\
+"The following environment batches are available in your installation:
+    "
+
 run_pid=
 function kill_run() {
   if [ ! -z $run_pid ]; then
@@ -196,32 +207,40 @@ function exit_gracefully() {
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o e:E:c:hn:p:st:vz --long \
-  envs:,envs-file:,containerised:,help,native:,prefix:,score-results,task:,version,zip \
-  -n "$(basename "$0")" -- "$@")
+_args='envs:,envs-batch:,containerised:,help,list-batches,native:,prefix:,\
+robot:,score-results,show-batch,task:,version,zip '
+parse_out=$(getopt -o e:E:c:hn:p:r:st:vz --long "$_args" -n "$(basename "$0")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 evaluate=
 envs_str=
 envs_list=
-submit_args=
 prefix="$DEFAULT_PREFIX"
+robot=
+submit_args=
 task=
 zip=
 while true; do
   case "$1" in
     -e|--envs)
       envs_str="$2" ; shift 2 ;;
-    -E|--envs-file)
-      envs_file="$2" ; shift 2 ;;
+    -E|--envs-batch)
+      envs_batch="$2" ; shift 2 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    --list-batches)
+      list_content "batches" "$_list_batches_pre" "a" 2; exit $? ;;
     -n|--native|-c|--containerised)
       submit_args="$@"; break ;;
     -p|--prefix)
       prefix="$2"; shift 2 ;;
+    -r|--robot)
+      robot="$2"; shift 2 ;;
     -s|--score-results)
       evaluate=true; shift ;;
+    --show-batch)
+      show_content "batches" "$2" 2; exit $? ;;
     -t|--task)
       task="$2"; shift 2 ;;
     -v|--version)
@@ -234,6 +253,8 @@ while true; do
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+
+exit 0
 
 # Process envs & envs-file here (defer all other argument evaluation to the
 # appropriate scripts which use the values)
