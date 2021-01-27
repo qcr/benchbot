@@ -343,8 +343,9 @@ function run_manager_cmd() {
 }
 
 function show_content() {
-  # $1 content type, $2 name of selected content
-  singular=${1::-1}
+  # $1 content type, $2 name of selected content, $3 optional remove n
+  # characters to get singular version
+  singular=${1::-${3:-1}}
   if [ "$(run_manager_cmd 'print(exists("'$1'", [("name", "'$2'")]))')" \
       != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
@@ -383,8 +384,9 @@ function show_environment() {
 
 function validate_content() {
   # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
-  # with this value (optional)
-  singular=${1::-1}
+  # with this value (optional); $5 optional remove n characters to get singular
+  # version
+  singular=${1::-${5:-1}}
   full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
   check="$([ -z "${4-}" ] && \
     echo "$(run_manager_cmd 'print(exists("'$1'", [("name", "'$2'")]))')" || \
