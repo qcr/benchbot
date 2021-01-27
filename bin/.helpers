@@ -336,8 +336,8 @@ function remove_addons() {
 }
 
 function run_manager_cmd() {
-  pushd "$PATH_ADDONS" &> /dev/null
-  bash call_manager "${1}" "${2-}" "${3-}"
+  pushd "$PATH_ROOT/bin" &> /dev/null
+  bash addons "${1}" "${2-}" "${3-}"
   popd &> /dev/null
 }
 
