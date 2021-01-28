@@ -219,15 +219,17 @@ function validate_envs() {
 ################################################################################
 
 # Safely parse options input
-_args='envs:,envs-batch:,containerised:,help,list-batches,native:,prefix:,\
+_args='envs:,envs-batch:,containerised,help,list-batches,native,prefix:,\
 robot:,score-results,show-batch,task:,version,zip '
-parse_out=$(getopt -o e:E:c:hn:p:r:st:vz --long "$_args" -n "$(basename "$0")" \
+parse_out=$(getopt -o e:E:chnp:r:st:vz --long "$_args" -n "$(basename "$0")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
+containerised=
 eval set -- "$parse_out"
 evaluate=
 envs_str=
 envs_batch=
+native=
 prefix="$DEFAULT_PREFIX"
 robot=
 submit_args=
@@ -235,6 +237,8 @@ task=
 zip=
 while true; do
   case "$1" in
+    -c|--containerised)
+      containerised='--containerised' ; shift ;;
     -e|--envs)
       envs_str="$2" ; shift 2 ;;
     -E|--envs-batch)
@@ -243,8 +247,8 @@ while true; do
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-batches)
       list_content "batches" "$_list_batches_pre" "a" 2; exit $? ;;
-    -n|--native|-c|--containerised)
-      submit_args="$@"; break ;;
+    -n|--native)
+      native='--native' ; shift ;;
     -p|--prefix)
       prefix="$2"; shift 2 ;;
     -r|--robot)
@@ -260,7 +264,7 @@ while true; do
     -z|--zip)
       zip=true; shift ;;
     --)
-      shift ; break ;;
+      shift ; submit_args="$@"; break ;;
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
@@ -289,14 +293,13 @@ _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
 printf "$_ind%-25s%s\n" "Selected task:" "${task:-None}"
 printf "$_ind%-25s%s\n$_ind" "Selected robot:" "${robot:-None}"
-if [[ $submit_args == "-c"* ]]; then
+if [ ! -z "$containerised" ]; then
   printf "%-25s%s\n" "Dockerfile to build:" \
     "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
-elif [ -z "$submit_args" ]; then
-  printf "%-25s%s\n" "Command to execute:" "None"
+elif [ ! -z "$native" ]; then
+  printf "%-25s%s\n" "Command to execute:" "$(echo "${submit_args[@]}")"
 else
-  printf "%-25s%s\n" "Command to execute:" \
-    "$(echo "$submit_args" | awk '{for (i=2; i<=NF; i++) printf $i " "}')"
+  printf "%-25s%s\n" "Command to execute:" "None"
 fi
 
 printf "\nIterating through the following environment list:\n$_ind"
@@ -329,7 +332,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
     $colour_magenta
   benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -f &> /tmp/benchbot_run_out &
   run_pid=$!
-  benchbot_submit -r "${prefix}_$i.json" $submit_args &
+  benchbot_submit -r "${prefix}_$i.json" $containerised $native $submit_args &
   submit_pid=$!
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
