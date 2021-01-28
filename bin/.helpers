@@ -17,6 +17,7 @@ DOCKER_NETWORK="benchbot_network"
 FILENAME_ENV_GROUND_TRUTH=".benchbot_object_maps"
 FILENAME_ENV_METADATA=".benchbot_data_files"
 
+GIT_ADDONS="https://github.com/roboticvisionorg/benchbot_addons"
 GIT_API="https://github.com/roboticvisionorg/benchbot_api"
 GIT_BENCHBOT="https://github.com/roboticvisionorg/benchbot"
 GIT_CONTROLLER="https://github.com/roboticvisionorg/benchbot_robot_controller"
@@ -299,8 +300,9 @@ function list_addons() {
 }
 
 function list_content() {
-  # $1 content type, $2 list prefix text, $3 optional "an" instead of "a"
-  singular=${1::-1}
+  # $1 content type, $2 list prefix text, $3 optional "an" instead of "a", $4
+  # optional remove n characters to get singular version
+  singular=${1::-${4:-1}}
   l="$(run_manager_cmd '[print("\t%s" % r) for r in \
     sorted(get_field("'$1'", "name"))]')"
   echo "$2"
@@ -335,14 +337,15 @@ function remove_addons() {
 }
 
 function run_manager_cmd() {
-  pushd "$PATH_ADDONS" &> /dev/null
-  bash call_manager "${1}" "${2-}" "${3-}"
+  pushd "$PATH_ROOT/bin" &> /dev/null
+  bash addons "${1}" "${2-}" "${3-}"
   popd &> /dev/null
 }
 
 function show_content() {
-  # $1 content type, $2 name of selected content
-  singular=${1::-1}
+  # $1 content type, $2 name of selected content, $3 optional remove n
+  # characters to get singular version
+  singular=${1::-${3:-1}}
   if [ "$(run_manager_cmd 'print(exists("'$1'", [("name", "'$2'")]))')" \
       != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
@@ -378,3 +381,28 @@ function show_environment() {
   printf "\n"
   :
 }
+
+function validate_content() {
+  # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
+  # with this value (optional); $5 optional remove n characters to get singular
+  # version
+  singular=${1::-${5:-1}}
+  full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
+  check="$([ -z "${4-}" ] && \
+    echo "$(run_manager_cmd 'print(exists("'$1'", [("name", "'$2'")]))')" || \
+    echo "$4")"
+  if [ "$check" != "True" ]; then
+    printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
+      "Please check '--list-$1'."
+    printf "\n${colour_red}%s${colour_nc}\n" \
+      "ERROR: Invalid ${singular} selected (${singular} = '$full')"
+  fi
+}
+
+function validate_environment() {
+  # $1 = name; $2 = full name
+  validate_content "environments" "$1" "${2-}" \
+    "$(run_manager_cmd 'print(exists("environments", \
+    [("name", "'$(env_name $1)'"), ("variant", "'$(env_variant $1)'")]))')"
+}
+

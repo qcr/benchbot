@@ -70,6 +70,11 @@ OPTION DETAILS:
     -h, --help             
             Show this help menu.
 
+    --list-batches
+            Lists all supported environment batches. These can be used with the
+            '--required-envs-batch' option. Use '--show-batch' to see more
+            details about a batch.
+
     --list-methods
             List all supported evaluation methods. The listed methods are
             printed in the format needed for the '--method' option. Use
@@ -95,16 +100,21 @@ OPTION DETAILS:
             specifying valid environments, & 'benchbot_run --list-envs' for a
             complete list of supported environments.
 
-    --required-envs-file
-            A file specifying a single required environment name on each line.
-            Evaluation will not run unless a result is supplied for each of
-            these environments.  See '--required-envs' above for further
-            details on valid environment specifications.
+    --required-envs-batch
+            An environments batch specifying a single required environment name
+            on each line.  Evaluation will not run unless a result is supplied
+            for each of these environments.  See '--required-envs' above for
+            further details on valid environment specifications.
 
     --required-task
             Forces the script to only accept results for the supplied task
             name. A list of supported task names can be found by running
             'benchbot_run --list-tasks'.
+
+    --show-batch
+            Prints information about the provided batch name if installed. The
+            corresponding file's location will be displayed, with a snippet of
+            its contents.
 
     --show-method
             Prints information about the provided method name if installed. The
@@ -132,6 +142,9 @@ _ground_truth_err=\
 location ('%s'). This should be created as part of the
 'benchbot_install' process. Please re-run the installer."
 
+_list_batches_pre=\
+"The following environment batches are available in your installation:
+    "
 _list_methods_pre=\
 "The following evaluation methods are available in your installation:
     "
@@ -144,7 +157,7 @@ function validate_method() {
       "method was selected. A selection is required.")"
   elif [ -z "$2" ] && \
       [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
-      "name", "'$1'"))')" != "True" ]; then
+      [("name", "'$1'")]))')" != "True" ]; then
     err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
       "Please check '--list-methods'.")"
   fi
@@ -157,25 +170,13 @@ function validate_method() {
 }
 
 function validate_required_envs() {
-  # $1 required envs, $2 required envs file
-  if [ ! -z "$required_envs" ] && [ ! -z "$required_envs_file" ]; then
+  # $1 required envs, $2 required envs batch
+  if [ ! -z "$1" ] && [ ! -z "$2" ]; then
     printf "${colour_red}%s %s${colour_nc}\n" \
-      "ERROR: Only '--required-envs' or '--required-envs-file' is valid,"\
+      "ERROR: Only '--required-envs' or '--required-envs-batch' is valid,"\
       "not both."
-  fi
-}
-
-function validate_required_task() {
-  # $1 required task name
-  text="tasks"
-  singular=${text::-1}
-  if [ ! -z "$1" ] && \
-      [ "$(run_manager_cmd 'print(exists("'$text'", "name", "'$1'"))')" \
-      != "True" ]; then
-    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
-      "Please check 'benchbot_run --list-$text'."
-    printf "\n${colour_red}%s${colour_nc}" \
-      "ERROR: Invalid ${singular} selected (${singular} = '$1')"
+  elif [ ! -z "$2" ]; then
+    validate_content "batches" "$2" "" "" 2
   fi
 }
 
@@ -206,14 +207,15 @@ function validate_results_files() {
 ################################################################################
 
 # Safely parse options input
-_args='help,list-methods,method:,output-location:,required-envs:,\
-required-envs-file:,required-task:,show-method:,validate-only,version'
+_args='help,list-batches,list-methods,method:,output-location:,\
+required-envs:,required-envs-batch:,required-task:,show-batch:,\
+show-method:,validate-only,version'
 parse_out=$(getopt -o ho:m:vV --long "$_args" -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 method=
 required_envs=
-required_envs_file=
+required_envs_batch=
 required_task=
 results_files=
 scores_location='scores.json'
@@ -222,6 +224,8 @@ while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
+    --list-batches)
+      list_content "batches" "$_list_batches_pre" "a" 2; exit $? ;;
     --list-methods)
       list_content "evaluation_methods" "$_list_methods_pre"; exit $? ;;
     -m|--method)
@@ -229,11 +233,13 @@ while true; do
     -o|--output-location)
       scores_location="$2"; shift 2 ;;
     --required-envs)
-      required_envs=(${2//,/ }); shift 2 ;;
-    --required-envs-file)
-      required_envs_file="$2"; shift 2 ;;
+      required_envs=($(echo "$2" | tr ',' '\n')); shift 2 ;;
+    --required-envs-batch)
+      required_envs_batch="$2"; shift 2 ;;
     --required-task)
       required_task="$2"; shift 2 ;;
+    --show-batch)
+      show_content "batches" "$2" 2; exit $? ;;
     --show-method)
       show_content "evaluation_methods" "$2"; exit $? ;;
     -v|--version)
@@ -248,14 +254,22 @@ while true; do
 done
 
 # Bail if any of the requested configurations are invalid
-err="$(validate_required_envs "$required_envs" "$required_envs_file")"
+err="$(validate_required_envs "$required_envs" "$required_envs_batch")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-if [ ! -z "$required_envs_file" ]; then
-  required_envs=($(cat "$required_envs_file" | tr '\n' ' ' | \
-        sed 's/[[:space:]]*$//'))
+if [ ! -z "$required_envs_batch" ]; then
+  required_envs=($(run_manager_cmd 'print("\n".join(get_value_by_name(\
+    "batches", "'$required_envs_batch'", "environments")))'))
 fi
-err="$(validate_required_task "$required_task")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+if [ ! -z "$required_envs" ]; then
+  for e in "${required_envs[@]}"; do
+    err="$(validate_environment "$e")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  done
+fi
+if [ ! -z "$required_task" ]; then
+  err="$(validate_content "tasks" "$required_task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+fi
 err="$(validate_method "$method" "$validate_only")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 err="$(validate_results_files "${results_files[@]}")"
@@ -268,12 +282,8 @@ if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 header_block "Running validation over ${#results_files[@]} input files" \
   $colour_green
 
-# Build up some strings we can pass directly to Python
+# Build up some strings for Python
 python_results_files='["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"]'
-python_formats_files="$(run_manager_cmd 'print(find_all("formats"))')"
-python_ground_truths_files="$(run_manager_cmd \
-  'print(find_all("ground_truths"))')"
-
 python_req_task=
 if [ ! -z "$required_task" ]; then
   python_req_task=', required_task="'"$required_task"'"'
@@ -287,13 +297,7 @@ fi
 # Validate provided results using the Validator class from 'benchbot_eval'
 # Python module
 python3 -c 'from benchbot_eval import Validator; \
-  Validator('"$python_results_files"', '"$python_formats_files"', \
-  '"$python_ground_truths_files$python_req_task$python_req_envs"').\
-  validate_results_data()'
-
-
-# TODO loop through each provided result_file, running the validation function
-# from the format definition (if it exists)
+  Validator('"$python_results_files$python_req_task$python_req_envs"')'
 
 if [ ! -z "$validate_only" ]; then exit 0; fi
 
@@ -304,15 +308,11 @@ if [ ! -z "$validate_only" ]; then exit 0; fi
 header_block "Running evaluation over ${#results_files[@]} input files" \
   $colour_green
 
-# Form some strings of python code from our input arguments
-python_results=
-# Run the python command & exit
+# Evaluate results using the pickled Validator state from the step above
 python3 -c 'from benchbot_eval import Evaluator; \
-  Evaluator('"$python_results"', "'"$gt_abs"'", "'$scores_location'"\
-  '"$python_req_task$python_req_envs"').evaluate()'
-result=$?
-if [ $result -ne 0 ]; then
+  Evaluator("'$method'", "'$scores_location'").evaluate()' && ret=0 || ret=1
+if [ $ret -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
     "Evaluation failed with result error code" "$result"
 fi
-exit $result
+exit $ret

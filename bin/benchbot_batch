@@ -24,8 +24,8 @@ DEFAULT_PREFIX="batch"
 usage_text="$(basename "$0") -- Helper script for running a solution against multiple
 environments in a single command. Use this script when you have developed a
 task solution that you would like to extensively test, or when you would like
-create a submission to a challenge. The './batches/' directory contains
-official environment lists, like those used for evaluating tasks in challenges.
+create a submission to a challenge. Addons can include 'batches' which are
+environment lists, like those used for evaluating tasks in official challenges.
 
 The $(basename "$0") script is roughly equivalent to the following:
 
@@ -55,19 +55,21 @@ USAGE:
           [-n|--native] COMMAND_TO_RUN
 
     Run a submission for the scd:active:dead_reckoning task in a containerised
-    environment, for a list of scenes specified in a file called 'my/env_mix',
-    saving the results with the prefix 'mix'. Then evaluate the results to
-    produce a final score:
+    environment, for a list of scenes specified in the environment batch called
+    'challenge_1', saving the results with the prefix 'mix'. Then evaluate the
+    results to produce a final score:
         $(basename "$0") [-t|--task] scd:active:dead_reckoning \\
-          [-E|--envs-file] my/env_mix [-p|--prefix] mix [-s|--score-results] \\
+          [-E|--envs-batch] challenge_1 [-p|--prefix] mix [-s|--score-results] \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
 
-        ... (contents of 'my/env_mix') ...
-        miniroom:1:2
-        house:2:3
-        apartment:3:4
-        office:4:5
-        company:5:1
+        ... (contents of 'challenge_1' batch) ...
+        name: challenge:1
+        environments:
+          - miniroom:1:2
+          - house:2:3
+          - apartment:3:4
+          - office:4:5
+          - company:5:1
 
 OPTION DETAILS:
 
@@ -75,11 +77,11 @@ OPTION DETAILS:
             Show this help menu.
 
     -c, --containerised
-            Uses the Dockerfile in the specified directory to start a Docker
-            container running your solution for each environment. This requires
-            an extra parameter specifying the dierctory of the Dockerfile for
-            your solution. See '-c, --containerised' in 'benchbot_submit
-            --help' for further details on containerised BenchBot submissions.
+            Runs the submission in containerised mode. The directory containing
+            the Dockerfile describing your solution must be specified as a
+            trailing argument to this command.  See '-c, --containerised' in
+            'benchbot_submit --help' for further details on containerised
+            BenchBot submissions.
 
     -e, --envs
             A comma-separated list of environments for $(basename "$0") to
@@ -88,16 +90,28 @@ OPTION DETAILS:
             specifying valid environments, & 'benchbot_run --list-envs' for a
             complete list of supported environments.
 
-    -E, --envs-file
-            A file specifying a single valid environment name on each line. The
-            $(basename "$0") script will iterate over each specified
+    -E, --envs-batch
+            The name of an environment batch specifying a list of environments.
+            The $(basename "$0") script will iterate over each specified
             environment. See '-e, --envs' above for further details on valid
             environment specifications.
 
+    --example
+            The name of an installed example to run instead of providing
+            explicit execution commands / Dockerfiles to run at the end of this
+            command. Note that you still have to specify whether you would like
+            to run the example in native or containerised mode.
+
+    --list-batches
+            Lists all supported environment batches. These can be used with the
+            '--required-envs-batch' option. Use '--show-batch' to see more
+            details about a batch.
+
     -n, --native
-            Runs everything after this flag as a command directly on your
-            system for each environment. See '-n, --native' in 'benchbot_submit
-            --help' for further details on native BenchBot submissions.
+            Runs the submission in native mode. The command to execute natively
+            will be taken from the trailing arguments provided to your command.
+            See '-n, --native' in 'benchbot_submit --help' for further details
+            on native BenchBot submissions.
 
     -p, --prefix
             Prefix to use in naming of files produced by $(basename "$0"). If
@@ -112,12 +126,27 @@ OPTION DETAILS:
                 semslam.zip
                 semslam_scores.json
 
+    -r, --robot
+            Configure BenchBot to use a specifc robot. Every environment in the
+            requested batch will be run with this robot (so make sure they
+            support the robot). See '-r, --robot' in 'benchbot_run --help' for
+            further details on specifying valid robots, & 'benchbot_run
+            --list-robots' for a complete list of supported robots.
+
     -s, --score-results
-            Perform evaluation on the batch of results produced by $(basename "$0").
-            The scores from each results file in the batch are then combined
-            into a final set of scores for your algorithm, on the tested task.
-            Scores are combined using the approach described in 'benchbot_eval
-            --help'.
+            The name of the evaluation method to use to perform evaluation on
+            the batch of results produced by $(basename "$0").  The scores from
+            each results file in the batch are then combined into a final set
+            of scores for your algorithm, on the tested task.  See 
+            '-m, --method' in 'benchbot_eval' for supported methods and
+            'benchbot_eval --help' for details of how scores are combined. If
+            this isn't provided, results will be saved to disk with no
+            evaluation performed.
+
+    --show-batch
+            Prints information about the provided batch name if installed. The
+            corresponding file's location will be displayed, with a snippet of
+            its contents.
 
     -t, --task             
             Configure BenchBot for a specific task style. Every environment in
@@ -154,11 +183,15 @@ Quitting batch execution."
 submission_err="ERROR: Submission for environment '%s' failed with the error printed
 above. Quitting batch execution."
 
+_list_batches_pre=\
+"The following environment batches are available in your installation:
+    "
+
 run_pid=
 function kill_run() {
   if [ ! -z $run_pid ]; then
     kill -TERM $run_pid &> /dev/null
-    wait $run_pid
+    wait $run_pid || true
     run_pid=
   fi
 }
@@ -167,7 +200,7 @@ submit_pid=
 function kill_submit() {
   if [ ! -z $submit_pid ]; then
     kill -TERM $submit_pid &> /dev/null
-    wait $submit_pid
+    wait $submit_pid || true
     submit_pid=
   fi
 }
@@ -179,37 +212,65 @@ function exit_gracefully() {
   exit ${1:-0}
 }
 
+function validate_envs() {
+  # $1 requested envs, $2 requested envs batch
+  if [ ! -z "$1" ] && [ ! -z "$2" ]; then
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: Only '--envs' or '--envs-batch' is valid, not both."
+  elif [ -z "$1" ] && [ -z "$2" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: No environments were provided via either" \
+      "'--envs' or '--envs-batch'"
+  fi
+}
+
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
 
 # Safely parse options input
-parse_out=$(getopt -o e:E:c:hn:p:st:vz --long \
-  envs:,envs-file:,containerised:,help,native:,prefix:,score-results,task:,version,zip \
-  -n "$(basename "$0")" -- "$@")
+_args='envs:,envs-batch:,example:,containerised,help,list-batches,native,\
+prefix:,robot:,score-results:,show-batch,task:,version,zip'
+parse_out=$(getopt -o e:E:chnp:r:s:t:vz --long "$_args" -n "$(basename "$0")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
+containerised=
 eval set -- "$parse_out"
 evaluate=
+example=
+example_prefix=
 envs_str=
-envs_list=
-submit_args=
+envs_batch=
+native=
 prefix="$DEFAULT_PREFIX"
+robot=
+submit_args=
 task=
 zip=
 while true; do
   case "$1" in
+    -c|--containerised)
+      containerised='--containerised' ; shift ;;
     -e|--envs)
       envs_str="$2" ; shift 2 ;;
-    -E|--envs-file)
-      envs_file="$2" ; shift 2 ;;
+    -E|--envs-batch)
+      envs_batch="$2" ; shift 2 ;;
+    --example)
+      example="$2" ; example_prefix="--example" ; shift 2 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
-    -n|--native|-c|--containerised)
-      submit_args="$@"; break ;;
+    --list-batches)
+      list_content "batches" "$_list_batches_pre" "a" 2; exit $? ;;
+    -n|--native)
+      native='--native' ; shift ;;
     -p|--prefix)
       prefix="$2"; shift 2 ;;
+    -r|--robot)
+      robot="$2"; shift 2 ;;
     -s|--score-results)
-      evaluate=true; shift ;;
+      evaluate_method="$2"; shift 2 ;;
+    --show-batch)
+      show_content "batches" "$2" 2; exit $? ;;
     -t|--task)
       task="$2"; shift 2 ;;
     -v|--version)
@@ -217,7 +278,7 @@ while true; do
     -z|--zip)
       zip=true; shift ;;
     --)
-      shift ; break ;;
+      shift ; submit_args="$@"; break ;;
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
@@ -225,14 +286,13 @@ done
 
 # Process envs & envs-file here (defer all other argument evaluation to the
 # appropriate scripts which use the values)
-if [ ! -z "$envs_str" ] && [ ! -z "$envs_file" ]; then
-  printf "${colour_red}%s${colour_nc}\n" \
-    "ERROR: Both '--envs' && '--envs-file' provided; please only provide 1!"
-  exit 1
-elif [ ! -z "$envs_str" ]; then
-  envs_list=(${envs_str//,/ })
-elif [ ! -z "$envs_file" ]; then
-  envs_list=($(cat "$envs_file" | tr '\n' ' ' | sed 's/[[:space:]]*$//'))
+err="$(validate_envs "$envs_str" "$envs_batch")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+if [ ! -z "$envs_str" ]; then
+  envs_list=($(echo "$envs_str" | tr ',' '\n'))
+elif [ ! -z "$envs_batch" ]; then
+  envs_list=($(run_manager_cmd 'print("\n".join(get_value_by_name(\
+    "batches", "'$envs_batch'", "environments")))'))
 fi
 
 ################################################################################
@@ -245,15 +305,19 @@ header_block "Dumping settings before running batch" $colour_magenta
 
 _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
-printf "$_ind%-25s%s\n$_ind" "Selected task:" "${task:-None}"
-if [[ $submit_args == "-c"* ]]; then
+printf "$_ind%-25s%s\n" "Selected task:" "${task:-None}"
+printf "$_ind%-25s%s\n$_ind" "Selected robot:" "${robot:-None}"
+if [ ! -z "$example" ]; then
+  printf "%-25s%s\n" "Example to run:" \
+    "$example \
+    ($([ ! -z "$containerised" ] && echo "containerised" || echo "native"))"
+elif [ ! -z "$containerised" ]; then
   printf "%-25s%s\n" "Dockerfile to build:" \
     "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
-elif [ -z "$submit_args" ]; then
-  printf "%-25s%s\n" "Command to execute:" "None"
+elif [ ! -z "$native" ]; then
+  printf "%-25s%s\n" "Command to execute:" "$(echo "${submit_args[@]}")"
 else
-  printf "%-25s%s\n" "Command to execute:" \
-    "$(echo "$submit_args" | awk '{for (i=2; i<=NF; i++) printf $i " "}')"
+  printf "%-25s%s\n" "Command to execute:" "None"
 fi
 
 printf "\nIterating through the following environment list:\n$_ind"
@@ -267,8 +331,7 @@ printf "\nPerforming the following after all environments have been run:\n"
 printf "$_ind%-25s%s\n" "Create results *.zip:" \
   "$([ -z "$zip" ] && echo "No" || echo "Yes")"
 printf "$_ind%-25s%s\n\n" "Evalute results batch:" \
-  "$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
-
+  "$([ -z "$evaluate_method" ] && echo "No" || echo "Yes ($evaluate_method)")"
 
 ################################################################################
 ############### Iterate over each of the requested environments ################
@@ -285,9 +348,11 @@ while [ $i -lt ${#envs_list[@]} ]; do
   # Run the submission in the environment, waiting until something finishes
   header_block "Gathering results for environment: ${envs_list[$i]}" \
     $colour_magenta
-  benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -f &> /tmp/benchbot_run_out &
+  benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -r "${robot:-None}" -f \
+    &> /tmp/benchbot_run_out &
   run_pid=$!
-  benchbot_submit -r "${prefix}_$i.json" $submit_args &
+  benchbot_submit -r "${prefix}_$i.json" $example_prefix $example \
+    $containerised $native $submit_args &
   submit_pid=$!
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
@@ -308,8 +373,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
   fi
 
   # Handle the result of failed submissions (looking for an error code)
-  wait $submit_pid
-  submit_result=$?
+  wait $submit_pid && submit_result=0 || submit_result=1
   if [ $submit_result -ne 0 ]; then
     echo ""
     kill_run
@@ -317,19 +381,18 @@ while [ $i -lt ${#envs_list[@]} ]; do
     exit 1
   fi
 
-  # Move to next environment (excluding case of collisions whilst in passive
-  # mode)
-  if [ ! -z "$(echo "$task" | grep -v "passive")" ] || \
-      [ -z "$(docker run --rm --network $DOCKER_NETWORK -it \
-        "$DOCKER_TAG_BACKEND" /bin/bash -c \
-        'curl '$HOSTNAME_SUPERVISOR':'$PORT_SUPERVISOR'/simulator/is_collided' \
-        | grep "true")" ]; then
-    results_list+=("${prefix}_$i.json")
-    ((i++))
-  else
+  # Check to see if we should provide a collision warning before moving on
+  if [ -z "$(docker run --rm --network $DOCKER_NETWORK -it \
+      "$DOCKER_TAG_BACKEND" /bin/bash -c \
+      'curl '$HOSTNAME_SUPERVISOR:$PORT_SUPERVISOR'/robot/is_collided' | \
+      grep "false")" ]; then
     printf "\n${colour_yellow}$collision_warn${colour_nc}\n\n" \
       "${envs_list[$i]}"
   fi
+
+  # Move to next environment 
+  results_list+=("${prefix}_$i.json")
+  i=$((i+1))
   kill_run
 done
 
@@ -345,9 +408,10 @@ if [ ! -z "$zip" ]; then
   echo ""
 fi
 
-if [ ! -z "$evaluate" ]; then
+if [ ! -z "$evaluate_method" ]; then
   echo -e "${colour_magenta}Evaluating results... ${colour_nc}"
-  benchbot_eval -o "${prefix}_scores.json" --required-task "$task" \
+  benchbot_eval -m "$evaluate_method" -o "${prefix}_scores.json" \
+    --required-task "$task" \
     --required-envs $(echo "${envs_list[@]}" | tr ' ' ',') \
     $([ -z "$zip" ] && echo "${results_list[@]}" || echo "${prefix}.zip")
 else

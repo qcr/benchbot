@@ -407,22 +407,22 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
   header_block "Processing results" ${colour_blue}
 
   # Pull the results out of the container if appropriate
-  if [ "$SELECTED_MODE" == "containerised" ]; then
+  if [ "$mode" == "containerised" ]; then
     if ! docker cp "${SUBMISSION_CONTAINER_NAME}:${results_src}"\
       "${results_src}" 2>/dev/null; then
-      printf "${colour_red}\n%s%s${colour_nc}\n" \
+      printf "${colour_yellow}\n%s%s${colour_nc}\n" \
         "Failed to extract results from submission container; were there any?"
-      exit 1
+      echo "{}" > "${results_src}"
     fi
     printf "\nExtracted results from container '%s', to '%s'.\n" \
       "$SUBMISSION_CONTAINER_NAME" "$results_src"
   fi
 
-  # Bail if there are no results available
+  # Warn & write some empty results if there are none available
   if [ ! -f "$results_src" ]; then
-    printf "\n${colour_red}%s\n  ${results_src}${colour_nc}\n" \
+    printf "\n${colour_yellow}%s\n  ${results_src}${colour_nc}\n" \
       "Requested use of results, but the submission saved no results to: "
-    exit 1
+    echo "{}" > "${results_src}"
   fi
 
   # Copy results to a new location if requested
