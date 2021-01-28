@@ -202,6 +202,18 @@ function exit_gracefully() {
   exit ${1:-0}
 }
 
+function validate_envs() {
+  # $1 requested envs, $2 requested envs batch
+  if [ ! -z "$1" ] && [ ! -z "$2" ]; then
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: Only '--envs' or '--envs-batch' is valid, not both."
+  elif [ -z "$1" ] && [ -z "$2" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: No environments were provided via either" \
+      "'--envs' or '--envs-batch'"
+  fi
+}
+
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
@@ -215,7 +227,7 @@ if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 evaluate=
 envs_str=
-envs_list=
+envs_batch=
 prefix="$DEFAULT_PREFIX"
 robot=
 submit_args=
@@ -254,18 +266,15 @@ while true; do
   esac
 done
 
-exit 0
-
 # Process envs & envs-file here (defer all other argument evaluation to the
 # appropriate scripts which use the values)
-if [ ! -z "$envs_str" ] && [ ! -z "$envs_file" ]; then
-  printf "${colour_red}%s${colour_nc}\n" \
-    "ERROR: Both '--envs' && '--envs-file' provided; please only provide 1!"
-  exit 1
-elif [ ! -z "$envs_str" ]; then
-  envs_list=(${envs_str//,/ })
-elif [ ! -z "$envs_file" ]; then
-  envs_list=($(cat "$envs_file" | tr '\n' ' ' | sed 's/[[:space:]]*$//'))
+err="$(validate_envs "$envs_str" "$envs_batch")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+if [ ! -z "$envs_str" ]; then
+  envs_list=($(echo "$envs_str" | tr ',' '\n'))
+elif [ ! -z "$envs_batch" ]; then
+  envs_list=($(run_manager_cmd 'print("\n".join(get_value_by_name(\
+    "batches", "'$envs_batch'", "environments")))'))
 fi
 
 ################################################################################
