@@ -188,7 +188,7 @@ run_pid=
 function kill_run() {
   if [ ! -z $run_pid ]; then
     kill -TERM $run_pid &> /dev/null
-    wait $run_pid
+    wait $run_pid || true
     run_pid=
   fi
 }
@@ -197,7 +197,7 @@ submit_pid=
 function kill_submit() {
   if [ ! -z $submit_pid ]; then
     kill -TERM $submit_pid &> /dev/null
-    wait $submit_pid
+    wait $submit_pid || true
     submit_pid=
   fi
 }
@@ -345,7 +345,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
   # Run the submission in the environment, waiting until something finishes
   header_block "Gathering results for environment: ${envs_list[$i]}" \
     $colour_magenta
-  benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -f \
+  benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -r "${robot:-None}" -f \
     &> /tmp/benchbot_run_out &
   run_pid=$!
   benchbot_submit -r "${prefix}_$i.json" $example_prefix $example \
