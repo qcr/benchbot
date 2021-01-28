@@ -77,11 +77,11 @@ OPTION DETAILS:
             Show this help menu.
 
     -c, --containerised
-            Uses the Dockerfile in the specified directory to start a Docker
-            container running your solution for each environment. This requires
-            an extra parameter specifying the dierctory of the Dockerfile for
-            your solution. See '-c, --containerised' in 'benchbot_submit
-            --help' for further details on containerised BenchBot submissions.
+            Runs the submission in containerised mode. The directory containing
+            the Dockerfile describing your solution must be specified as a
+            trailing argument to this command.  See '-c, --containerised' in
+            'benchbot_submit --help' for further details on containerised
+            BenchBot submissions.
 
     -e, --envs
             A comma-separated list of environments for $(basename "$0") to
@@ -96,15 +96,22 @@ OPTION DETAILS:
             environment. See '-e, --envs' above for further details on valid
             environment specifications.
 
+    --example
+            The name of an installed example to run instead of providing
+            explicit execution commands / Dockerfiles to run at the end of this
+            command. Note that you still have to specify whether you would like
+            to run the example in native or containerised mode.
+
     --list-batches
             Lists all supported environment batches. These can be used with the
             '--required-envs-batch' option. Use '--show-batch' to see more
             details about a batch.
 
     -n, --native
-            Runs everything after this flag as a command directly on your
-            system for each environment. See '-n, --native' in 'benchbot_submit
-            --help' for further details on native BenchBot submissions.
+            Runs the submission in native mode. The command to execute natively
+            will be taken from the trailing arguments provided to your command.
+            See '-n, --native' in 'benchbot_submit --help' for further details
+            on native BenchBot submissions.
 
     -p, --prefix
             Prefix to use in naming of files produced by $(basename "$0"). If
@@ -219,14 +226,16 @@ function validate_envs() {
 ################################################################################
 
 # Safely parse options input
-_args='envs:,envs-batch:,containerised,help,list-batches,native,prefix:,\
-robot:,score-results,show-batch,task:,version,zip '
+_args='envs:,envs-batch:,example:,containerised,help,list-batches,native,\
+prefix:,robot:,score-results,show-batch,task:,version,zip'
 parse_out=$(getopt -o e:E:chnp:r:st:vz --long "$_args" -n "$(basename "$0")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 containerised=
 eval set -- "$parse_out"
 evaluate=
+example=
+example_prefix=
 envs_str=
 envs_batch=
 native=
@@ -243,6 +252,8 @@ while true; do
       envs_str="$2" ; shift 2 ;;
     -E|--envs-batch)
       envs_batch="$2" ; shift 2 ;;
+    --example)
+      example="$2" ; example_prefix="--example" ; shift 2 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-batches)
@@ -293,7 +304,11 @@ _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
 printf "$_ind%-25s%s\n" "Selected task:" "${task:-None}"
 printf "$_ind%-25s%s\n$_ind" "Selected robot:" "${robot:-None}"
-if [ ! -z "$containerised" ]; then
+if [ ! -z "$example" ]; then
+  printf "%-25s%s\n" "Example to run:" \
+    "$example \
+    ($([ ! -z "$containerised" ] && echo "containerised" || echo "native"))"
+elif [ ! -z "$containerised" ]; then
   printf "%-25s%s\n" "Dockerfile to build:" \
     "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
 elif [ ! -z "$native" ]; then
@@ -330,9 +345,11 @@ while [ $i -lt ${#envs_list[@]} ]; do
   # Run the submission in the environment, waiting until something finishes
   header_block "Gathering results for environment: ${envs_list[$i]}" \
     $colour_magenta
-  benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -f &> /tmp/benchbot_run_out &
+  benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -f \
+    &> /tmp/benchbot_run_out &
   run_pid=$!
-  benchbot_submit -r "${prefix}_$i.json" $containerised $native $submit_args &
+  benchbot_submit -r "${prefix}_$i.json" $example_prefix $example \
+    $containerised $native $submit_args &
   submit_pid=$!
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
