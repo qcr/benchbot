@@ -22,6 +22,7 @@ GIT_API="https://github.com/roboticvisionorg/benchbot_api"
 GIT_BENCHBOT="https://github.com/roboticvisionorg/benchbot"
 GIT_CONTROLLER="https://github.com/roboticvisionorg/benchbot_robot_controller"
 GIT_EVAL="https://github.com/roboticvisionorg/benchbot_eval"
+GIT_MSGS="https://github.com/roboticvisionorg/benchbot_msgs"
 GIT_SIMULATOR="https://github.com/roboticvisionorg/benchbot_simulator"
 GIT_SUPERVISOR="https://github.com/roboticvisionorg/benchbot_supervisor"
 
@@ -201,6 +202,17 @@ function is_latest_benchbot_controller() {
 
 function is_latest_benchbot_eval() {
   _is_latest_local_git "$PATH_EVAL" "$GIT_EVAL" "$1" "BenchBot Eval"
+  return
+}
+
+function is_latest_benchbot_msgs() {
+  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+    'cd $BENCHBOT_MSGS_PATH && git rev-parse HEAD' | tr -d '[:space:]')
+  latest_hash=$(git ls-remote "$GIT_MSGS" "$1" | awk '{print $1}')
+  echo "Current BenchBot ROS Messages: $current_hash"
+  echo "Latest BenchBot ROS Messages: $latest_hash"
+  [ "$current_hash" == "$latest_hash" ]
   return
 }
 

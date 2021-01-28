@@ -1086,7 +1086,7 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 hash_fail_msg="Failed (check Internet connection & valid branch name!). Exiting."
 if [ ! -z "$simulators" ]; then
   echo -e "\nFetching latest hash for BenchBot Simulator ... "
-  benchbot_simulator_hash=$((is_latest_benchbot_simulator $BRANCH_DEFAULT || \
+  benchbot_simulator_hash=$( (is_latest_benchbot_simulator $BRANCH_DEFAULT || \
     true) | latest_version_info)
   if [ -z "$benchbot_simulator_hash" ]; then
     printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
@@ -1095,7 +1095,7 @@ if [ ! -z "$simulators" ]; then
   echo -e "\t\t$benchbot_simulator_hash."
 fi
 echo "Fetching latest hash for BenchBot Robot Controller ... "
-benchbot_controller_hash=$((is_latest_benchbot_controller $BRANCH_DEFAULT || \
+benchbot_controller_hash=$( (is_latest_benchbot_controller $BRANCH_DEFAULT || \
   true) | latest_version_info)
 if [ -z "$benchbot_controller_hash" ]; then
   printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
@@ -1103,7 +1103,7 @@ if [ -z "$benchbot_controller_hash" ]; then
 fi
 echo -e "\t\t$benchbot_controller_hash."
 echo "Fetching latest hash for BenchBot Supervisor ... "
-benchbot_supervisor_hash=$((is_latest_benchbot_supervisor $BRANCH_DEFAULT || \
+benchbot_supervisor_hash=$( (is_latest_benchbot_supervisor $BRANCH_DEFAULT || \
   true) | latest_version_info)
 if [ -z "$benchbot_supervisor_hash" ]; then
   printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
@@ -1111,13 +1111,22 @@ if [ -z "$benchbot_supervisor_hash" ]; then
 fi
 echo -e "\t\t$benchbot_supervisor_hash."
 echo "Fetching latest hash for BenchBot API ... "
-benchbot_api_hash=$((is_latest_benchbot_api $BRANCH_DEFAULT || true) | \
+benchbot_api_hash=$( (is_latest_benchbot_api $BRANCH_DEFAULT || true) | \
   latest_version_info)
 if [ -z "$benchbot_api_hash" ]; then
   printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_api_hash."
+
+echo "Fetching latest hash for BenchBot ROS Messages ... "
+benchbot_msgs_hash=$( (is_latest_benchbot_msgs $BRANCH_DEFAULT || true) | \
+  latest_version_info)
+if [ -z "$benchbot_msgs_hash" ]; then
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
+  exit 1
+fi
+echo -e "\t\t$benchbot_msgs_hash."
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
@@ -1156,8 +1165,10 @@ docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
   --build-arg SIMULATORS="$simulators" \
   --build-arg ISAAC_SDK_DIR="$(dirname "$sdk_file")" \
   --build-arg ISAAC_SDK_TGZ="$(basename "$sdk_file")" \
-  --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
-  --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}"\
+  --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
+  --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
+  --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
+  --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
