@@ -287,7 +287,8 @@ header_block "Dumping settings before running batch" $colour_magenta
 
 _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
-printf "$_ind%-25s%s\n$_ind" "Selected task:" "${task:-None}"
+printf "$_ind%-25s%s\n" "Selected task:" "${task:-None}"
+printf "$_ind%-25s%s\n$_ind" "Selected robot:" "${robot:-None}"
 if [[ $submit_args == "-c"* ]]; then
   printf "%-25s%s\n" "Dockerfile to build:" \
     "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
@@ -310,7 +311,6 @@ printf "$_ind%-25s%s\n" "Create results *.zip:" \
   "$([ -z "$zip" ] && echo "No" || echo "Yes")"
 printf "$_ind%-25s%s\n\n" "Evalute results batch:" \
   "$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
-
 
 ################################################################################
 ############### Iterate over each of the requested environments ################
