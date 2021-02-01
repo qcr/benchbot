@@ -180,8 +180,8 @@ function validate_environment_count() {
   if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
   if [ $scene_count -ne $1 ]; then
     printf "${colour_red}%s\n       %s${colour_nc}\n" \
-      "ERROR: Selected '$1' environments for a task which requires '$scene_count'" \
-      "environments ('$task')"
+      "ERROR: Selected $1 environment/s for a task which requires $scene_count" \
+      "environment/s ('$task')"
   fi
 }
 
