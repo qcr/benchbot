@@ -276,8 +276,8 @@ updates."
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \
-    [ $eval_valid -eq 0 ] && [ $examples_valid -eq 0 ] && \
-    [ $simulator_valid -eq 0 ] && [ $supervisor_valid -eq 0 ]
+    [ $eval_valid -eq 0 ] && [ $simulator_valid -eq 0 ] && \
+    [ $supervisor_valid -eq 0 ]
   valid=$?
   if [ $valid -eq 0 ]; then 
     echo -e "\n$colour_green$_valid_text$colour_nc"
