@@ -313,6 +313,6 @@ python3 -c 'from benchbot_eval import Evaluator; \
   Evaluator("'$method'", "'$scores_location'").evaluate()' && ret=0 || ret=1
 if [ $ret -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
-    "Evaluation failed with result error code" "$result"
+    "Evaluation failed with result error code" "$ret"
 fi
 exit $ret

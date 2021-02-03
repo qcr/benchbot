@@ -85,10 +85,11 @@ OPTION DETAILS:
             (use '--list-examples' to see a list of installed example)
 
     -e, --evaluate-results
-            Evaluate the results produced by the provided submission after it
-            has finished running. This will assume that your submission saves
-            results to the location referenced by 'benchbot_api.RESULT_LOCATION'
-            (currently '/tmp/benchbot_result'). Evaluation will not work as
+            Evaluation method to use for evaluation on the provided submission
+            after it has finished running. No evaluation will be run if this
+            flag isn't provided.  This assumes your submission saves results to
+            the location referenced by 'benchbot_api.RESULT_LOCATION'
+            (currently '/tmp/benchbot_result').  Evaluation will not work as
             expected if the submission saves results in any other location.
 
     --list-examples
@@ -236,7 +237,7 @@ function validate_mode() {
 }
 
 function validate_results() {
-  # $1 mode (expanded), $2 evaluate, $3 results_location
+  # $1 mode (expanded), $2 evaluate method, $3 results_location
   if [[ "$1" == s* && ( ! -z "$2" || ! -z "$3" ) ]]; then
     printf "%s %s\n" "Cannot create results or perform evaluation in '$1'" \
       "mode. Please run again in a different mode."
@@ -259,12 +260,12 @@ function warning_mode() {
 ################################################################################
 
 # Safely parse options input
-_args="evaluate-results,example:,help,containerised,list-examples,native,\
+_args="evaluate-results:,example:,help,containerised,list-examples,native,\
 results-location:,show-example:,submission,version"
-parse_out=$(getopt -o eE:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
+parse_out=$(getopt -o e:E:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
-evaluate=
+evaluate_method=
 example=
 mode=
 mode_args=
@@ -273,7 +274,7 @@ results_location=
 while true; do
   case "$1" in
     -e|--evaluate-results)
-      evaluate=true ; shift ;;
+      evaluate_method="$2" ; shift 2 ;;
     -E|--example)
       example="$2"; shift 2 ;;
     -h|--help)
@@ -302,7 +303,7 @@ err="$(validate_example "$example")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 err="$(validate_mode "$example" "$mode_dup" "$mode" "$mode_args")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-err="$(validate_results "$mode" "$evaluate" "$results_location")"
+err="$(validate_results "$mode" "$evaluate_method" "$results_location")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 warning_mode "$example" "$mode_args"
 
@@ -330,7 +331,7 @@ echo "Submitting to the BenchBot system with the following settings:
     Submission mode:             $mode"
 echo \
 "    Perform evaluation:          "\
-"$([ -z "$evaluate" ] && echo "No" || echo "Yes")"
+"$([ -z "$evaluate_method" ] && echo "No" || echo "Yes ($evaluate_method)")"
 if [ -n "$results_location" ]; then
   echo \
 "    Results save location:       $results_location"
@@ -356,7 +357,7 @@ trap 'remove_submission_container "'$mode'"' EXIT
 
 # Clear out any previous results in default location
 results_src=
-if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
+if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
   results_src=$(python3 -c \
     'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
   rm -rf "$results_src"
@@ -403,7 +404,7 @@ if [ $run_ret -ne 0 ]; then
 fi
 
 # Perform any evaluation that may have been requested by the caller
-if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
+if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
   header_block "Processing results" ${colour_blue}
 
   # Pull the results out of the container if appropriate
@@ -433,11 +434,11 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate" ]; then
   fi
 
   # Run evaluation on the results if requested
-  if [ ! -z "$evaluate" ]; then
+  if [ ! -z "$evaluate_method" ]; then
     if [ -z "$results_location" ]; then results_location="$results_src"; fi
     printf "\nRunning evaluation on results from '%s' ... \n" \
       "$results_location"
-    benchbot_eval "$results_location"
+    benchbot_eval --method "$evaluate_method" "$results_location"
   fi
 fi
 
