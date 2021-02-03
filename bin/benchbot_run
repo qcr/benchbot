@@ -160,8 +160,8 @@ _list_tasks_pre=\
 
 _robot_err=\
 "ERROR: The BenchBot Robot Controller container has exited unexpectedly. This 
-should not happen unless something is installed incorrectly. Please see the
-complete log below for a dump of the crash output:"
+should not happen under normal operating conditions. Please see the complete
+log below for a dump of the crash output:"
 
 function exit_gracefully() {
   if [ -z "$simulator_required" ]; then
