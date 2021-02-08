@@ -418,8 +418,7 @@ echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}
 cmd="${docker_run//'$name'/benchbot_supervisor}"
 ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'python3 -m benchbot_supervisor --task-name "'$task'" \
-  --results-format-name "'$results_format'" --robot-name "'$robot'" \
-  --environment-names "'$environments_string'" \
+  --robot-name "'$robot'" --environment-names "'$environments_string'" \
   --addons-path "'$PATH_ADDONS_INTERNAL'"'
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
