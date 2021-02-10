@@ -58,7 +58,7 @@ OPTION DETAILS:
             'username/repo_name'.  Add-on installation also installs all
             required add-on dependencies.  See add-on manager documentation for
             details:
-              https://github.com/roboticvisionorg/benchbot-addons
+              https://github.com/qcr/benchbot-addons
 
             Also see '--list-addons' for a details on installed add-ons, and a
             list of all known BenchBot add-ons.
@@ -78,7 +78,7 @@ OPTION DETAILS:
             'benchbot-addons' GitHub organisation. If you would like to add a
             community contribution to the community list, please follow the
             instructions here:
-              https://github.com/roboticvisionorg/benchbot-addons
+              https://github.com/qcr/benchbot-addons
 
     --no-simulator
             Runs installation without installing the Nvidia Isaac Unreal
