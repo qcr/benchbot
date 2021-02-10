@@ -53,11 +53,11 @@ OPTION DETAILS:
             Show this help menu.
 
     -a, --addons
-            Comma separated list of add-ons to install. Add-ons can be
-            specified as GitHub repositories ('username/repo_name'), relative
-            paths ('./my_addon'), or absolute paths ('/path/to/my/addon').
-            Add-on installation also installs all required add-on dependencies.
-            See add-on manager documentation for details:
+            Comma separated list of add-ons to install. Add-ons exist in GitHub
+            repositories, and are specified by their identifier:
+            'username/repo_name'.  Add-on installation also installs all
+            required add-on dependencies.  See add-on manager documentation for
+            details:
               https://github.com/roboticvisionorg/benchbot-addons
 
             Also see '--list-addons' for a details on installed add-ons, and a
