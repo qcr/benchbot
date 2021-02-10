@@ -63,6 +63,12 @@ OPTION DETAILS:
             Also see '--list-addons' for a details on installed add-ons, and a
             list of all known BenchBot add-ons.
 
+    -A, --addons-only
+            Only perform the installation of the specified add-ons. Skip all
+            other steps in the install process, including Docker images and
+            local software installation. This flag is useful if you just want
+            to change add-ons inside your working installation.
+
     -b, --branch
             Specify a branch other than master to install. The only use for
             this flag is active development. The general user will never need
