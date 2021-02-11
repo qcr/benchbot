@@ -381,18 +381,22 @@ while [ $i -lt ${#envs_list[@]} ]; do
     exit 1
   fi
 
-  # Check to see if we should provide a collision warning before moving on
-  if [ -z "$(docker run --rm --network $DOCKER_NETWORK -it \
-      "$DOCKER_TAG_BACKEND" /bin/bash -c \
-      'curl '$HOSTNAME_SUPERVISOR:$PORT_SUPERVISOR'/robot/is_collided' | \
-      grep "false")" ]; then
+  # Skip moving on if we collided using 'move_next' actuation, otherwise move
+  # to the next environment
+  if [ ! -z "$(run_manager_cmd 'print(get_value_by_name("tasks", "'$task'", \
+        "actions"))' | grep "'move_next'")" ] && \
+      [ ! -z "$(docker run --rm --network $DOCKER_NETWORK -it \
+        "$DOCKER_TAG_BACKEND" /bin/bash -c \
+        'curl '$HOSTNAME_SUPERVISOR:$PORT_SUPERVISOR'/robot/is_collided' | \
+        grep "true")" ]; then
     printf "\n${colour_yellow}$collision_warn${colour_nc}\n\n" \
       "${envs_list[$i]}"
+  else
+    results_list+=("${prefix}_$i.json")
+    i=$((i+1))
   fi
 
-  # Move to next environment 
-  results_list+=("${prefix}_$i.json")
-  i=$((i+1))
+  # Start the next run
   kill_run
 done
 
