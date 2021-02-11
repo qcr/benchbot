@@ -254,30 +254,35 @@ function update_check() {
 \"benchbot_install\" command, or run this with [-f|--force-updateless] to skip
 updates."
 
-  echo -ne "Checking BenchBot version ...\t\t\t"
+  echo -ne "Checking BenchBot version ...\t\t\t\t"
   is_latest_benchbot "$1" > /dev/null
   benchbot_valid=$?
   [ $benchbot_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot API version ...\t\t"
+  echo -ne "Checking BenchBot API version ...\t\t\t"
   is_latest_benchbot_api "$1" > /dev/null
   api_valid=$?
   [ $api_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot Eval version ...\t\t"
+  echo -ne "Checking BenchBot Eval version ...\t\t\t"
   is_latest_benchbot_eval "$1" > /dev/null
   eval_valid=$?
   [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot Simulator version ...\t\t"
+  echo -ne "Checking BenchBot Simulator version ...\t\t\t"
   is_latest_benchbot_simulator "$1" > /dev/null
   simulator_valid=$?
   [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot Supervisor version ...\t"
+  echo -ne "Checking BenchBot Supervisor version ...\t\t"
   is_latest_benchbot_supervisor "$1" > /dev/null
   supervisor_valid=$?
   [ $supervisor_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
 
+  echo -ne "Checking installed BenchBot add-ons are up-to-date ...\t"
+  addons_up_to_date > /dev/null
+  addons_valid=$?
+  [ $addons_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+
   [ $benchbot_valid -eq 0 ] && [ $api_valid -eq 0 ] && \
     [ $eval_valid -eq 0 ] && [ $simulator_valid -eq 0 ] && \
-    [ $supervisor_valid -eq 0 ]
+    [ $supervisor_valid -eq 0 ] && [ $addons_valid -eq 0 ]
   valid=$?
   if [ $valid -eq 0 ]; then 
     echo -e "\n$colour_green$_valid_text$colour_nc"
@@ -290,6 +295,13 @@ updates."
 ################################################################################
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
+
+function addons_up_to_date() {
+  outdated="$(run_manager_cmd 'print("\n".join(outdated_addons()))')"
+  echo -e "Outdated add-ons:\n${outdated}"
+  [ $(echo "$outdated" | sed '/^\s*$/d' | wc -l) -eq 0 ]
+  return
+}
 
 function env_name() {
   # $1 env string
