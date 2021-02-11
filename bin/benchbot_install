@@ -949,7 +949,7 @@ function uninstall_benchbot() {
     docker rmi $targets; 
   fi
 
-  rm -rfv "$PATH_API" "$PATH_EXAMPLES" "$PATH_EVAL" 2>/dev/null
+  rm -rfv "$PATH_ADDONS" "$PATH_API" "$PATH_EXAMPLES" "$PATH_EVAL" 2>/dev/null
   sudo rm -v "$PATH_SYMLINKS"/benchbot* 2>/dev/null
 
   echo -e "\nFinished uninstalling!"
