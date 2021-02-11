@@ -305,6 +305,19 @@ function install_addons() {
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Installing add-ons based on the request string '${1}':"
   run_manager_cmd 'install_addons("'$1'")' '\n' '\n'
+
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Installing external add-on dependencies:"
+  run_manager_cmd 'install_external_deps()' '\n' '\n'
+
+  printf "\n${colour_blue}%s${colour_nc}\n\n" \
+    "Baking external add-on dependencies into the Docker backend:"
+  docker run --name tmp --detach -it "$DOCKER_TAG_BACKEND" 
+  docker exec -it tmp /bin/bash -c \
+    "$(run_manager_cmd 'print(install_external_deps(True))')"
+  docker commit tmp "$DOCKER_TAG_BACKEND"
+  docker rm -f tmp
+  printf "\n"
 }
 
 function list_addons() {
