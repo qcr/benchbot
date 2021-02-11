@@ -175,7 +175,7 @@ FURTHER DETAILS:
     "
 
 collision_warn="WARNING: Running of environment '%s' in passive mode resulted in a
-collision. This should not happen, so this environment will be rerun!"
+collision. This shouldn't happen, so this environment will be rerun!"
 
 run_err="ERROR: Running of environment '%s' failed with the error printed above.
 Quitting batch execution."
@@ -241,6 +241,7 @@ example=
 example_prefix=
 envs_str=
 envs_batch=
+evaluate_method=
 native=
 prefix="$DEFAULT_PREFIX"
 robot=
