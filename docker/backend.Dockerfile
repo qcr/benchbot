@@ -45,6 +45,13 @@ RUN [ -z "$SIMULATORS" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
     bazel build ... && bazel build ...
 
 # Install benchbot components, ordered by how expensive installation is
+ARG BENCHBOT_MSGS_GIT
+ARG BENCHBOT_MSGS_HASH
+ENV BENCHBOT_MSGS_PATH="/benchbot/benchbot_msgs"
+RUN git clone $BENCHBOT_MSGS_GIT $BENCHBOT_MSGS_PATH && \
+    pushd $BENCHBOT_MSGS_PATH && git checkout $BENCHBOT_MSGS_HASH && \
+    pip install -r requirements.txt && pushd $ROS_WS_PATH && \
+    ln -sv $BENCHBOT_MSGS_PATH src/ && source devel/setup.bash && catkin_make
 ARG BENCHBOT_SIMULATOR_GIT
 ARG BENCHBOT_SIMULATOR_HASH
 ENV BENCHBOT_SIMULATOR_PATH="/benchbot/benchbot_simulator"
@@ -67,13 +74,6 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pip install -r requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
-ARG BENCHBOT_MSGS_GIT
-ARG BENCHBOT_MSGS_HASH
-ENV BENCHBOT_MSGS_PATH="/benchbot/benchbot_msgs"
-RUN git clone $BENCHBOT_MSGS_GIT $BENCHBOT_MSGS_PATH && \
-    pushd $BENCHBOT_MSGS_PATH && git checkout $BENCHBOT_MSGS_HASH && \
-    pip install -r requirements.txt && pushd $ROS_WS_PATH && \
-    ln -sv $BENCHBOT_MSGS_PATH src/ && source devel/setup.bash && catkin_make
 
 # Create a place to mount our add-ons, & install manager dependencies
 ARG ADDONS_PATH
