@@ -59,7 +59,8 @@ RUN [ -z "$SIMULATORS" ] && exit 0 || \
     git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
     source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
-    ./bazelros build //apps/benchbot_simulator && pip install -r requirements.txt
+    ./bazelros build --action_env=BENCHBOT_MSGS_HASH=$BENCHBOT_MSGS_HASH \
+    //apps/benchbot_simulator && pip install -r requirements.txt
 ARG BENCHBOT_SUPERVISOR_GIT
 ARG BENCHBOT_SUPERVISOR_HASH
 ENV BENCHBOT_SUPERVISOR_PATH="/benchbot/benchbot_supervisor"
