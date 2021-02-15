@@ -429,8 +429,7 @@ xhost -local:root > /dev/null
 # Print the output of the Supervisor, watching for failures
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
-docker logs benchbot_supervisor
-docker attach benchbot_supervisor --no-stdin &
+docker logs --follow benchbot_supervisor &
 
 while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
   ([ -z "$simulator_required" ] || \
