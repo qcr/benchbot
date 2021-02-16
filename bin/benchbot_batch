@@ -300,8 +300,6 @@ fi
 ####################### Print settings prior to running ########################
 ################################################################################
 
-trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
-
 header_block "Dumping settings before running batch" $colour_magenta
 
 _ind="$(printf "%0.s " {1..8})"
@@ -337,6 +335,8 @@ printf "$_ind%-25s%s\n\n" "Evalute results batch:" \
 ################################################################################
 ############### Iterate over each of the requested environments ################
 ################################################################################
+
+trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
 
 if [ -z "$envs_list" ]; then
   echo "No environments provided; exiting."
