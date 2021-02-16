@@ -41,12 +41,12 @@ COPY --chown=benchbot:benchbot ${ISAAC_SDK_DIR} ${ISAAC_SDK_SRCS}
 ENV ISAAC_SDK_PATH="/benchbot/isaac_sdk"
 RUN [ -z "$SIMULATORS" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
     tar -xf "$ISAAC_SDK_SRCS/$ISAAC_SDK_TGZ" -C "$ISAAC_SDK_PATH" && \
-    pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh && \
-    bazel build ... && bazel build ...
+    pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh
 
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_MSGS_GIT
 ARG BENCHBOT_MSGS_HASH
+ENV BENCHBOT_MSGS_HASH="$BENCHBOT_MSGS_HASH"
 ENV BENCHBOT_MSGS_PATH="/benchbot/benchbot_msgs"
 RUN git clone $BENCHBOT_MSGS_GIT $BENCHBOT_MSGS_PATH && \
     pushd $BENCHBOT_MSGS_PATH && git checkout $BENCHBOT_MSGS_HASH && \
@@ -58,9 +58,9 @@ ENV BENCHBOT_SIMULATOR_PATH="/benchbot/benchbot_simulator"
 RUN [ -z "$SIMULATORS" ] && exit 0 || \ 
     git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
-    source $ROS_WS_PATH/devel/setup.bash && .isaac_patches/apply_patches && \
-    ./bazelros build --action_env=BENCHBOT_MSGS_HASH=$BENCHBOT_MSGS_HASH \
-    //apps/benchbot_simulator && pip install -r requirements.txt
+    .isaac_patches/apply_patches && source $ROS_WS_PATH/devel/setup.bash && \
+    ./bazelros build //apps/benchbot_simulator && \
+    pip install -r requirements.txt
 ARG BENCHBOT_SUPERVISOR_GIT
 ARG BENCHBOT_SUPERVISOR_HASH
 ENV BENCHBOT_SUPERVISOR_PATH="/benchbot/benchbot_supervisor"
