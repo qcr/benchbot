@@ -358,7 +358,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
   done
-  sleep 5
+  sleep 3
 
   # Run should never die normally, so treat this as an error
   if ! $(ps -p $run_pid &>/dev/null); then

@@ -403,9 +403,13 @@ else
     echo "Docker build returned a non-zero error code: $run_ret"
   else
     xhost +local:root
+    echo "Waiting for Docker network ('$DOCKER_NETWORK') to become available..."
+    while [ -z "$(docker network ls -q -f 'name='$DOCKER_NETWORK)" ]; do
+      sleep 1;
+    done
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
-      --hostname="$SUBMISSION_CONTAINER_NAME" -i -t "$submission_tag" && \
+      --hostname="$SUBMISSION_CONTAINER_NAME" -t "$submission_tag" && \
       run_ret=0 || run_ret=1
     xhost -local:root
   fi
