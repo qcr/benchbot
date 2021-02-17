@@ -4,6 +4,8 @@
 ################### Load Helpers & Global BenchBot Settings ####################
 ################################################################################
 
+set -euo pipefail
+IFS=$'\n\t'
 abs_path=$(readlink -f $0)
 pushd $(dirname $abs_path) > /dev/null
 source .helpers
@@ -20,9 +22,11 @@ $URL_ROBOT $HOSTNAME_ROBOT
 $URL_SUPERVISOR $HOSTNAME_SUPERVISOR
 $URL_DEBUG $HOSTNAME_DEBUG"
 
-# Default program versions to install
-NVIDIA_DEFAULT='nvidia-driver-455'
+# Defaults for the installation process
+ADDONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
+NVIDIA_DEFAULT='nvidia-driver-455'
+SIMULATOR_DEFAULT='sim_unreal'
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -45,46 +49,75 @@ USAGE:
 
 OPTION DETAILS:
 
-    -h,--help
+    -h, --help
             Show this help menu.
 
-    -b,--branch
+    -a, --addons
+            Comma separated list of add-ons to install. Add-ons exist in GitHub
+            repositories, and are specified by their identifier:
+            'username/repo_name'.  Add-on installation also installs all
+            required add-on dependencies.  See add-on manager documentation for
+            details:
+              https://github.com/qcr/benchbot-addons
+
+            Also see '--list-addons' for a details on installed add-ons, and a
+            list of all known BenchBot add-ons.
+
+    -A, --addons-only
+            Only perform the installation of the specified add-ons. Skip all
+            other steps in the install process, including Docker images and
+            local software installation. This flag is useful if you just want
+            to change add-ons inside your working installation.
+
+    -b, --branch
             Specify a branch other than master to install. The only use for
             this flag is active development. The general user will never need
             to use this flag.
 
-    -e,--envs-url
-            Specify a custom URL to look for an \"environment information file\".
-            An \"environment information file\" is a single line file with space-
-            separated fields: MD5 checksum of environments *.zip, URL pointing
-            to the environments *.zip, & plaintext version details. A general
-            user should never need this flag.
-
-            Multiple sets of environments can be installed by providing this
-            flag multiple times:
-                benchbot_install -e https://envs1.com -e https://envs2.com
-
-    -f,--force-clean
+    -f, --force-clean
             Forces an install of the BenchBot software stack from scratch. It
             will run uninstall, then the full install process.
 
+    --list-addons
+            List all currently installed add-ons with their dependency
+            structure noted. Also list all official add-ons available in the
+            'benchbot-addons' GitHub organisation. If you would like to add a
+            community contribution to the community list, please follow the
+            instructions here:
+              https://github.com/qcr/benchbot-addons
+
     --no-simulator
-            Runs installation without installing the Nvidia Isaac simulator.
-            This option is useful for avoiding the excessive space requirements
-            (>100GB) when using the BenchBot software stack on a machine that
-            will only be used with a real robot.
+            Runs installation without installing the Nvidia Isaac Unreal
+            simulator.  This option is useful for avoiding the excessive space
+            requirements (>100GB) when using the BenchBot software stack on a
+            machine that will only be used with a real robot.
 
     --no-update
             Skip checking for updates to the BenchBot software stack, & instead
             jump straight into the installation process.
 
-    -u,--uninstall
+    --remove-addons
+            Comma separated list of add-ons to remove (uses the same syntax as
+            the '--addons' flag). This command will also remove any dependent
+            add-ons as they will no longer work (e.g. if A depends on B, and
+            B is uninstalled, then there is no reason for A to remain). You
+            will be presented with a list of add-ons that will be removed, and
+            prompted before removal commences.
+
+    -s, --simulators
+            Specify simulator/s to install (only 'sim_unreal' is currently
+            supported). Comma-separated lists are accepted to specify multiple
+            simulators. If this option isn't included, the default 'sim_unreal'
+            is installed. This flag will have more practical use in the future
+            when we add Omniverse support.
+
+    -u, --uninstall
             Uninstall the BenchBot software stack from the machine. All BenchBot
             related Docker images will be removed from the system, the API 
             removed from pip, & downloaded files removed from the BenchBot
             install. This flag is incompatible with all other flags.
 
-    -v,--version
+    -v, --version
             Print version info for current installation.
 
 FURTHER DETAILS:
@@ -101,14 +134,6 @@ fix this.
 
 If the error is more generic, please contact us so that we can update our
 pre-install host system checks.
-"
-envs_err="\
-Ensure that the URL: 
-  "'$envs_url'"
-points to a single-line text file with whitespace-separated fields. The first 
-field contains the md5sum of the latest envs_*.zip, second field is URL of 
-envs_*.zip, final field (optional) is YYYYMMDD timestamp of zip. A working 
-internet connection also helps!
 "
 
 ################################################################################
@@ -559,16 +584,15 @@ checks_list_post=(
   "Validating the build against the host system:"
   "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
   "Validating BenchBot libraries on the host system:"
+  "addonscloned"
+  "addonsuptodate"
+  "addonsinstalled"
   "apicloned"
   "apiuptodate"
   "apiinstalled"
-  "examplescloned"
-  "examplesuptodate"
   "evalcloned"
   "evaluptodate"
   "evalinstalled"
-  "batchcloned"
-  "batchuptodate"
   "Integrating BenchBot with the host system:"
   "hostsavail"
   "symlinks"
@@ -609,6 +633,66 @@ if [ -z "$v" ]; then v="cuda-10-1"; fi &&
 sudo apt remove -y "$v" && sudo apt -y autoremove && sudo apt install -y "$v"'
 chk_cudadriverdep_reboot=1
 
+chk_addonscloned_name='BenchBot Add-ons Manager cloned'
+chk_addonscloned_pass='Yes'
+chk_addonscloned_fail='No'
+chk_addonscloned_check=\
+'git -C '"$PATH_ADDONS"' rev-parse --show-toplevel 2>/dev/null'
+chk_addonscloned_eval='[ "$check_result" == "$(realpath '"$PATH_ADDONS"')" ]'
+chk_addonscloned_issue="\
+  The BenchBot Add-ons Manager Python library is not cloned on the host system.
+  Having it installed is required for using add-ons, which contain all of the
+  pre-made content for BenchBot (robots, environments, task definitions,
+  evaluation methods, etc.)."
+chk_addonscloned_fix=\
+'rm -rf '"$PATH_ADDONS"' && 
+git clone '"$GIT_ADDONS $PATH_ADDONS"' &&
+pushd '"$PATH_ADDONS"' && 
+git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
+chk_addonscloned_reboot=1
+
+chk_addonsuptodate_name='BenchBot Add-ons Manager up-to-date'
+chk_addonsuptodate_pass='Up-to-date'
+chk_addonsuptodate_fail='Outdated'
+chk_addonsuptodate_check=\
+'[ -d '"$PATH_ADDONS"' ] && git -C '"$PATH_ADDONS"' rev-parse HEAD && 
+git ls-remote '"$GIT_ADDONS"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
+chk_addonsuptodate_eval='[ ! -z "$check_result" ] && 
+  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
+chk_addonsuptodate_issue="\
+  The version of the BenchBot Add-ons Manager Python library on the host system
+  is out of date. The current version hash & latest version hash respectively
+  are:
+
+"'$check_result'"
+
+  Please move to the latest version."
+chk_addonsuptodate_fix=\
+'pushd '"$PATH_ADDONS"' && 
+git fetch --all && git checkout -- . &&
+(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
+git pull && popd'
+chk_addonsuptodate_reboot=1
+
+chk_addonsinstalled_name='BenchBot Add-ons Manager installed'
+chk_addonsinstalled_pass='Available'
+chk_addonsinstalled_fail='Not found'
+chk_addonsinstalled_check=\
+'python3 -c '"'"'import benchbot_addons; print(benchbot_addons.__file__);'"'"' \
+  2>/dev/null'
+chk_addonsinstalled_eval='[ ! -z "$check_result" ]'
+chk_addonsinstalled_issue="\
+  BenchBot Add-ons Manager was not found in Python. It is either not installed,
+  or the current terminal is not correctly sourcing your installed Python
+  packages (could be a virtual environment, conda, ROS, etc).
+
+  Please do not run the automatic fix if you intend to source a different Python
+  environment before running BenchBot."
+chk_addonsinstalled_fix=\
+'pushd '"$PATH_ADDONS"' &&  
+python3 -m pip install -e . && popd'
+chk_addonsinstalled_reboot=1
+
 chk_apicloned_name='BenchBot API cloned'
 chk_apicloned_pass='Yes'
 chk_apicloned_fail='No'
@@ -616,7 +700,7 @@ chk_apicloned_check=\
 'git -C '"$PATH_API"' rev-parse --show-toplevel 2>/dev/null'
 chk_apicloned_eval='[ "$check_result" == "$(realpath '"$PATH_API"')" ]'
 chk_apicloned_issue="\
-  The BenchBot API python library is not cloned on the host system. Having it
+  The BenchBot API Python library is not cloned on the host system. Having it
   installed significantly improves the development experience, & allows you to
   run your submissions natively without containerisation."
 chk_apicloned_fix=\
@@ -635,7 +719,7 @@ git ls-remote '"$GIT_API"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
 chk_apiuptodate_eval='[ ! -z "$check_result" ] && 
   [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_apiuptodate_issue="\
-  The version of the BenchBot API python library on the host system is out of
+  The version of the BenchBot API Python library on the host system is out of
   date. The current version hash & latest version hash respectively are:
 
 "'$check_result'"
@@ -656,55 +740,16 @@ chk_apiinstalled_check=\
   2>/dev/null'
 chk_apiinstalled_eval='[ ! -z "$check_result" ]'
 chk_apiinstalled_issue="\
-  BenchBot API was not found in python. It is either not installed, or the 
-  current terminal is not correctly sourcing your installed python packages 
+  BenchBot API was not found in Python. It is either not installed, or the 
+  current terminal is not correctly sourcing your installed Python packages 
   (could be a virtual environment, conda, ROS, etc).
 
-  Please do not run the automatic fix if you intend to source a different python
+  Please do not run the automatic fix if you intend to source a different Python
   environment before running BenchBot."
 chk_apiinstalled_fix=\
 'pushd '"$PATH_API"' &&  
 python3 -m pip install -e . && popd'
 chk_apiinstalled_reboot=1
-
-chk_examplescloned_name='BenchBot examples cloned'
-chk_examplescloned_pass='Yes'
-chk_examplescloned_fail='No'
-chk_examplescloned_check=\
-'git -C '"$PATH_EXAMPLES"' rev-parse --show-toplevel 2>/dev/null'
-chk_examplescloned_eval='[ "$check_result" == "$(realpath '"$PATH_EXAMPLES"')" ]'
-chk_examplescloned_issue="\
-  The BenchBot examples python library is not cloned on the host system. Having
-  it installed provides hands on examples to get up & running with the BenchBot
-  system, including introductions to all of the different challenge modes."
-chk_examplescloned_fix=\
-'rm -rf '"$PATH_EXAMPLES"' && 
-git clone '"$GIT_EXAMPLES $PATH_EXAMPLES"' &&
-pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
-chk_examplescloned_reboot=1
-
-chk_examplesuptodate_name='BenchBot examples up-to-date'
-chk_examplesuptodate_pass='Up-to-date'
-chk_examplesuptodate_fail='Outdated'
-chk_examplesuptodate_check=\
-'[ -d '"$PATH_EXAMPLES"' ] && git -C '"$PATH_EXAMPLES"' rev-parse HEAD && 
-git ls-remote '"$GIT_EXAMPLES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_examplesuptodate_eval='[ ! -z "$check_result" ] &&
-  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
-chk_examplesuptodate_issue="\
-  The version of the BenchBot examples python library on the host system is out
-  of date. The current version hash & latest version hash respectively are:
-
-"'$check_result'"
-
-  Please move to the latest version."
-chk_examplesuptodate_fix=\
-'pushd '"$PATH_EXAMPLES"' && 
-git fetch --all && git checkout -- . &&
-(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
-git pull && popd'
-chk_examplesuptodate_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
 chk_evalcloned_pass='Yes'
@@ -713,9 +758,9 @@ chk_evalcloned_check=\
 'git -C '"$PATH_EVAL"' rev-parse --show-toplevel 2>/dev/null'
 chk_evalcloned_eval='[ "$check_result" == "$(realpath '"$PATH_EVAL"')" ]'
 chk_evalcloned_issue="\
-  The BenchBot evaluation python library is not cloned on the host system. Having it
-  installed allows you to evaluate the performance of your semantic scene
-  understanding algorithms directly from your machine."
+  The BenchBot evaluation Python library is not cloned on the host system.
+  Having it installed allows you to evaluate the performance of your semantic
+  scene understanding algorithms directly from your machine."
 chk_evalcloned_fix=\
 'rm -rf '"$PATH_EVAL"' && 
 git clone '"$GIT_EVAL $PATH_EVAL"' &&
@@ -732,7 +777,7 @@ git ls-remote '"$GIT_EVAL"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
 chk_evaluptodate_eval='[ ! -z "$check_result" ] &&
   [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
 chk_evaluptodate_issue="\
-  The version of the BenchBot evaluation python library on the host system is
+  The version of the BenchBot evaluation Python library on the host system is
   out of date. The current version hash & latest version hash respectively are:
 
 "'$check_result'"
@@ -753,55 +798,16 @@ chk_evalinstalled_check=\
   2>/dev/null'
 chk_evalinstalled_eval='[ ! -z "$check_result" ]'
 chk_evalinstalled_issue="\
-  BenchBot evaluation was not found in python. It is either not installed, or
-  the current terminal is not correctly sourcing your installed python packages
+  BenchBot evaluation was not found in Python. It is either not installed, or
+  the current terminal is not correctly sourcing your installed Python packages
   (could be a virtual environment, conda, ROS, etc).
 
-  Please do not run the automatic fix if you intend to source a different python
+  Please do not run the automatic fix if you intend to source a different Python
   environment before running BenchBot."
 chk_evalinstalled_fix=\
 'pushd '"$PATH_EVAL"' && 
 python3 -m pip install -e . && popd'
 chk_evalinstalled_reboot=1
-
-chk_batchcloned_name='BenchBot batches cloned'
-chk_batchcloned_pass='Yes'
-chk_batchcloned_fail='No'
-chk_batchcloned_check=\
-'git -C '"$PATH_BATCHES"' rev-parse --show-toplevel 2>/dev/null'
-chk_batchcloned_eval='[ "$check_result" == "$(realpath '"$PATH_BATCHES"')" ]'
-chk_batchcloned_issue="\
-  The BenchBot batches library contains definitions for environment batches.
-  Environment batches robustly select a set of environments that may be
-  required, like in challenges using BenchBot."
-chk_batchcloned_fix=\
-'rm -rf '"$PATH_BATCHES"' && 
-git clone '"$GIT_BATCHES $PATH_BATCHES"' &&
-pushd '"$PATH_BATCHES"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
-chk_batchcloned_reboot=1
-
-chk_batchuptodate_name='BenchBot batches up-to-date'
-chk_batchuptodate_pass='Up-to-date'
-chk_batchuptodate_fail='Outdated'
-chk_batchuptodate_check=\
-'[ -d '"$PATH_BATCHES"' ] && git -C '"$PATH_BATCHES"' rev-parse HEAD && 
-git ls-remote '"$GIT_BATCHES"' $BRANCH_DEFAULT | awk '"'"'{print $1}'"'"
-chk_batchuptodate_eval='[ ! -z "$check_result" ] &&
-  [ $(echo "$check_result" | uniq | wc -l) -eq 1 ]'
-chk_batchuptodate_issue="\
-  The version of BenchBot batches on the host system is out of date. The
-  current version hash & latest version hash respectively are:
-
-"'$check_result'"
-
-  Please move to the latest version."
-chk_batchuptodate_fix=\
-'pushd '"$PATH_BATCHES"' && 
-git fetch --all && git checkout -- . &&
-(git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
-git pull && popd'
-chk_batchuptodate_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
 chk_hostsavail_pass='Found'
@@ -865,7 +871,7 @@ function handle_requirement() {
   # Perform the check, printing the result & resolving issues if possible
   retval=0
   printf "\t$name: "
-  check_result=$(eval "$check")
+  check_result=$(eval "$check") && true
   printf "\033[46G"
   if $(eval $evaluate); then 
     printf "${colour_green}%35s" "${pass//'$check_result'/$check_result}"
@@ -943,7 +949,7 @@ function uninstall_benchbot() {
     docker rmi $targets; 
   fi
 
-  rm -rfv "$PATH_API" "$PATH_EXAMPLES" "$PATH_EVAL" 2>/dev/null
+  rm -rfv "$PATH_ADDONS" "$PATH_API" "$PATH_EXAMPLES" "$PATH_EVAL" 2>/dev/null
   sudo rm -v "$PATH_SYMLINKS"/benchbot* 2>/dev/null
 
   echo -e "\nFinished uninstalling!"
@@ -957,35 +963,46 @@ function uninstall_benchbot() {
 trap cleanup_terminal EXIT
 
 # Safely parse options input
-input=$@
-parse_out=$(getopt -o hb:e:fuv \
-  --long help,branch:,envs-url:,force-clean,uninstall,no-simulator,no-update,version \
-  -n "$(basename "$abs_path")" -- "$@")
+input=("$@")
+_args="help,addons:,addons-only:,branch:,force-clean,uninstall,list-addons,\
+no-simulator,no-update,remove-addons:,simulators:,version"
+parse_out=$(getopt -o ha:A:b:fs:uv --long $_args -n "$(basename "$abs_path")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
-updates_skip=
+addons=
 no_simulator=
-envs_urls=()
+simulators="$SIMULATOR_DEFAULT"
+updates_skip=
 while true; do
   case "$1" in
     -h|--help)
       echo "$usage_text" ; exit 0 ;;
+    -a|--addons)
+      addons="$2"; shift 2 ;;
+    -A|--addons-only)
+      install_addons "$2"; exit 0 ;;
     -b|--branch)
       # This is a real dirty way to do this... sorry
       BRANCH_DEFAULT="$2"; shift 2
-      echo "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
-    -e|--envs-url)
-      envs_urls+=("$2"); shift 2 ;;
+      printf "\n${colour_yellow}%s${colour_nc}\n" \
+        "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
+    -s|--simulators)
+      simulators="$2"; shift 2 ;;
     -u|--uninstall)
       uninstall_benchbot; exit ;;
     -v|--version)
       print_version_info; exit ;;
+    --list-addons)
+      list_addons; exit ;;
     --no-simulator)
       no_simulator=1; shift ;;
     --no-update)
       updates_skip=1; shift ;;
+    --remove-addons)
+      remove_addons "$2"; exit ;;
     --)
       shift ; break ;;
     *)
@@ -993,22 +1010,17 @@ while true; do
   esac
 done
 
-# Use the default environments URL if none was provided, & sort them so some of
-# our Docker caching & env checking later on has an easier time
-if [ -z "$envs_urls" ]; then
-  envs_urls=("$([ -z "$no_simulator" ] && \
-    echo "${URLS_ENVS_INFO_FULL_DEFAULT[@]}" || \
-    echo "${URLS_ENVS_INFO_LITE_DEFAULT[@]}")")
-fi
-envs_urls=($(echo "${envs_urls[@]}" | tr ' ' '\n' | sort | tr '\n' ' '))
+# Sanitise argument values
+if [ -z "$addons" ]; then addons="$ADDONS_DEFAULT"; fi
+if [ ! -z "$no_simulator" ]; then simulators=""; fi
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
   header_block "CHECKING BENCHBOT SCRIPTS VERSION" ${colour_blue}
 
   echo -e "\nFetching latest hash for Benchbot scripts ... "
-  _benchbot_info=$(is_latest_benchbot $BRANCH_DEFAULT)
-  is_latest=$?
+  _benchbot_info=$(is_latest_benchbot $BRANCH_DEFAULT) && is_latest=0 || \
+    is_latest=1
   benchbot_latest_hash=$(echo "$_benchbot_info" | latest_version_info | \
     cut -d ' ' -f 1)
   echo -e "\t\t$benchbot_latest_hash."
@@ -1020,7 +1032,7 @@ if [ -z "$updates_skip" ]; then
       "restarting install script ...\n${colour_nc}"
     git fetch --all && git checkout -- . && git checkout "$benchbot_latest_hash"
     echo -e "\n${colour_yellow}Done.${colour_nc}"
-    popd > /dev/null && exec $0 $input --no-update
+    popd > /dev/null && exec $0 ${input[@]} --no-update
   else
     echo -e "$_benchbot_info"
     exit 1
@@ -1031,10 +1043,11 @@ fi
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
 # Patch in any values that can only be determined at runtime
-if [ ! -z "$no_simulator" ]; then
+# TODO clean this all up for use with multiple simulators...
+if [ -z "$simulators" ]; then
   checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
 fi
-_sz=$([ -z "$no_simulator" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
+_sz=$([ ! -z "$simulators" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
 chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
 chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
@@ -1045,10 +1058,12 @@ for c in "${checks_list_pre[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
   elif [ ! -z "$c" ]; then
+    set +e
     handle_requirement "$c"
     res=$?
+    set -e
     if [ $res -eq 2 ]; then
-      popd > /dev/null && exec $0 $input --no-update
+      popd > /dev/null && exec $0 ${input[@]}
     elif [ $res -eq 1 ]; then
       exit 1
     fi
@@ -1073,73 +1088,51 @@ fi
 header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 
 # Get the latest commit hashes for each of our git repos
-if [ -z "$no_simulator" ]; then
+# TODO adapt this to handle multiple simulators...
+hash_fail_msg="Failed (check Internet connection & valid branch name!). Exiting."
+if [ ! -z "$simulators" ]; then
   echo -e "\nFetching latest hash for BenchBot Simulator ... "
-  benchbot_simulator_hash=$(is_latest_benchbot_simulator $BRANCH_DEFAULT | \
-    latest_version_info)
-if [ -z "$benchbot_simulator_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
-  exit 1
-fi
+  benchbot_simulator_hash=$( (is_latest_benchbot_simulator $BRANCH_DEFAULT || \
+    true) | latest_version_info)
+  if [ -z "$benchbot_simulator_hash" ]; then
+    printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
+    exit 1
+  fi
   echo -e "\t\t$benchbot_simulator_hash."
 fi
 echo "Fetching latest hash for BenchBot Robot Controller ... "
-benchbot_controller_hash=$(is_latest_benchbot_controller $BRANCH_DEFAULT | \
-  latest_version_info)
+benchbot_controller_hash=$( (is_latest_benchbot_controller $BRANCH_DEFAULT || \
+  true) | latest_version_info)
 if [ -z "$benchbot_controller_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_controller_hash."
 echo "Fetching latest hash for BenchBot Supervisor ... "
-benchbot_supervisor_hash=$(is_latest_benchbot_supervisor $BRANCH_DEFAULT | \
-  latest_version_info)
+benchbot_supervisor_hash=$( (is_latest_benchbot_supervisor $BRANCH_DEFAULT || \
+  true) | latest_version_info)
 if [ -z "$benchbot_supervisor_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_supervisor_hash."
 echo "Fetching latest hash for BenchBot API ... "
-benchbot_api_hash=$(is_latest_benchbot_api $BRANCH_DEFAULT | \
+benchbot_api_hash=$( (is_latest_benchbot_api $BRANCH_DEFAULT || true) | \
   latest_version_info)
 if [ -z "$benchbot_api_hash" ]; then
-  printf "\n\n${colour_red}%s${colour_nc}\n\n" \
-    "Failed (check Internet connection!). Exiting."
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
   exit 1
 fi
 echo -e "\t\t$benchbot_api_hash."
 
-# Get md5sum of the latest from the provided envs_url
-echo -e "\nFetching md5sum & URL for latest version of environments ... "
-benchbot_envs_md5sums=()
-benchbot_envs_urls=()
-for i in "${!envs_urls[@]}"; do
-  u="${envs_urls[$i]}"
-  echo -e "\t$u ... "
-
-  _info=$(is_latest_benchbot_envs "$u" "$i" | latest_version_info)
-  _md5sum=$(echo "$_info" | cut -d ' ' -f1)
-  _url=$(echo "$_info" | cut -d ' ' -f2)
-  if [ -z "$_md5sum" ] || [[ ! "$_md5sum" =~ ^[a-f0-9]{32}$ ]]; then
-    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
-      "ERROR: Failed to fetch valid MD5SUM for environments" \
-      "${envs_err/'$envs_url'/$u}"
-    exit 1
-  elif [ -z "$_url" ] || \
-      [[ ! "$_url" =~ ^https://[-A-Za-z0-9\+@#/%?=~_|:,.";&!"]*$ ]]; then
-    printf "\n\n${colour_red}%s\n\n%s${colour_nc}\n" \
-      "ERROR: Failed to fetch valid URL for environments" \ 
-      "${envs_err/'$envs_url'/$u}"
-    exit 1
-  fi
-
-  benchbot_envs_md5sums+=("$_md5sum")
-  benchbot_envs_urls+=("$_url")
-  echo -e "\t\tDone."
-done
+echo "Fetching latest hash for BenchBot ROS Messages ... "
+benchbot_msgs_hash=$( (is_latest_benchbot_msgs $BRANCH_DEFAULT || true) | \
+  latest_version_info)
+if [ -z "$benchbot_msgs_hash" ]; then
+  printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n"
+  exit 1
+fi
+echo -e "\t\t$benchbot_msgs_hash."
 
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
@@ -1161,8 +1154,8 @@ docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
-  --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT
-build_ret=$?
+  --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT && \
+  build_ret=0 || build_ret=1
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
     "ERROR: Building BenchBot \"core\" returned a non-zero error code" \
@@ -1171,49 +1164,37 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build the BenchBot Backend Docker image
-backend_dockerfile=$([ -z "$no_simulator" ] && \
-  echo "$PATH_DOCKERFILE_BACKEND" || echo "$PATH_DOCKERFILE_BACKEND_LITE")
-backend_name="$(basename "$backend_dockerfile")"
+# TODO adapt this to handle multiple simulators
 printf "\n${colour_blue}%s${colour_nc}\n" \
-  "BUILDING BENCHBOT BACKEND DOCKER IMAGE ($backend_name):"
-docker build -t "$DOCKER_TAG_BACKEND" -f "$backend_dockerfile" \
-  --build-arg ISAAC_SDK_TGZ="${sdk_file}" \
-  --build-arg BENCHBOT_ENVS_MD5SUMS="${benchbot_envs_md5sums[*]}" \
-  --build-arg BENCHBOT_ENVS_URLS="${benchbot_envs_urls[*]}" \
-  --build-arg BENCHBOT_ENVS_SRCS="${envs_urls[*]}" \
-  --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}"\
-  --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}"\
+  "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
+docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
+  --build-arg SIMULATORS="$simulators" \
+  --build-arg ISAAC_SDK_DIR="$(dirname "$sdk_file")" \
+  --build-arg ISAAC_SDK_TGZ="$(basename "$sdk_file")" \
+  --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
+  --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
+  --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
+  --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
   --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
-  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" $PATH_ROOT
-build_ret=$?
+  --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" \
+  --build-arg ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT && \
+  build_ret=0 || build_ret=1
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
-    "ERROR: Building BenchBot \"${backend_name%.*}\" returned a non-zero error code" \
+    "ERROR: Building BenchBot backend returned a non-zero error code" \
     "$build_ret"
   exit 1
 fi
-
-# Pull out ground truth files from the simulator
-rm -rf "$PATH_GROUND_TRUTH"
-for i in "${!envs_urls[@]}"; do
-  location=$(docker run --name ground_truth "$DOCKER_TAG_BACKEND" \
-    /bin/bash -c 'p="$BENCHBOT_ENVS_PATH/'$i'/'$FILENAME_ENV_GROUND_TRUTH'"; \
-    [ -d "$p" ] && echo "$p" || echo ""')
-  if [ ! -z "$location" ]; then
-    docker cp ground_truth:"$location" "$PATH_GROUND_TRUTH" 
-  fi
-  docker rm -f ground_truth
-done
 
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SUBMISSION DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
-  --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT
-build_ret=$?
+  --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT && \
+  build_ret=0 || build_ret=1
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
     "ERROR: Building BenchBot \"submission\" returned a non-zero error code" \
@@ -1240,5 +1221,11 @@ for c in "${checks_list_post[@]}"; do
   fi
 done
 
+# PART 5: Installing requested BenchBot Add-ons
+printf "\n"
+header_block "PART 5: INSTALLING BENCHBOT ADD-ONS" $colour_blue
+
+install_addons "$addons"
+
 # We are finally done...
-echo -e "\nFinished!"
+echo -e "Finished!"

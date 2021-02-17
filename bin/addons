@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#
+# Bash script for simplifying calls to the add-on manager
+#
+# Usage:
+#   $1 = command to run (required)
+#   $2 = string to print before command output (optional)
+#   $3 = string to print after command output (optional)
+set -euo pipefail
+IFS=$'\n\t'
+
+if [ ! -z "${2-}" ]; then printf "$2"; fi
+python3 -c 'from benchbot_addons.manager import *; '"$1"
+if [ ! -z "${3-}" ]; then printf "$3"; fi

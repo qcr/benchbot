@@ -16,8 +16,8 @@ RUN apt update && apt install -yq wget gnupg2 software-properties-common git \
 ARG NVIDIA_DRIVER_VERSION
 ARG CUDA_DRIVERS_VERSION
 ARG CUDA_VERSION
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,display,graphics,utility
+ENV NVIDIA_VISIBLE_DEVICES="all"
+ENV NVIDIA_DRIVER_CAPABILITIES="compute,display,graphics,utility"
 RUN add-apt-repository ppa:graphics-drivers && \
     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
     mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \

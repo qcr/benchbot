@@ -1,9 +1,7 @@
 *.sw*
-id_rsa
+__pycache__/
 
 # We never want to track BenchBot components
+addons/
 api/
-batches/
 eval/
-examples/
-ground_truth/
