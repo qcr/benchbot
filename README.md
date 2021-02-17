@@ -13,7 +13,7 @@ This led us to create version 2 of BenchBot with a focus on allowing users to de
 
 The "bench" in "BenchBot" refers to benchmarking, with our goal to provide a system that greatly simplifies the benchmarking of novel algorithms in both realistic 3D simulation and on real robot platforms. If there is something else you would like to use BenchBot for (like integrating different simulators), please let us know. We're very interested in BenchBot being the glue between your novel robotics research and whatever your robot platform may be.
 
-This repository contains the software stack needed to develop solutions for BenchBot tasks on your local machine. It installs and configures a significant amount of software for you, wraps software in stable Docker images (~120GB), and provides simple interaction with the stack through 4 basic scripts: `benchbot_install`, `benchbot_run`, `benchbot_submit`, and `benchbot_eval`.
+This repository contains the software stack needed to develop solutions for BenchBot tasks on your local machine. It installs and configures a significant amount of software for you, wraps software in stable Docker images (~50GB), and provides simple interaction with the stack through 4 basic scripts: `benchbot_install`, `benchbot_run`, `benchbot_submit`, and `benchbot_eval`.
 
 ## System recommendations and requirements
 
@@ -22,7 +22,7 @@ The BenchBot software stack is designed to run seamlessly on a wide number of sy
 - Nvidia Graphics card (GeForce GTX 1080 minimum, Titan XP+ / GeForce RTX 2070+ recommended)
 - CPU with multiple cores (Intel i7-6800K minimum)
 - 32GB+ RAM
-- 128GB+ spare storage (an SSD storage device is **strongly** recommended)
+- 64GB+ spare storage (an SSD storage device is **strongly** recommended)
 
 Having a system that meets the above hardware requirements is all that is required to begin installing the BenchBot software stack. The install script analyses your system configuration and offers to install any missing software components interactively. The list of 3rd party software components involved includes:
 
