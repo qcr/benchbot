@@ -381,9 +381,10 @@ if [ "$mode" == "native" ]; then
   # This is native submission mode
   echo -e \
     "Running submission natively via command:\n\t'$config_cmd' ...\n"
-  eval "$config_cmd" &
-  active_pid=$!
-  wait $active_pid && run_ret=0 || run_ret=1
+  set +e
+  eval "$config_cmd"
+  run_ret=$?
+  set -e
 elif [ "$mode" == "submission" ]; then
   # This is bundling up submission mode
   echo -e "Bundling up submission from '$config_dir' ...\n"
@@ -407,10 +408,12 @@ else
     while [ -z "$(docker network ls -q -f 'name='$DOCKER_NETWORK)" ]; do
       sleep 1;
     done
+    set +e
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
-      --hostname="$SUBMISSION_CONTAINER_NAME" -t "$submission_tag" && \
-      run_ret=0 || run_ret=1
+      --hostname="$SUBMISSION_CONTAINER_NAME" -t "$submission_tag"
+    run_ret=$?
+    set -e
     xhost -local:root
   fi
   popd >/dev/null
