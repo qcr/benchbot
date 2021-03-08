@@ -31,6 +31,9 @@ HOSTNAME_ROS="benchbot_ros"
 HOSTNAME_ROBOT="benchbot_robot"
 HOSTNAME_SUPERVISOR="benchbot_supervisor"
 
+LOCAL_ADDONS_USER=".local"
+LOCAL_ADDONS_NAME="my_addons"
+
 MD5_ISAAC_SDK="06387f9c7a02afa0de835ef07927aadf"
 
 PATH_ROOT="$(realpath ..)"
@@ -291,6 +294,7 @@ updates."
   return $valid
 }
 
+
 ################################################################################
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
@@ -313,6 +317,13 @@ function env_variant() {
 }
 
 function install_addons() {
+  printf "\n${colour_blue}%s${colour_nc}\n\n" \
+    "Configuring locations for local add-on content:"
+  folders="$(run_manager_cmd 'print(addon_path("'$LOCAL_ADDONS_USER'", \
+    "'$LOCAL_ADDONS_NAME'"))')/{$(run_manager_cmd \
+    'print(",".join(SUPPORTED_TYPES))')}"
+  eval echo $folders | xargs mkdir -pv
+  printf "Created '$folders'.\n"
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Installing add-ons based on the request string '${1}':"
   run_manager_cmd 'install_addons("'$1'")' '\n' '\n'
