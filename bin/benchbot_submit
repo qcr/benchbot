@@ -171,7 +171,7 @@ function exit_gracefully() {
 
   # Pass the signal to the currently running process
   if [ ! -z "$active_pid" ]; then
-    kill -TERM $active_pid &> /dev/null
+    kill -TERM $active_pid &> /dev/null || true
     wait $active_pid || true
     active_pid=
   fi
@@ -429,6 +429,7 @@ fi
 if [ $run_ret -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
     "Submission failed with result error code" "$run_ret"
+  exit_gracefully "$mode"
   exit $run_ret
 fi
 
