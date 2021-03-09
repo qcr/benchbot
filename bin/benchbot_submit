@@ -58,7 +58,7 @@ USAGE:
 
     Submit, compile into a containerised environment, run the container on your
     machine, & evaluate the results which are also saved to 'my_results.json':
-        $(basename "$0") [-e|--evaluate-results] \\
+        $(basename "$0") [-e|--evaluate-with] \\
           [-r|--results-location] 'my_results.json' \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
  
@@ -277,7 +277,7 @@ function warning_mode() {
 ################################################################################
 
 # Safely parse options input
-_args="evaluate-results:,example:,help,containerised,list-examples,native,\
+_args="evaluate-with:,example:,help,containerised,list-examples,native,\
 results-location:,show-example:,submission,version"
 parse_out=$(getopt -o e:E:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -290,7 +290,7 @@ mode_dup=
 results_location=
 while true; do
   case "$1" in
-    -e|--evaluate-results)
+    -e|--evaluate-with)
       evaluate_method="$2" ; shift 2 ;;
     -E|--example)
       example="$2"; shift 2 ;;

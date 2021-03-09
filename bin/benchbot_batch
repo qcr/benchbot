@@ -36,8 +36,8 @@ The $(basename "$0") script is roughly equivalent to the following:
     if [-z|--zip]:
       zip PREFIX.zip PREFIX_[0-9]*.json
 
-    if [-s|--score-results]:
-      benchbot_eval -o PREFIX_scores.json PREFIX_[0-9]*.json
+    if [--evaluate-with]:
+      benchbot_eval -m EVAL_METHOD -o PREFIX_scores.json PREFIX_[0-9]*.json
 
 As such, see the help documentation for 'benchbot_run', 'benchbot_submit', &
 'benchbot_eval' for further details about how each of the below arguments work.
@@ -57,10 +57,10 @@ USAGE:
     Run a submission for the scd:active:dead_reckoning task in a containerised
     environment, for a list of scenes specified in the environment batch called
     'challenge_1', saving the results with the prefix 'mix'. Then evaluate the
-    results to produce a final score:
+    results using 'omq' to produce a final score:
         $(basename "$0") [-t|--task] scd:active:dead_reckoning \\
-          [-E|--envs-batch] challenge_1 [-p|--prefix] mix [-s|--score-results] \\
-          [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+          [-E|--envs-batch] challenge_1 [-p|--prefix] mix \\
+          [--evaluate-with] omq [-c|--containerised] DIRECTORY_FOR_SUBMISSION
 
         ... (contents of 'challenge_1' batch) ...
         name: challenge:1
@@ -135,22 +135,18 @@ OPTION DETAILS:
 
     --evaluate-with
             Name of the evaluation method to use for evaluation of results
-            batch produced by $(basename "$0"). No evaluation will be
-            performed unless this option is provided. 
+            batch produced by $(basename "$0"). Scores from each result in the
+            batch are then combined, to give a summary score for the selected
+            task. Evaluation will only be performed if this option is provided. 
             
             This option assumes your submission saves results to the location
             referenced by 'benchbot_api.RESULT_LOCATION' (currently
             '/tmp/benchbot_result'). Evaluation will not work as expected
             results are not saved to that location.
 
-            The name of the evaluation method to use to perform evaluation on
-            the batch of results produced by $(basename "$0").  The scores from
-            each results file in the batch are then combined into a final set
-            of scores for your algorithm, on the tested task.  See 
-            '-m, --method' in 'benchbot_eval' for supported methods and
-            'benchbot_eval --help' for details of how scores are combined. If
-            this isn't provided, results will be saved to disk with no
-            evaluation performed.
+            See '--list-methods' in 'benchbot_eval' for a list of supported
+            methods, and 'benchbot_eval --help' for a description of the
+            scoring process.
 
     --show-batch
             Prints information about the provided batch name if installed. The
@@ -239,7 +235,7 @@ function validate_envs() {
 
 # Safely parse options input
 _args='envs:,envs-batch:,example:,containerised,help,list-batches,native,\
-prefix:,robot:,score-results:,show-batch,task:,version,zip'
+prefix:,robot:,evaluate-with:,show-batch,task:,version,zip'
 parse_out=$(getopt -o e:E:chnp:r:s:t:vz --long "$_args" -n "$(basename "$0")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -265,6 +261,8 @@ while true; do
       envs_str="$2" ; shift 2 ;;
     -E|--envs-batch)
       envs_batch="$2" ; shift 2 ;;
+    --evaluate-with)
+      evaluate_method="$2"; shift 2 ;;
     --example)
       example="$2" ; example_prefix="--example" ; shift 2 ;;
     -h|--help)
@@ -277,8 +275,6 @@ while true; do
       prefix="$2"; shift 2 ;;
     -r|--robot)
       robot="$2"; shift 2 ;;
-    -s|--score-results)
-      evaluate_method="$2"; shift 2 ;;
     --show-batch)
       show_content "batches" "$2" 2; exit $? ;;
     -t|--task)
