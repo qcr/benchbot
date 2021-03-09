@@ -314,6 +314,14 @@ function env_variant() {
 }
 
 function install_addons() {
+  dirty=($(run_manager_cmd 'print("\n".join(dirty_addons()))'))
+  if [ ${#dirty[@]} -gt 0 ]; then
+    printf "\n${colour_yellow}%s%s\n" \
+      "WARNING: the following add-ons have local uncomitted changes. Commit or" \
+      " delete them if you would like to return to a stable state."
+    printf "\n\t%s" "${dirty[@]}"
+    printf "${colour_nc}\n"
+  fi
   printf "\n${colour_blue}%s${colour_nc}\n\n" \
     "Configuring locations for local add-on content:"
   folders="$(run_manager_cmd 'print(local_addon_path())')/{$(run_manager_cmd \
