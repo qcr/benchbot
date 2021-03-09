@@ -84,13 +84,19 @@ OPTION DETAILS:
 
             (use '--list-examples' to see a list of installed example)
 
-    -e, --evaluate-results
-            Evaluation method to use for evaluation on the provided submission
-            after it has finished running. No evaluation will be run if this
-            flag isn't provided.  This assumes your submission saves results to
-            the location referenced by 'benchbot_api.RESULT_LOCATION'
-            (currently '/tmp/benchbot_result').  Evaluation will not work as
-            expected if the submission saves results in any other location.
+    -e, --evaluate-with
+            Name of the evaluation method to use for evaluation of the provided
+            submission after it has finished running. Evaluation will only be
+            performed if this option is provided. 
+            
+            This option assumes your submission saves results to the location
+            referenced by 'benchbot_api.RESULT_LOCATION' (currently
+            '/tmp/benchbot_result'). Evaluation will not work as expected
+            results are not saved to that location.
+
+            See '--list-methods' in 'benchbot_eval' for a list of supported
+            methods, and 'benchbot_eval --help' for a description of the
+            scoring process.
 
     --list-examples
             List all available examples. The listed examples are printed in the

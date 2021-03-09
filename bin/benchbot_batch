@@ -133,7 +133,16 @@ OPTION DETAILS:
             further details on specifying valid robots, & 'benchbot_run
             --list-robots' for a complete list of supported robots.
 
-    -s, --score-results
+    --evaluate-with
+            Name of the evaluation method to use for evaluation of results
+            batch produced by $(basename "$0"). No evaluation will be
+            performed unless this option is provided. 
+            
+            This option assumes your submission saves results to the location
+            referenced by 'benchbot_api.RESULT_LOCATION' (currently
+            '/tmp/benchbot_result'). Evaluation will not work as expected
+            results are not saved to that location.
+
             The name of the evaluation method to use to perform evaluation on
             the batch of results produced by $(basename "$0").  The scores from
             each results file in the batch are then combined into a final set
