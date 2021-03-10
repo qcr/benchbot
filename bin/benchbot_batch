@@ -290,8 +290,7 @@ while true; do
   esac
 done
 
-# Process envs & envs-file here (defer all other argument evaluation to the
-# appropriate scripts which use the values)
+# Bail if any of the requested configurations are invalid
 err="$(validate_envs "$envs_str" "$envs_batch")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 if [ ! -z "$envs_str" ]; then
@@ -299,6 +298,10 @@ if [ ! -z "$envs_str" ]; then
 elif [ ! -z "$envs_batch" ]; then
   envs_list=($(run_manager_cmd 'print("\n".join(get_value_by_name(\
     "batches", "'$envs_batch'", "environments")))'))
+err="$(validate_content "robots" "$robot")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+err="$(validate_content "tasks" "$task")"
+if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 fi
 
 ################################################################################

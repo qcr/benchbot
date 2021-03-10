@@ -433,6 +433,34 @@ function show_environment() {
   :
 }
 
+function submission_command() {
+  # $1 example name, $2 mode_args
+  if [[ -z "$2" && ! -z "$1" ]]; then
+    echo "pushd $(dirname $(run_manager_cmd 'print(get_match(\
+      "examples", [("name", "'$1'")]))')); $(run_manager_cmd 'print(\
+      get_value_by_name("examples", "'$1'", "native_command"))'); popd"
+  else
+    echo "$2"
+  fi
+}
+
+function submission_directory() {
+  # $1 example name, $2 mode_args
+  if [[ -z "$2"  && ! -z "$1" ]]; then
+    pushd "$(dirname $(run_manager_cmd 'print(get_match(\
+      "examples", [("name", "'$1'")]))'))" > /dev/null
+    echo "$(realpath $(run_manager_cmd 'print(get_value_by_name(\
+      "examples", "'$1'", "container_directory"))'))"
+    popd > /dev/null
+  else
+    echo "$2"
+  fi
+}
+
+################################################################################
+############################# Argument validation ##############################
+################################################################################
+
 function _validate_content() {
   # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
   # with this value (optional); $5 optional remove n characters to get singular
@@ -487,6 +515,46 @@ function _validate_evaluation_method() {
     printf "$err\n"
     printf "\n${colour_red}%s${colour_nc}" \
       "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
+  fi
+}
+
+function _validate_results_possible() {
+  # Validates whether creating results is feasible 
+  # $1 mode (expanded), $2 evaluate method, $3 results_location
+  if [[ "$1" == s* && ( ! -z "$2" || ! -z "$3" ) ]]; then
+    printf "%s %s\n" "Cannot create results or perform evaluation in '$1'" \
+      "mode. Please run again in a different mode."
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Requested results evaluation from 'submission' mode."
+  fi
+}
+
+function _validate_submission_mode() {
+  # $1 example name, $2 duplicate mode flag, $3 mode (expanded), $4 mode_args
+  err=
+  cmd="$(submission_command "$1" "$4")"
+  dir="$(submission_directory "$1" "$4")"
+  if [ -z "$3" ]; then
+    err="$(printf "%s %s\n" "No mode was selected. Please select a submission" \
+      "mode from 'native', 'containerised', or 'submission'")"
+  elif [ ! -z "$2" ]; then
+    err="$(printf "%s %s\n" "Selected more than 1 mode, please only select" \
+      "one of 'native', 'containerised', or 'submission'.")"
+  elif [ -z "$1" ] && [ -z "$4" ]; then
+    err="$(printf "%s %s\n" "Mode '$3' requires arguments, but none were" \
+      "provided. Please see '--help' for details.")"
+  elif [[ ("$3" == c* || "$3" == s*) && ! -d "$dir" ]]; then
+    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a directory as an" \
+      "argument. The provided directory does not exist:" "$dir")"
+  elif [[ "$3" == c* && ! -f "$dir/Dockerfile" ]]; then
+    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a Dockerfile to run." \
+      "The provided Dockerfile does not exist:" "$dir/Dockerfile")"
+  fi
+
+  if [ ! -z "$err" ]; then 
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Mode selection was invalid. See errors above."
   fi
 }
 
@@ -579,6 +647,21 @@ function validate_run_args() {
   err="$(_validate_type "$type")"; echo "$err"
   if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
   err="$(_validate_environment_count ${#envs[@]} "$task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+}
+
+function validate_submit_args() {
+  # $1 evaluation method, $2 example, $3 mode, $4 duplicate mode flag, 
+  # $5 results location, $6 mode arguments string
+  if [ ! -z "$1" ]; then
+    err="$(_validate_evaluation_method "$1")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  fi
+  err="$([ ! -z "$2" ] && _validate_content "examples" "$2" || true)"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_submission_mode "$2" "$4" "$3" "$6")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_results_possible "$3" "$1" "$5")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 }
 
