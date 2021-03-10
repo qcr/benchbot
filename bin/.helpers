@@ -518,6 +518,39 @@ function _validate_evaluation_method() {
   fi
 }
 
+function _validate_required_envs() {
+  # $1 required envs, $2 required envs batch
+  if [ ! -z "$1" ] && [ ! -z "$2" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: Only '--required-envs' or '--required-envs-batch' is valid,"\
+      "not both."
+  elif [ ! -z "$2" ]; then
+    _validate_content "batches" "$2" "" "" 2
+  fi
+}
+
+function _validate_results_files() {
+  # $@ results files list
+  err=
+  if [ $# -eq 0 ]; then
+    err="$(printf "%s %s\n" "No results file/s were provided. Please run" \
+      "again with a results file.")"
+  else
+    for r in "$@"; do
+      if [ ! -f "$r" ]; then
+        err="$(printf "%s %s\n" "Results file '$r' either doesn't exist," \
+        "or isn't a file.")"
+      fi
+    done
+  fi
+
+  if [ ! -z "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Results file/s provided were invalid. See errors above."
+  fi
+}
+
 function _validate_results_possible() {
   # Validates whether creating results is feasible 
   # $1 mode (expanded), $2 evaluate method, $3 results_location
@@ -617,7 +650,34 @@ function validate_batch_args() {
 }
 
 function validate_eval_args() {
-  :
+  # $1 required_envs, $2 required_envs_batch, 
+  # $3 required_envs_list (comma separated), $4 required_task, 
+  # $5 evaluation method, $6 validate_only, $7 ... results files
+  required_envs="$1"
+  required_envs_batch="$2"
+  required_envs_list=($(echo "$3" | tr ',' '\n'))
+  required_task="$4"
+  method="$5"
+  validate_only="$6"
+  shift 6
+  results_files=($@)
+
+  err="$(_validate_required_envs "$required_envs" "$required_envs_batch")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  if [ ! -z "$required_envs_list" ]; then
+    for e in "${required_envs_list[@]}"; do
+      err="$(_validate_environment "$e")"
+      if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+    done
+  fi
+  if [ ! -z "$required_task" ]; then
+    err="$(_validate_content "tasks" "$required_task")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  fi
+  err="$(_validate_evaluation_method "$method" "$validate_only")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_results_files "${results_files[@]}")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 }
 
 function validate_run_args() {
