@@ -149,26 +149,6 @@ _list_methods_pre=\
 "The following evaluation methods are available in your installation:
     "
 
-function validate_method() {
-  # $1 evaluation method, $2 validate only
-  err=
-  if [ -z "$1" ] && [ -z "$2" ]; then
-    err="$(printf "%s %s\n" "Evaluation was requested but no evaluation"\
-      "method was selected. A selection is required.")"
-  elif [ -z "$2" ] && \
-      [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
-      [("name", "'$1'")]))')" != "True" ]; then
-    err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
-      "Please check '--list-methods'.")"
-  fi
-
-  if [ ! -z "$err" ]; then
-    printf "$err\n"
-    printf "\n${colour_red}%s${colour_nc}" \
-      "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
-  fi
-}
-
 function validate_required_envs() {
   # $1 required envs, $2 required envs batch
   if [ ! -z "$1" ] && [ ! -z "$2" ]; then
@@ -270,7 +250,7 @@ if [ ! -z "$required_task" ]; then
   err="$(validate_content "tasks" "$required_task")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 fi
-err="$(validate_method "$method" "$validate_only")"
+err="$(validate_evaluation_method "$method" "$validate_only")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 err="$(validate_results_files "${results_files[@]}")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi

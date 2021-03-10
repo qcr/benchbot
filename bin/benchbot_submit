@@ -317,6 +317,10 @@ done
 mode="$(expand_mode "$mode")"
 
 # Bail if any of the requested configurations are invalid
+if [ ! -z "$evaluate_method" ]; then
+  err="$(validate_evaluation_method "$evaluate_method")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+fi
 err="$(validate_example "$example")"
 if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 err="$(validate_mode "$example" "$mode_dup" "$mode" "$mode_args")"

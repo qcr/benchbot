@@ -457,3 +457,24 @@ function validate_environment() {
     [("name", "'$(env_name $1)'"), ("variant", "'$(env_variant $1)'")]))')"
 }
 
+function validate_evaluation_method() {
+  # $1 evaluation method, $2 validate only (optional)
+  v=${2:-}
+  err=
+  if [ -z "$1" ] && [ -z "$v" ]; then
+    err="$(printf "%s %s\n" "Evaluation was requested but no evaluation"\
+      "method was selected. A selection is required.")"
+  elif [ -z "$v" ] && \
+      [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
+      [("name", "'$1'")]))')" != "True" ]; then
+    err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
+      "Please check '--list-methods'.")"
+  fi
+
+  if [ ! -z "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
+  fi
+}
+
