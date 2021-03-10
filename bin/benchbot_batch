@@ -217,18 +217,6 @@ function exit_gracefully() {
   exit ${1:-0}
 }
 
-function validate_envs() {
-  # $1 requested envs, $2 requested envs batch
-  if [ ! -z "$1" ] && [ ! -z "$2" ]; then
-    printf "${colour_red}%s${colour_nc}\n" \
-      "ERROR: Only '--envs' or '--envs-batch' is valid, not both."
-  elif [ -z "$1" ] && [ -z "$2" ]; then
-    printf "${colour_red}%s %s${colour_nc}\n" \
-      "ERROR: No environments were provided via either" \
-      "'--envs' or '--envs-batch'"
-  fi
-}
-
 ################################################################################
 #################### Parse & handle command line arguments #####################
 ################################################################################
@@ -290,19 +278,21 @@ while true; do
   esac
 done
 
-# Bail if any of the requested configurations are invalid
-err="$(validate_envs "$envs_str" "$envs_batch")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+# Generate any derived configuration parameters
 if [ ! -z "$envs_str" ]; then
   envs_list=($(echo "$envs_str" | tr ',' '\n'))
 elif [ ! -z "$envs_batch" ]; then
   envs_list=($(run_manager_cmd 'print("\n".join(get_value_by_name(\
     "batches", "'$envs_batch'", "environments")))'))
-err="$(validate_content "robots" "$robot")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-err="$(validate_content "tasks" "$task")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+else
+  envs_list=()
 fi
+
+# Bail if any of the requested configurations are invalid
+printf "Performing pre-run argument validation ...\n\n"
+validate_batch_args "$robot" "$task" "$envs_str" "$envs_batch" "$example" \
+  "$evaluate_method" "$containerised" "$native" "$submit_args" "${envs_list[@]}"
+printf "${colour_green}\tDone.${colour_nc}\n"
 
 ################################################################################
 ####################### Print settings prior to running ########################

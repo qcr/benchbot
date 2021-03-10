@@ -201,12 +201,12 @@ while true; do
 done
 
 # Generate any derived configuration parameters
-if [ ! -z "$required_envs_batch" ]; then
+if [ ! -z "$required_envs" ]; then
+  required_envs_list=($(echo "$required_envs" | tr ',' '\n'))
+elif [ ! -z "$required_envs_batch" ]; then
   required_envs_list=($(run_manager_cmd 'exists("batches", [("name", \
     "'$required_envs_batch'")]) and print("\n".join(get_value_by_name(\
     "batches", "'$required_envs_batch'", "environments")))'))
-elif [ ! -z "$required_envs" ]; then
-  required_envs_list=($(echo "$required_envs" | tr ',' '\n'))
 else
   required_envs_list=()
 fi

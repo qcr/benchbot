@@ -232,9 +232,7 @@ while true; do
 done
 
 # Extract a list of environments from the provided environment string
-_pre="$(echo "$environment" | sed 's/:.*//')"
-environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
-if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
+environments=($(env_list "$environment" | tr ' ' '\n'))
 environments_string="$(printf '%s,' "${environments[@]}")"
 environments_string="${environments_string::-1}"
 

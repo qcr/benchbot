@@ -44,6 +44,7 @@ PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
+PATH_TEMP_FILE="/tmp/benchbot_scratch"
 
 PORT_ROBOT=10000
 PORT_SUPERVISOR=10000
@@ -303,6 +304,16 @@ function addons_up_to_date() {
   return
 }
 
+function env_list() {
+  # Converts an environment string like "miniroom:1:4" into a space separated
+  # list like "miniroom:1 miniroom:4"
+  # $1 env string
+  name="$(echo "$1" | sed 's/:.*//')"
+  list=($(echo "$1" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$name':/g; s/^ *//'))
+  if [ ${#list[@]} -eq 0 ]; then list+=(""); fi
+  echo "${list[@]}"
+}
+
 function env_name() {
   # $1 env string
   echo $1 | sed 's/:[^:]*$//'
@@ -461,6 +472,18 @@ function submission_directory() {
 ############################# Argument validation ##############################
 ################################################################################
 
+function _validate_batch_envs() {
+  # $1 requested envs, $2 requested envs batch
+  if [ ! -z "$1" ] && [ ! -z "$2" ]; then
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: Only '--envs' or '--envs-batch' is valid, not both."
+  elif [ -z "$1" ] && [ -z "$2" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: No environments were provided via either" \
+      "'--envs' or '--envs-batch'"
+  fi
+}
+
 function _validate_content() {
   # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
   # with this value (optional); $5 optional remove n characters to get singular
@@ -612,7 +635,7 @@ function _validate_type() {
 
 function _validate_types() {
   # Ensures all types are the same / consistent
-  # $1 = robot name; $2 = environment string, $3 ... environments
+  # $1 = robot name; $2 = environment string, $3 ... environments list
   robot="$1"
   env="$2" 
   shift 2
@@ -646,13 +669,56 @@ function _validate_types() {
 }
 
 function validate_batch_args() {
-  :
+  # $1 robot, $2 task, $3 envs_str, $4 envs_batch name, $5 example name, 
+  # $6 evaluation method, $7 containerised, $8 native, $9 submission mode args,
+  # $10... environments list
+  robot="$1"
+  task="$2"
+  envs_str="$3"
+  envs_batch="$4"
+  example="$5"
+  evaluation_method="$6"
+  containerised="$7"
+  native="$8"
+  submit_args="$9"
+  shift 9
+  envs_list=($@)
+
+  # Handle batch specific validation first
+  err="$(_validate_batch_envs "$envs_str" "$envs_batch")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+
+  # Divert to validation functions for each of the sub-scripts
+  mode="$([ ! -z "$native" ] && echo "$native" || echo "$containerised")"
+  mode_dup=
+  if [ ! -z "$native" ] && [ ! -z "$containerised" ]; then mode_dup=1; fi
+  validate_submit_args "$evaluation_method" "$example" "$mode" "$mode_dup" "" \
+    "$submit_args"
+
+  if [ ! -z "$evaluation_method" ]; then
+    envs="$(echo "${envs_list[@]}" | tr ' ' ',')"
+
+    # This is gross... but we need a file for our results files that don't
+    # exist yet, otherwise the validation will fail
+    touch "$PATH_TEMP_FILE"
+    validate_eval_args "$envs" "" "$envs" "$task" "$evaluation_method" "" \
+      "$PATH_TEMP_FILE"
+    rm "$PATH_TEMP_FILE"
+  fi
+
+  type=$(run_manager_cmd 'exists("robots", [("name", "'$robot'")]) and \
+    print(get_value_by_name("robots", "'$robot'", "type"))')
+  for e in "${envs_list[@]}"; do
+    envs=($(env_list "$e" | tr ' ' '\n'))
+    validate_run_args "$robot" "$task" "$type" "$e" "${envs[@]}"
+  done
+
 }
 
 function validate_eval_args() {
   # $1 required_envs, $2 required_envs_batch, 
   # $3 required_envs_list (comma separated), $4 required_task, 
-  # $5 evaluation method, $6 validate_only, $7 ... results files
+  # $5 evaluation method, $6 validate_only, $7 ... results files list
   required_envs="$1"
   required_envs_batch="$2"
   required_envs_list=($(echo "$3" | tr ',' '\n'))
@@ -666,8 +732,11 @@ function validate_eval_args() {
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   if [ ! -z "$required_envs_list" ]; then
     for e in "${required_envs_list[@]}"; do
-      err="$(_validate_environment "$e")"
-      if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+      es=($(env_list "$e" | tr ' ' '\n'))
+      for ee in "${es[@]}"; do
+        err="$(_validate_environment "$ee")"
+        if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+      done
     done
   fi
   if [ ! -z "$required_task" ]; then
@@ -682,7 +751,7 @@ function validate_eval_args() {
 
 function validate_run_args() {
   # $1 robot, $2 task, $3 type of run, $4 environments_string, 
-  # $5... environments
+  # $5... environments list
   robot="$1"
   task="$2"
   type="$3"
@@ -704,7 +773,7 @@ function validate_run_args() {
   done
   err="$(_validate_types "$robot" "$env" "${envs[@]}")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  err="$(_validate_type "$type")"; echo "$err"
+  err="$(_validate_type "$type")"
   if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
   err="$(_validate_environment_count ${#envs[@]} "$task")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
