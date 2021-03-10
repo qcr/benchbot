@@ -163,6 +163,7 @@ _robot_err=\
 should not happen under normal operating conditions. Please see the complete
 log below for a dump of the crash output:"
 
+exit_code=
 function exit_gracefully() {
   if [ -z "$simulator_required" ]; then
     printf "\n\n${colour_blue}%s${colour_nc}\n" \
@@ -170,7 +171,7 @@ function exit_gracefully() {
     close_network $network_forwarding $network_policy
   fi
   kill_benchbot
-  exit ${1:-0}
+  exit ${exit_code:-0}
 }
 
 function validate_environment_count() {
@@ -344,7 +345,7 @@ if [ ! -z "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
 kill_benchbot
-trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
+trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Print some configuration information
@@ -443,4 +444,5 @@ if [ ! -z "$simulator_required" ] && \
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
   docker logs benchbot_robot
 fi
-exit_gracefully 1
+exit_code=1
+exit

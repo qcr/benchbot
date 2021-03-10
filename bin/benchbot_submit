@@ -165,8 +165,9 @@ function expand_mode() {
 }
 
 active_pid=
+exit_code=
 function exit_gracefully() {
-  # $1 mode, $2 exit code
+  # $1 mode
   echo ""
 
   # Pass the signal to the currently running process
@@ -371,7 +372,7 @@ echo ""
 # Actually perform the submission
 header_block "Running submission in '$mode' mode" ${colour_green}
 
-trap "exit_gracefully $mode"  SIGINT SIGQUIT SIGKILL SIGTERM
+trap "exit_gracefully $mode"  SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 
 # Clear out any previous results in default location
 results_src=
@@ -417,7 +418,7 @@ else
     set +e
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
-      --hostname="$SUBMISSION_CONTAINER_NAME" -t "$submission_tag"
+      --hostname="$SUBMISSION_CONTAINER_NAME" -it "$submission_tag"
     run_ret=$?
     set -e
     xhost -local:root
@@ -429,8 +430,8 @@ fi
 if [ $run_ret -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
     "Submission failed with result error code" "$run_ret"
-  exit_gracefully "$mode"
-  exit $run_ret
+  exit_code=$run_ret
+  exit
 fi
 
 # Perform any evaluation that may have been requested by the caller
