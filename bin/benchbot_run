@@ -174,70 +174,6 @@ function exit_gracefully() {
   exit ${exit_code:-0}
 }
 
-function validate_environment_count() {
-  # $1 = number of selected environments, $2 task
-  scene_count="$(run_manager_cmd 'print(\
-    get_value_by_name("tasks", "'$2'", "scene_count"))')"
-  if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
-  if [ $scene_count -ne $1 ]; then
-    printf "${colour_red}%s\n       %s${colour_nc}\n" \
-      "ERROR: Selected $1 environment/s for a task which requires $scene_count" \
-      "environment/s ('$task')"
-  fi
-}
-
-function validate_type() {
-  # $1 = type
-  if [ "$1" == "real" ]; then
-    printf "\n${colour_yellow}%s\n%s${colour_nc}\n" \
-      "WARNING: Requested running with '$1'. Assuming you have an available" \
-      "real robot & environment."
-    return
-  fi
-
-  simulators="$(simulator_type)"
-  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
-      [ "$simulators" != *"$1,"* ]; then
-    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
-      "ERROR: Requested running with '$1', but that simulator isn't installed." \
-      "Installed simulator/s are: '$simulators'"
-  fi
-}
-
-function validate_types() {
-  # $1 = robot name; $2 = environment string, $3... environments
-  robot="$1"
-  env="$2" 
-  shift 2
-  envs=($@)
-  types=()
-  types+=("$(run_manager_cmd 'print(\
-    get_value_by_name("robots", "'$robot'", "type"))')")
-  for e in "${envs[@]}"; do
-    types+=($(run_manager_cmd 'print(\
-      get_value_by_name("environments", "'$e'", "type"))'))
-  done
-
-  err=
-  for i in "${!types[@]}"; do
-    if [ "${types[$i]}" != "${types[0]}" ]; then err=1; fi
-  done
-
-  if [ ! -z "$err" ]; then
-    printf "%s %s\n%s\n\n" "Robot & environment types aren't consistent." \
-      "Please ensure each of the following" "have the same type:"
-    for i in "${!types[@]}"; do
-      if [ $i -eq 0 ]; then
-        printf "\tRobot '$robot' has type '${types[$i]}'\n"
-      else
-        printf "\tEnvironment '${envs[$((i-1))]}' has type '${types[$i]}'\n"
-      fi
-    done
-    printf "\n${colour_red}%s${colour_nc}\n" \
-      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
-  fi
-}
-
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -302,30 +238,15 @@ if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
 environments_string="$(printf '%s,' "${environments[@]}")"
 environments_string="${environments_string::-1}"
 
-# Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
-  err="$(validate_content "robots" "$robot")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  type="$(run_manager_cmd 'print(\
+  # Generate any derived configuration parameters
+  type="$(run_manager_cmd 'exists("robots", [("name", "'$robot'")]) and print(\
     get_value_by_name("robots", "'$robot'", "type"))')"
   simulator_required=1
-  err="$(validate_content "tasks" "$task")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  results_format="$(run_manager_cmd 'print(\
-    get_value_by_name("tasks", "'$task'", "results_format"))')"
-  err="$(validate_content "formats" "$results_format")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
-  for e in "${environments[@]}"; do
-    err="$(validate_environment "$e" "$environment")"
-    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  done
-  err="$(validate_types "$robot" "$environment" "${environments[@]}")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  err="$(validate_type "$type")"; echo "$err"
-  if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
-  err="$(validate_environment_count ${#environments[@]} "$task")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+
+  # Bail if any of the requested configurations are invalid
+  validate_run_args "$robot" "$task" "$type" "$environment" "${environments[@]}"
 fi
 
 ################################################################################

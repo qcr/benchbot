@@ -433,7 +433,7 @@ function show_environment() {
   :
 }
 
-function validate_content() {
+function _validate_content() {
   # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
   # with this value (optional); $5 optional remove n characters to get singular
   # version
@@ -450,14 +450,26 @@ function validate_content() {
   fi
 }
 
-function validate_environment() {
+function _validate_environment() {
   # $1 = name; $2 = full name
-  validate_content "environments" "$1" "${2-}" \
+  _validate_content "environments" "$1" "${2-}" \
     "$(run_manager_cmd 'print(exists("environments", \
     [("name", "'$(env_name $1)'"), ("variant", "'$(env_variant $1)'")]))')"
 }
 
-function validate_evaluation_method() {
+function _validate_environment_count() {
+  # $1 = number of selected environments, $2 task
+  scene_count="$(run_manager_cmd 'print(\
+    get_value_by_name("tasks", "'$2'", "scene_count"))')"
+  if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
+  if [ $scene_count -ne $1 ]; then
+    printf "${colour_red}%s\n       %s${colour_nc}\n" \
+      "ERROR: Selected $1 environment/s for a task which requires $scene_count" \
+      "environment/s ('$task')"
+  fi
+}
+
+function _validate_evaluation_method() {
   # $1 evaluation method, $2 validate only (optional)
   v=${2:-}
   err=
@@ -476,5 +488,97 @@ function validate_evaluation_method() {
     printf "\n${colour_red}%s${colour_nc}" \
       "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
   fi
+}
+
+function _validate_type() {
+  # Ensures your installation supports the requested type
+  # $1 = type
+  if [ "$1" == "real" ]; then
+    printf "\n${colour_yellow}%s\n%s${colour_nc}\n" \
+      "WARNING: Requested running with '$1'. Assuming you have an available" \
+      "real robot & environment."
+    return
+  fi
+
+  simulators="$(simulator_type)"
+  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
+      [ "$simulators" != *"$1,"* ]; then
+    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
+      "ERROR: Requested running with '$1', but that simulator isn't installed." \
+      "Installed simulator/s are: '$simulators'"
+  fi
+}
+
+function _validate_types() {
+  # Ensures all types are the same / consistent
+  # $1 = robot name; $2 = environment string, $3 ... environments
+  robot="$1"
+  env="$2" 
+  shift 2
+  envs=($@)
+  types=()
+  types+=("$(run_manager_cmd 'print(\
+    get_value_by_name("robots", "'$robot'", "type"))')")
+  for e in "${envs[@]}"; do
+    types+=($(run_manager_cmd 'print(\
+      get_value_by_name("environments", "'$e'", "type"))'))
+  done
+
+  err=
+  for i in "${!types[@]}"; do
+    if [ "${types[$i]}" != "${types[0]}" ]; then err=1; fi
+  done
+
+  if [ ! -z "$err" ]; then
+    printf "%s %s\n%s\n\n" "Robot & environment types aren't consistent." \
+      "Please ensure each of the following" "have the same type:"
+    for i in "${!types[@]}"; do
+      if [ $i -eq 0 ]; then
+        printf "\tRobot '$robot' has type '${types[$i]}'\n"
+      else
+        printf "\tEnvironment '${envs[$((i-1))]}' has type '${types[$i]}'\n"
+      fi
+    done
+    printf "\n${colour_red}%s${colour_nc}\n" \
+      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
+  fi
+}
+
+function validate_batch_args() {
+  :
+}
+
+function validate_eval_args() {
+  :
+}
+
+function validate_run_args() {
+  # $1 robot, $2 task, $3 type of run, $4 environments_string, 
+  # $5... environments
+  robot="$1"
+  task="$2"
+  type="$3"
+  env="$4"
+  shift 4
+  envs=($@)
+
+  err="$(_validate_content "robots" "$robot")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_content "tasks" "$task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  results_format="$(run_manager_cmd 'print(\
+    get_value_by_name("tasks", "'$task'", "results_format"))')"
+  err="$(_validate_content "formats" "$results_format")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  for e in "${envs[@]}"; do
+    err="$(_validate_environment "$e" "$env")"
+    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  done
+  err="$(_validate_types "$robot" "$env" "${envs[@]}")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_type "$type")"; echo "$err"
+  if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
+  err="$(_validate_environment_count ${#envs[@]} "$task")"
+  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
 }
 
