@@ -256,8 +256,10 @@ case "$mode" in
   native)
     config_cmd="$(submission_command "$example" "$mode_args")" ;;
   containerised|submission)
-    config_dir="$(submission_directory "$example" "$mode_args")" ;;&
+    config_dir="$(submission_directory "$example" "$mode_args")" 
+    config_fn="$(submission_dockerfile "$example" "$mode_args")" ;;
   submission)
+    config_dir="$(submission_directory "$example" "$mode_args" 1)" 
     config_out="submission.tgz" ;;
 esac
 
@@ -279,8 +281,13 @@ if [ -n "$config_cmd" ]; then
 "    Command to execute:          $config_cmd"
 fi
 if [ -n "$config_dir" ]; then
-  echo \
-"    Dockerfile to build:         $config_dir/Dockerfile"
+  if [ "$mode" == "containerised" ]; then
+    echo \
+"    Dockerfile to build:         $config_dir/$config_fn"
+  else
+    echo \
+"    Directory to submit:         $config_dir"
+  fi
 fi
 if [ -n "$config_out" ]; then
   echo \

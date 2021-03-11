@@ -457,15 +457,26 @@ function submission_command() {
 }
 
 function submission_directory() {
-  # $1 example name, $2 mode_args
+  # $1 example name, $2 mode_args, $3 use_raw
   if [[ -z "$2"  && ! -z "$1" ]]; then
     pushd "$(dirname $(run_manager_cmd 'print(get_match(\
       "examples", [("name", "'$1'")]))'))" > /dev/null
-    echo "$(realpath $(run_manager_cmd 'print(get_value_by_name(\
-      "examples", "'$1'", "container_directory"))'))"
+    realpath $(run_manager_cmd 'print(get_value_by_name(\
+      "examples", "'$1'", "container_directory"))')
     popd > /dev/null
   else
-    echo "$2"
+    [ ! -z "${3:-}" ] && echo "$2" && return
+    [ -d "$2" ] && echo "$2" || echo "$(dirname "$2")"
+  fi
+}
+
+function submission_dockerfile() {
+  # $1 example name, $2 mode_args
+  if [[ -z "$2" && ! -z "$1" ]]; then
+    run_manager_cmd 'fn = get_value_by_name("examples", "'$1'", \
+      "container_filename"); print("Dockerfile" if fn is None else fn)'
+  else
+    [ -d "$2" ] && echo "Dockerfile" || echo "$(basename "$2")"
   fi
 }
 
@@ -589,8 +600,11 @@ function _validate_results_possible() {
 function _validate_submission_mode() {
   # $1 example name, $2 duplicate mode flag, $3 mode (expanded), $4 mode_args
   err=
+  use_raw=
+  [ "$3" == "submission" ] && use_raw=1
   cmd="$(submission_command "$1" "$4")"
-  dir="$(submission_directory "$1" "$4")"
+  dir="$(submission_directory "$1" "$4" "$use_raw")"
+  fn="$(submission_dockerfile "$1" "$4")"
   if [ -z "$3" ]; then
     err="$(printf "%s %s\n" "No mode was selected. Please select a submission" \
       "mode from 'native', 'containerised', or 'submission'")"
@@ -600,12 +614,12 @@ function _validate_submission_mode() {
   elif [ -z "$1" ] && [ -z "$4" ]; then
     err="$(printf "%s %s\n" "Mode '$3' requires arguments, but none were" \
       "provided. Please see '--help' for details.")"
-  elif [[ ("$3" == c* || "$3" == s*) && ! -d "$dir" ]]; then
+  elif [[ ("$3" == s*) && ! -d "$dir" ]]; then
     err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a directory as an" \
-      "argument. The provided directory does not exist:" "$dir")"
-  elif [[ "$3" == c* && ! -f "$dir/Dockerfile" ]]; then
+      "argument. The directory provided does not exist: " "$dir")"
+  elif [[ "$3" == c* && ! -f "$dir/$fn" ]]; then
     err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a Dockerfile to run." \
-      "The provided Dockerfile does not exist:" "$dir/Dockerfile")"
+      "The provided Dockerfile does not exist:" "$dir/$fn")"
   fi
 
   if [ ! -z "$err" ]; then 
