@@ -51,7 +51,7 @@ USAGE:
 
     Submit, compile into a containerised environment, & run the container on
     your machine:
-        $(basename "$0") [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+        $(basename "$0") [-c|--containerised] DIRECTORY_CONTAINING_DOCKERFILE
         
     Bundle up your solution into a *.tgz ready for submssion to the challenge:
         $(basename "$0") [-s|--submission] DIRECTORY_FOR_SUBMISSION
@@ -61,26 +61,56 @@ USAGE:
         $(basename "$0") [-e|--evaluate-with] \\
           [-r|--results-location] 'my_results.json' \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+
+    Run an example, with some runtime arguments:
+
+        $(basename "$0") --example EXAMPLE_NAME -n \\
+          -a '--arg1 value --arg2 value'
+
  
 OPTION DETAILS:
 
     -h,--help             
             Show this help menu.
 
+    -a, --args
+            Runtime arguments to pass through to the submission. You will need
+            to use quotes to properly handle multiple arguments. For example:
+
+              $(basename "$0") -n python3 my_script.py -a '--arg1 a --arg2 b'
+
+            These arguments are handled differently depending on the mode:
+              - native: they are appended to the end of the command
+              - containerised: they are appended to the end of the Dockerfile's
+                'CMD'
+              - submission: a single positional argument is used to specify the
+                *.tgz's save location
+
     -c, --containerised
             Uses the Dockerfile provided with your solution to start a Docker
             container running your solution. Dockerfiles are the means in which
             you concisely communicate WHAT system configuration is needed to
-            run your solution (i.e. do you need Python3, cuda, ROS, etc). This
-            mode requires an extra parameter specifying the directory where
-            your solution resides. For example, if your solution is in the 
-            current directory:
+            run your solution (i.e. do you need Python3, cuda, ROS, etc). 
+
+            This mode requires an extra parameter specifying either:
+              - the directory where your solution's Dockerfile resides (the
+                filename is assumed to be 'Dockerfile'), or
+              - the full path for your solution's Dockerfile (supports custom
+                filenames)
+
+            For example, the following commands are equivalent for a solution
+            with a Dockerfile named 'Dockerfile' in the current directory: 
 
                     $(basename "$0") -c .
+                    $(basename "$0") -c ./Dockerfile
+
+            Note: examples define this parameter implicitly, so they only 
+            require the '-c' flag to run in containerised mode.
 
     -E, --example
-            Name of an installed example to run. All examples support both
-            containerised and native operation.
+            Name of an installed example to run. All examples at least support
+            native operation, with most also supporting containerised
+            operation.
 
             (use '--list-examples' to see a list of installed example)
 
@@ -106,11 +136,16 @@ OPTION DETAILS:
     -n, --native
             Runs your solution directly on your system without applying any 
             containerisation (useful when you are developing & testing your 
-            solution). Everything after this flag is treated as the command used
-            to run your solution (required). For example, if your solution is a
+            solution). 
+
+            This mode requires an extra parameter specifying the command to
+            natively run your solution. For example, if your solution is a
             Python script called 'solution.py':
 
-                    $(basename "$0") -n python solution.py
+                    $(basename "$0") -n 'python3 solution.py'
+
+            Note: examples define this parameter implicitly, so they only
+            require the '-n' flag to run in native mode.
 
     -r, --results-location
             Copy results produced by the submission to another location. Note:
@@ -123,11 +158,12 @@ OPTION DETAILS:
     -s, --submission
             Bundles up your solution into a *.tgz ready for submission. The 
             directory where your solution exists is a required extra parameter.
-            Optionally, another parameter can be provided to specify a name
-            (and / or what directory) to put the *.tgz. For example, to bundle
-            up your soluition in the current directory on your desktop:
 
-                    $(basename "$0") -s . \$HOME/Desktop
+            Optionally, you can also provide a positional arg via the '-a' flag
+            to specify where to put the *.tgz. For example, to bundle up your
+            solution in the current directory on your desktop:
+
+                    $(basename "$0") -s . -a \$HOME/Desktop
 
     --show-example
             Prints information about the provided example if installed. The
@@ -201,9 +237,10 @@ function warning_mode() {
 ################################################################################
 
 # Safely parse options input
-_args="evaluate-with:,example:,help,containerised,list-examples,native,\
-results-location:,show-example:,submission,version"
-parse_out=$(getopt -o e:E:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
+_args="args:,evaluate-with:,example:,help,containerised::,list-examples,\
+native::,results-location:,show-example:,submission:,version"
+parse_out=$(getopt -o a:e:E:hc::n::r:s:v --long $_args -n "$(basename "$0")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
 evaluate_method=
@@ -237,6 +274,8 @@ while true; do
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
+echo "Mode args are: $mode_args"
+exit 0
 mode="$(expand_mode "$mode")"
 
 # Bail if any of the requested configurations are invalid
