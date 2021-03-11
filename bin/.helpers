@@ -448,8 +448,9 @@ function submission_command() {
   # $1 example name, $2 mode_args
   if [[ -z "$2" && ! -z "$1" ]]; then
     echo "pushd $(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", [("name", "'$1'")]))')); $(run_manager_cmd 'print(\
-      get_value_by_name("examples", "'$1'", "native_command"))'); popd"
+      "examples", [("name", "'$1'")]))')) > /dev/null; $(run_manager_cmd \
+      'print( get_value_by_name("examples", "'$1'", "native_command"))'); \
+      popd > /dev/null"
   else
     echo "$2"
   fi
