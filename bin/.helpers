@@ -778,9 +778,10 @@ function validate_run_args() {
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(_validate_content "tasks" "$task")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  results_format="$(run_manager_cmd 'print(\
-    get_value_by_name("tasks", "'$task'", "results_format"))')"
-  err="$(_validate_content "formats" "$results_format")"
+  results_format="$(run_manager_cmd 'rf = get_value_by_name("tasks", \
+    "'$task'", "results_format"); rf is not None and print(rf)')"
+  [ ! -z "$results_format" ] && \
+    err="$(_validate_content "formats" "$results_format")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   for e in "${envs[@]}"; do
     err="$(_validate_environment "$e" "$env")"
