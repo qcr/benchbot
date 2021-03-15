@@ -217,7 +217,7 @@ function expand_mode() {
 active_pid=
 exit_code=
 function exit_gracefully() {
-  # $1 mode
+  # $1 mode (numeric)
   echo ""
 
   # Pass the signal to the currently running process
@@ -228,13 +228,13 @@ function exit_gracefully() {
   fi
   
   # Cleanup containers if we ran in containerised mode
-  if [[ "$1" == c* ]]; then
+  if [ "$1" == 1 ] || [ "$1" == 4 ]; then
     printf "\n"
     header_block "Cleaning up user containers" ${colour_blue}
     docker system prune -f  # TODO this is probably too brutal
   fi
 
-  exit ${2:-0}
+  exit ${exit_code:-0}
 }
 
 function submission_command() {
@@ -392,6 +392,7 @@ validate_submit_args "$evaluate_method" "$example" "$example_containerised" \
 ################################################################################
 
 # Before we start a submission, figure out all of our derived configuration
+sub_str="$(submission_mode_string $mode_num $example)"
 sub_cmd="$(submission_command "$mode_num" "$mode_details" "$example" "$args")"
 sub_dir="$(submission_directory "$mode_num" "$mode_details" "$example")"
 sub_df="$(submission_dockerfile "$mode_num" "$mode_details" "$example")"
@@ -401,7 +402,7 @@ sub_out="$(submission_output "$mode_num" "$args")"
 mode_string=""
 echo "Submitting to the BenchBot system with the following settings:
 
-    Submission mode:             $(submission_mode_string $mode_num $example)"
+    Submission mode:             $sub_str"
 echo \
 "    Perform evaluation:          "\
 "$([ -z "$evaluate_method" ] && echo "No" || echo "Yes ($evaluate_method)")"
@@ -427,12 +428,11 @@ if [ -n "$sub_out" ]; then
 "    Output *.tgz filename:       $sub_out"
 fi
 echo ""
-exit 0
 
 # Actually perform the submission
-header_block "Running submission in '$mode' mode" ${colour_green}
+header_block "Running submission in '$sub_str' mode" ${colour_green}
 
-trap "exit_gracefully $mode"  SIGINT SIGQUIT SIGKILL SIGTERM EXIT
+trap "exit_gracefully $mode_num"  SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 
 # Clear out any previous results in default location
 results_src=
@@ -444,27 +444,32 @@ if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
 fi
 
 # Handle the submission
-if [ "$mode" == "native" ]; then
+if [ "$mode_num" == 0 ] || [ "$mode_num" == 3 ]; then
   # This is native submission mode
-  echo -e \
-    "Running submission natively via command:\n\t'$config_cmd' ...\n"
+  printf "%s\n\t%s\n%s\n" "Running submission natively via command:" \
+    "'$sub_cmd'" "(in directory '$sub_dir') ..."
+  pushd "$sub_dir" >/dev/null
   set +e
-  eval "$config_cmd"
+  eval "$sub_cmd"
   run_ret=$?
   set -e
-elif [ "$mode" == "submission" ]; then
-  # This is bundling up submission mode
-  echo -e "Bundling up submission from '$config_dir' ...\n"
-  pushd "$config_dir" >/dev/null
-  tar -czvf "$config_out" * && run_ret=0 || run_ret=1
   popd >/dev/null
-  echo -e "\nSaved to: $config_out"
-else
+elif [ "$mode_num" == 2 ]; then
+  # This is bundling up submission mode
+  echo -e "Bundling up submission from '$sub_dir' to '$sub_out' ...\n"
+  pushd "$sub_dir" >/dev/null
+  set +e
+  eval  "$sub_cmd"
+  run_ret=$?
+  set -e
+  popd >/dev/null
+  echo -e "\nSaved to: $sub_out"
+elif [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
   # This is a containerised submission
-  echo "Running submission from '$config_dir' with containerisation ..."
-  pushd "$config_dir" >/dev/null
+  echo "Containerising '$sub_df' ..."
+  pushd "$sub_dir" >/dev/null
   submission_tag="benchbot/submission:"$(echo "$(pwd)" | sha256sum | cut -c1-10)
-  docker build -t "$submission_tag" . &
+  eval "$(echo "$sub_cmd" | sed "s/docker build /\0 -t '$submission_tag'")" &
   active_pid=$!
   wait $active_pid && run_ret=0 || run_ret=1
   if [ $run_ret -ne 0 ]; then
@@ -476,6 +481,7 @@ else
       sleep 1;
     done
     set +e
+    # TODO PASSTHROUGH THE ARGS!!!
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
       --hostname="$SUBMISSION_CONTAINER_NAME" -it "$submission_tag"
@@ -484,6 +490,9 @@ else
     xhost -local:root
   fi
   popd >/dev/null
+else
+  echo "Run in unsupported mode '$mode_num' (this error should never happen!)"
+  run_ret=1
 fi
 
 # Exit here if the submission failed
@@ -499,7 +508,7 @@ if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
   header_block "Processing results" ${colour_blue}
 
   # Pull the results out of the container if appropriate
-  if [ "$mode" == "containerised" ]; then
+  if [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
     if ! docker cp "${SUBMISSION_CONTAINER_NAME}:${results_src}"\
       "${results_src}" 2>/dev/null; then
       printf "${colour_yellow}\n%s%s${colour_nc}\n" \
@@ -533,4 +542,4 @@ if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
   fi
 fi
 
-exit 0
+exit
