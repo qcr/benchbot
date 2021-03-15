@@ -16,7 +16,7 @@ popd > /dev/null
 ################################################################################
 
 SUBMISSION_CONTAINER_NAME="benchbot_submission"
-SUBMISSION_OUTPUT_DEFAULT="submission.tgz"
+SUBMISSION_OUTPUT_DEFAULT="../submission.tgz"
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -245,7 +245,7 @@ function submission_command() {
     echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") ."
   elif [ $1 == 2 ]; then
     echo "tar -czvf $([ -z "${4:-}" ] && \
-      echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$args")"
+      echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$args") ."
   elif [ $1 == 3 ]; then
     echo "$(run_manager_cmd 'print(get_value_by_name("examples", "'$3'", \
       "native_command"))') ${4:-}"
@@ -464,7 +464,7 @@ elif [ "$mode_num" == 2 ]; then
   run_ret=$?
   set -e
   popd >/dev/null
-  echo -e "\nSaved to: $sub_out"
+  if [ $run_ret -eq 0 ]; then echo -e "\nSaved to: $sub_out"; fi
 elif [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
   # This is a containerised submission
   echo "Containerising '$sub_df' ..."
