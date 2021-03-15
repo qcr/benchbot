@@ -194,7 +194,7 @@ _list_batches_pre=\
 
 run_pid=
 function kill_run() {
-  if [ ! -z $run_pid ]; then
+  if [ -n $run_pid ]; then
     kill -TERM $run_pid &> /dev/null
     wait $run_pid || true
     run_pid=
@@ -203,7 +203,7 @@ function kill_run() {
 
 submit_pid=
 function kill_submit() {
-  if [ ! -z $submit_pid ]; then
+  if [ -n $submit_pid ]; then
     kill -TERM $submit_pid &> /dev/null
     wait $submit_pid || true
     submit_pid=
@@ -279,9 +279,9 @@ while true; do
 done
 
 # Generate any derived configuration parameters
-if [ ! -z "$envs_str" ]; then
+if [ -n "$envs_str" ]; then
   envs_list=($(echo "$envs_str" | tr ',' '\n'))
-elif [ ! -z "$envs_batch" ]; then
+elif [ -n "$envs_batch" ]; then
   envs_list=($(run_manager_cmd 'print("\n".join(get_value_by_name(\
     "batches", "'$envs_batch'", "environments")))'))
 else
@@ -304,14 +304,14 @@ _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
 printf "$_ind%-25s%s\n" "Selected task:" "${task:-None}"
 printf "$_ind%-25s%s\n$_ind" "Selected robot:" "${robot:-None}"
-if [ ! -z "$example" ]; then
+if [ -n "$example" ]; then
   printf "%-25s%s\n" "Example to run:" \
     "$example \
-    ($([ ! -z "$containerised" ] && echo "containerised" || echo "native"))"
-elif [ ! -z "$containerised" ]; then
+    ($([ -n "$containerised" ] && echo "containerised" || echo "native"))"
+elif [ -n "$containerised" ]; then
   printf "%-25s%s\n" "Dockerfile to build:" \
     "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
-elif [ ! -z "$native" ]; then
+elif [ -n "$native" ]; then
   printf "%-25s%s\n" "Command to execute:" "$(echo "${submit_args[@]}")"
 else
   printf "%-25s%s\n" "Command to execute:" "None"
@@ -382,9 +382,9 @@ while [ $i -lt ${#envs_list[@]} ]; do
 
   # Skip moving on if we collided using 'move_next' actuation, otherwise move
   # to the next environment
-  if [ ! -z "$(run_manager_cmd 'print(get_value_by_name("tasks", "'$task'", \
+  if [ -n "$(run_manager_cmd 'print(get_value_by_name("tasks", "'$task'", \
         "actions"))' | grep "'move_next'")" ] && \
-      [ ! -z "$(docker run --rm --network $DOCKER_NETWORK -it \
+      [ -n "$(docker run --rm --network $DOCKER_NETWORK -it \
         "$DOCKER_TAG_BACKEND" /bin/bash -c \
         'curl '$HOSTNAME_SUPERVISOR:$PORT_SUPERVISOR'/robot/is_collided' | \
         grep "true")" ]; then
@@ -405,13 +405,13 @@ done
 
 header_block "Processing results from batch" $colour_magenta
 
-if [ ! -z "$zip" ]; then
+if [ -n "$zip" ]; then
   echo -e "${colour_magenta}Zipping up results ... ${colour_nc}\n"
   rm -vf "${prefix}.zip" && zip "${prefix}.zip" "${results_list[@]}"
   echo ""
 fi
 
-if [ ! -z "$evaluate_method" ]; then
+if [ -n "$evaluate_method" ]; then
   echo -e "${colour_magenta}Evaluating results... ${colour_nc}"
   benchbot_eval -m "$evaluate_method" -o "${prefix}_scores.json" \
     --required-task "$task" \

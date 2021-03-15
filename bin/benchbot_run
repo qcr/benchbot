@@ -254,13 +254,13 @@ fi
 # Check for & handles updates to the BenchBot software stack
 header_block "CHECKING FOR BENCHBOT SOFTWARE STACK UPDATES" ${colour_blue}
 
-if [ ! -z "$updates_skip" ]; then 
+if [ -n "$updates_skip" ]; then 
   echo -e "${colour_yellow}Skipping ...${colour_nc}"
 elif ! update_check "$(git branch -a --contains HEAD | grep -v HEAD | \
     grep '.*remotes/.*' | head -n 1 | sed 's/.*\/\(.*\)/\1/')"; then 
   exit 1; 
 fi
-if [ ! -z "$updates_exit" ]; then exit 0; fi
+if [ -n "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
 kill_benchbot
@@ -326,7 +326,7 @@ cmd="${docker_run//'$name'/$ros_master_host}"
 ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-if [ ! -z "$simulator_required" ]; then
+if [ -n "$simulator_required" ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Starting container for BenchBot Robot Controller:"
   cmd="${docker_run//'$name'/benchbot_robot}"
@@ -351,13 +351,13 @@ header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker logs --follow benchbot_supervisor &
 
-while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
+while [ -n $(docker ps -q -f 'name=benchbot_supervisor') ] && \
   ([ -z "$simulator_required" ] || \
-  [ ! -z $(docker ps -q -f 'name=benchbot_robot') ]); do
+  [ -n $(docker ps -q -f 'name=benchbot_robot') ]); do
   sleep 1
 done
 
-if [ ! -z "$simulator_required" ] && \
+if [ -n "$simulator_required" ] && \
     [ -z $(docker ps -q -f 'name=benchbot_robot') ]; then
   header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"

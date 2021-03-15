@@ -221,7 +221,7 @@ function exit_gracefully() {
   echo ""
 
   # Pass the signal to the currently running process
-  if [ ! -z "$active_pid" ]; then
+  if [ -n "$active_pid" ]; then
     kill -TERM $active_pid &> /dev/null || true
     wait $active_pid || true
     active_pid=
@@ -253,7 +253,7 @@ function submission_command() {
     contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
       "container_directory"); x and print(x)')"
     echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") $( \
-      [ ! -z "$contdir" ] && echo "$contdir" || echo ".")"
+      [ -n "$contdir" ] && echo "$contdir" || echo ".")"
   fi
 }
 
@@ -293,9 +293,9 @@ function submission_mode() {
   # 4 - example containerised submission via Docker
   # $1 example name, $2 example_containerised, $3 mode
   mode="$(expand_mode $3)"
-  if [ ! -z "$1" ] && [ -z "$2" ]; then
+  if [ -n "$1" ] && [ -z "$2" ]; then
     echo 3
-  elif [ ! -z "$1" ]; then
+  elif [ -n "$1" ]; then
     echo 4
   elif [ "$mode" == "submission" ]; then
     echo 2
@@ -363,7 +363,7 @@ while true; do
     --list-examples)
       list_content "examples" "$_list_examples_pre" "an"; exit $? ;;
     -n|--native|-c|--containerised|-s|--submission)
-      if [ ! -z "$mode" ]; then mode_dup=1; fi
+      if [ -n "$mode" ]; then mode_dup=1; fi
       mode="$1"; mode_details="$2" ; shift 2 ;;
     -r|--results-location)
       results_location="$2"; shift 2 ;;
@@ -414,7 +414,7 @@ echo \
 "    Command to execute:          $sub_cmd"
 echo \
 "    Command directory:           $sub_dir"
-if [ ! -z "$sub_df" ]; then
+if [ -n "$sub_df" ]; then
   echo \
 "    Dockerfile to build:         $sub_df"
 fi
@@ -436,7 +436,7 @@ trap "exit_gracefully $mode"  SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 
 # Clear out any previous results in default location
 results_src=
-if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
+if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
   results_src=$(python3 -c \
     'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
   rm -rf "$results_src"
@@ -495,7 +495,7 @@ if [ $run_ret -ne 0 ]; then
 fi
 
 # Perform any evaluation that may have been requested by the caller
-if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
+if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
   header_block "Processing results" ${colour_blue}
 
   # Pull the results out of the container if appropriate
@@ -518,14 +518,14 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
   fi
 
   # Copy results to a new location if requested
-  if [ ! -z "$results_location" ]; then
+  if [ -n "$results_location" ]; then
     printf "\nCopying results from '%s' to '%s' ...\n" "$results_src" \
       "$results_location"
     rsync -avP "$results_src" "$results_location"
   fi
 
   # Run evaluation on the results if requested
-  if [ ! -z "$evaluate_method" ]; then
+  if [ -n "$evaluate_method" ]; then
     if [ -z "$results_location" ]; then results_location="$results_src"; fi
     printf "\nRunning evaluation on results from '%s' ... \n" \
       "$results_location"

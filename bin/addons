@@ -9,6 +9,6 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-if [ ! -z "${2-}" ]; then printf "$2"; fi
+if [ -n "${2-}" ]; then printf "$2"; fi
 python3 -c 'from benchbot_addons.manager import *; '"$1"
-if [ ! -z "${3-}" ]; then printf "$3"; fi
+if [ -n "${3-}" ]; then printf "$3"; fi

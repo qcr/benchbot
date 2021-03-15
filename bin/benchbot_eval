@@ -201,9 +201,9 @@ while true; do
 done
 
 # Generate any derived configuration parameters
-if [ ! -z "$required_envs" ]; then
+if [ -n "$required_envs" ]; then
   required_envs_list=($(echo "$required_envs" | tr ',' '\n'))
-elif [ ! -z "$required_envs_batch" ]; then
+elif [ -n "$required_envs_batch" ]; then
   required_envs_list=($(run_manager_cmd 'exists("batches", [("name", \
     "'$required_envs_batch'")]) and print("\n".join(get_value_by_name(\
     "batches", "'$required_envs_batch'", "environments")))'))
@@ -226,11 +226,11 @@ header_block "Running validation over ${#results_files[@]} input files" \
 # Build up some strings for Python
 python_results_files='["'"$(echo "${results_files[@]}" | sed 's/ /","/g')"'"]'
 python_req_task=
-if [ ! -z "$required_task" ]; then
+if [ -n "$required_task" ]; then
   python_req_task=', required_task="'"$required_task"'"'
 fi
 python_req_envs=
-if [ ! -z "$required_envs_list" ]; then
+if [ -n "$required_envs_list" ]; then
   python_req_envs=', required_envs=["'$(echo "${required_envs_list[@]}" | \
     sed 's/ /","/g')'"]'
 fi
@@ -240,7 +240,7 @@ fi
 python3 -c 'from benchbot_eval import Validator; \
   Validator('"$python_results_files$python_req_task$python_req_envs"')'
 
-if [ ! -z "$validate_only" ]; then exit 0; fi
+if [ -n "$validate_only" ]; then exit 0; fi
 
 ################################################################################
 ##################### Evaluate the provided results files ######################
