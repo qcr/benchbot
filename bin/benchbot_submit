@@ -16,6 +16,7 @@ popd > /dev/null
 ################################################################################
 
 SUBMISSION_CONTAINER_NAME="benchbot_submission"
+SUBMISSION_OUTPUT_DEFAULT="submission.tgz"
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -243,7 +244,8 @@ function submission_command() {
   elif [ $1 == 1 ]; then
     echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") ."
   elif [ $1 == 2 ]; then
-    echo "tar -czvf $([ -z "${4:-}" ] && echo "submission.tgz" || echo "$args")"
+    echo "tar -czvf $([ -z "${4:-}" ] && \
+      echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$args")"
   elif [ $1 == 3 ]; then
     echo "$(run_manager_cmd 'print(get_value_by_name("examples", "'$3'", \
       "native_command"))') ${4:-}"
@@ -301,6 +303,28 @@ function submission_mode() {
     echo 1
   elif [ "$mode" == "native" ]; then
     echo 0
+  fi
+}
+
+function submission_mode_string() {
+  # $1 mode (numeric), $2 example
+  if [ "$1" == 0 ]; then
+    echo "Native"
+  elif [ "$1" == 1 ]; then
+    echo "Containerised"
+  elif [ "$1" == 2 ]; then
+    echo "Submission *.tgz creation"
+  elif [ "$1" == 3 ]; then
+    echo "Native (with example '$2')"
+  elif [ "$1" == 4 ]; then
+    echo "Containerised (with example '$2')"
+  fi
+}
+
+function submission_output() {
+  # $1 mode (numeric), $2 args
+  if [ "$1" == 2 ]; then
+    [ -z "${2:-}" ] && echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$2"
   fi
 }
 
@@ -362,32 +386,22 @@ mode_details="$(echo "$mode_details $extra_args" | sed 's/^\s*//; s/\s*$//')"
 # Bail if any of the requested configurations are invalid
 validate_submit_args "$evaluate_method" "$example" "$example_containerised" \
   "$mode" "$mode_num" "$mode_dup" "$mode_details" "$results_location" "$args"
-exit 0
 
 ################################################################################
 ################## Submit your BenchBot solution as requested ##################
 ################################################################################
 
 # Before we start a submission, figure out all of our derived configuration
-config_cmd=
-config_dir=
-config_out=
-case "$mode" in
-  native)
-    config_cmd="$(submission_command "$example" "$mode_args")" ;;
-  containerised|submission)
-    config_dir="$(submission_directory "$example" "$mode_args")" 
-    config_fn="$(submission_dockerfile "$example" "$mode_args")" ;;
-  submission)
-    config_dir="$(submission_directory "$example" "$mode_args" 1)" 
-    config_out="submission.tgz" ;;
-esac
-
+sub_cmd="$(submission_command "$mode_num" "$mode_details" "$example" "$args")"
+sub_dir="$(submission_directory "$mode_num" "$mode_details" "$example")"
+sub_df="$(submission_dockerfile "$mode_num" "$mode_details" "$example")"
+sub_out="$(submission_output "$mode_num" "$args")"
 
 # Now print relevant configuration information
+mode_string=""
 echo "Submitting to the BenchBot system with the following settings:
 
-    Submission mode:             $mode"
+    Submission mode:             $(submission_mode_string $mode_num $example)"
 echo \
 "    Perform evaluation:          "\
 "$([ -z "$evaluate_method" ] && echo "No" || echo "Yes ($evaluate_method)")"
@@ -396,24 +410,24 @@ if [ -n "$results_location" ]; then
 "    Results save location:       $results_location"
 fi
 echo ""
-if [ -n "$config_cmd" ]; then
+echo \
+"    Command to execute:          $sub_cmd"
+echo \
+"    Command directory:           $sub_dir"
+if [ ! -z "$sub_df" ]; then
   echo \
-"    Command to execute:          $config_cmd"
+"    Dockerfile to build:         $sub_df"
 fi
-if [ -n "$config_dir" ]; then
-  if [ "$mode" == "containerised" ]; then
-    echo \
-"    Dockerfile to build:         $config_dir/$config_fn"
-  else
-    echo \
-"    Directory to submit:         $config_dir"
-  fi
-fi
-if [ -n "$config_out" ]; then
+if [ -n "$sub_df" ] && [ -n "$args" ]; then
   echo \
-"    Bundling output filename:    $config_out"
+"    Docker runtime args:         $args"
+fi
+if [ -n "$sub_out" ]; then
+  echo \
+"    Output *.tgz filename:       $sub_out"
 fi
 echo ""
+exit 0
 
 # Actually perform the submission
 header_block "Running submission in '$mode' mode" ${colour_green}
