@@ -444,42 +444,6 @@ function show_environment() {
   :
 }
 
-function submission_command() {
-  # $1 example name, $2 mode_args
-  if [[ -z "$2" && ! -z "$1" ]]; then
-    echo "pushd $(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", [("name", "'$1'")]))')) > /dev/null; $(run_manager_cmd \
-      'print( get_value_by_name("examples", "'$1'", "native_command"))'); \
-      popd > /dev/null"
-  else
-    echo "$2"
-  fi
-}
-
-function submission_directory() {
-  # $1 example name, $2 mode_args, $3 use_raw
-  if [[ -z "$2"  && ! -z "$1" ]]; then
-    pushd "$(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", [("name", "'$1'")]))'))" > /dev/null
-    realpath $(run_manager_cmd 'print(get_value_by_name(\
-      "examples", "'$1'", "container_directory"))')
-    popd > /dev/null
-  else
-    [ ! -z "${3:-}" ] && echo "$2" && return
-    [ -d "$2" ] && echo "$2" || echo "$(dirname "$2")"
-  fi
-}
-
-function submission_dockerfile() {
-  # $1 example name, $2 mode_args
-  if [[ -z "$2" && ! -z "$1" ]]; then
-    run_manager_cmd 'fn = get_value_by_name("examples", "'$1'", \
-      "container_filename"); print("Dockerfile" if fn is None else fn)'
-  else
-    [ -d "$2" ] && echo "Dockerfile" || echo "$(basename "$2")"
-  fi
-}
-
 ################################################################################
 ############################# Argument validation ##############################
 ################################################################################
@@ -598,30 +562,45 @@ function _validate_results_possible() {
 }
 
 function _validate_submission_mode() {
-  # $1 example name, $2 duplicate mode flag, $3 mode (expanded), $4 mode_args
+  # $1 example name, $2 example_containerised, $3 mode, $4 mode (numeric), 
+  # $5 duplicate mode flag, $6 mode_details, $7 args
   err=
-  use_raw=
-  [ "$3" == "submission" ] && use_raw=1
-  cmd="$(submission_command "$1" "$4")"
-  dir="$(submission_directory "$1" "$4" "$use_raw")"
-  fn="$(submission_dockerfile "$1" "$4")"
-  if [ -z "$3" ]; then
-    err="$(printf "%s %s\n" "No mode was selected. Please select a submission" \
-      "mode from 'native', 'containerised', or 'submission'")"
-  elif [ ! -z "$2" ]; then
+
+  # Handle nonsensical combinations
+  if [ ! -z "$1" ] && [ ! -z "$3" ]; then
+    err="$(printf "%s %s\n" "Provided both an example name," \
+      "and submission mode ('$3')")"
+  elif [ -z "$1" ] && [ ! -z "$2" ]; then
+    err="$(printf "%s\n" \
+      "Requested example containerisation but no example was provided.")"
+  elif [ ! -z "$5" ]; then
     err="$(printf "%s %s\n" "Selected more than 1 mode, please only select" \
       "one of 'native', 'containerised', or 'submission'.")"
-  elif [ -z "$1" ] && [ -z "$4" ]; then
-    err="$(printf "%s %s\n" "Mode '$3' requires arguments, but none were" \
-      "provided. Please see '--help' for details.")"
-  elif [[ ("$3" == s*) && ! -d "$dir" ]]; then
-    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a directory as an" \
-      "argument. The directory provided does not exist: " "$dir")"
-  elif [[ "$3" == c* && ! -f "$dir/$fn" ]]; then
-    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a Dockerfile to run." \
-      "The provided Dockerfile does not exist:" "$dir/$fn")"
+  elif [ -z "$1" ]; then
+    if [ -z "$3" ]; then
+      err="$(printf "%s %s\n" "No mode was selected. Please select an" \
+        "example or one of 'native', 'containerised', or 'submission' modes.")"
+    elif [ -z "$6" ]; then
+      err="$(printf "%s %s\n" "Mode '$2' requires arguments, but none were" \
+        "provided. Please see '--help' for details.")"
+    fi
   fi
 
+  # Handle errors in submission data
+  if [ -z "$err" ]; then
+    cmd="$(submission_command "$4" "$6" "$1" "$7")"
+    dir="$(submission_directory "$4" "$6" "$1")"
+    df="$(submission_dockerfile "$4" "$6" "$1")"
+    if [ ! -z "$df" ] && [ ! -f "$dir/$df" ]; then
+      err="$(printf "%s %s\n\t%s\n" "Containerised mode requested with the" \
+        "following non-existent Dockerfile:" "$df")"
+    elif [ "$4" == 2 ] && [ ! -d "$dir" ]; then
+      err="$(printf "%s %s\n\t%s\n" "Mode '$3' was requested to tar & submit" \
+        "the following non-existent directory:" "$dir")"
+    fi
+  fi
+
+  # Print the error if we found one
   if [ ! -z "$err" ]; then 
     printf "$err\n"
     printf "\n${colour_red}%s${colour_nc}" \
@@ -796,15 +775,16 @@ function validate_run_args() {
 }
 
 function validate_submit_args() {
-  # $1 evaluation method, $2 example, $3 mode, $4 duplicate mode flag, 
-  # $5 results location, $6 mode arguments string
+  # $1 evaluation method, $2 example, $3 example_containerised, $4 mode, 
+  # $5 mode_num, $6 duplicate mode flag, $7 mode details, $8 results location, 
+  # $9 args
   if [ ! -z "$1" ]; then
     err="$(_validate_evaluation_method "$1")"
     if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   fi
   err="$([ ! -z "$2" ] && _validate_content "examples" "$2" || true)"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  err="$(_validate_submission_mode "$2" "$4" "$3" "$6")"
+  err="$(_validate_submission_mode "$2" "$3" "$4" "$5" "$6" "$7" "$9")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   err="$(_validate_results_possible "$3" "$1" "$5")"
   if [ ! -z "$err" ]; then echo "$err"; exit 1; fi

@@ -22,7 +22,7 @@ SUBMISSION_CONTAINER_NAME="benchbot_submission"
 ################################################################################
 
 usage_text="$(basename "$0") -- Submission script for running your solution to the Scene
-Understanding Challenge against a running simulator. It supports 3 different
+Understanding Challenge against a running simulator. It supports 5 different
 modes of submission:
 
     1. native: 
@@ -40,6 +40,16 @@ modes of submission:
        Bundles up your code and saves a *.tgz ready for submission to a
        challenge (not currently in use due to code being run locally on your
        machine)
+
+    4. native (example):
+       Same as native, but uses an example provided in a BenchBot add-on. The
+       example already defines the native command to run, you just have to add
+       an runtime args via the --args flag if necessary.
+
+    5. containerised (example):
+       Same as containerised, but uses an example provided in a BenchBot
+       add-on. The example already defines where the Dockerfile exists, you
+       just have to add runtime args via the --args flag if necessary.
 
 USAGE:
 
@@ -104,15 +114,20 @@ OPTION DETAILS:
                     $(basename "$0") -c .
                     $(basename "$0") -c ./Dockerfile
 
-            Note: examples define this parameter implicitly, so they only 
-            require the '-c' flag to run in containerised mode.
-
     -E, --example
             Name of an installed example to run. All examples at least support
             native operation, with most also supporting containerised
             operation.
 
+            Examples run in native mode by default. Examples can still be run
+            in containerised mode, but require the '--example-containerised'
+            flag. 
+
             (use '--list-examples' to see a list of installed example)
+
+    --example-containerised
+            Runs the example in containerised mode instead of native mode. This
+            option is only valid when running an example.
 
     -e, --evaluate-with
             Name of the evaluation method to use for evaluation of the provided
@@ -143,9 +158,6 @@ OPTION DETAILS:
             Python script called 'solution.py':
 
                     $(basename "$0") -n 'python3 solution.py'
-
-            Note: examples define this parameter implicitly, so they only
-            require the '-n' flag to run in native mode.
 
     -r, --results-location
             Copy results produced by the submission to another location. Note:
@@ -190,6 +202,7 @@ _list_examples_pre=\
     "
 
 function expand_mode() {
+  if [ -z "${1:-}" ]; then return; fi
   mode="${1//-}"
   if [[ "$mode" == n* ]]; then 
     echo "native";
@@ -223,12 +236,71 @@ function exit_gracefully() {
   exit ${2:-0}
 }
 
-function warning_mode() {
-  # $1 example name, $2 mode_args
-  if [[ ! -z "$1" && ! -z "$2" ]]; then
-    printf "${colour_yellow}%s\n%s\n${colour_nc}" \
-      "WARNING: You selected an example & provided arguments for the mode" \
-      "(usually you only want one or the other)"
+function submission_command() {
+  # $1 mode (numeric), $2 mode_details, $3 example name, $4 args
+  if [ "$1" == 0 ]; then
+    echo "$2 ${4:-}";
+  elif [ $1 == 1 ]; then
+    echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") ."
+  elif [ $1 == 2 ]; then
+    echo "tar -czvf $([ -z "${4:-}" ] && echo "submission.tgz" || echo "$args")"
+  elif [ $1 == 3 ]; then
+    echo "$(run_manager_cmd 'print(get_value_by_name("examples", "'$3'", \
+      "native_command"))') ${4:-}"
+  elif [ $1 == 4 ]; then
+    contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_directory"); x and print(x)')"
+    echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") $( \
+      [ ! -z "$contdir" ] && echo "$contdir" || echo ".")"
+  fi
+}
+
+function submission_directory() {
+  # $1 mode (numeric), $2 mode_details, $3 example name
+  if [ "$1" == 0 ] || [ "$1" == 1 ]; then
+    echo "$(realpath ".")"
+  elif [ "$1" == 2 ]; then
+    echo "$(realpath "$2")"
+  elif [ "$1" == 3 ] || [ "$1" == 4 ]; then
+    echo "$(realpath "$(dirname "$(run_manager_cmd \
+      'print(get_match("examples", [("name", "'$3'")]))')")")"
+  fi
+}
+
+function submission_dockerfile() {
+  # $1 mode (numeric), $2 mode_details, $3 example name,
+  if [ "$1" == 1 ]; then
+    echo "$(echo "$2" | sed 's/\/\?\s*$//')$([ ! -f "$2" ] && \
+      echo "/Dockerfile")"
+  elif [ "$1" == 4 ]; then
+    contfn="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_filename"); x and print(x)')"
+    contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_directory"); x and print(x)')"
+    echo "$([ -z "$contfn"] && echo "$contdir/Dockerfile" || echo "$contfn" )"
+  fi
+}
+
+function submission_mode() {
+  # Returns a numeric submission mode given the arguments. Valid submission
+  # modes are:
+  # 0 - submission via native command
+  # 1 - containerised submission via Docker
+  # 2 - submission via tarring for uploading elsewhere
+  # 3 - example submission via native command
+  # 4 - example containerised submission via Docker
+  # $1 example name, $2 example_containerised, $3 mode
+  mode="$(expand_mode $3)"
+  if [ ! -z "$1" ] && [ -z "$2" ]; then
+    echo 3
+  elif [ ! -z "$1" ]; then
+    echo 4
+  elif [ "$mode" == "submission" ]; then
+    echo 2
+  elif [ "$mode" == "containerised" ]; then
+    echo 1
+  elif [ "$mode" == "native" ]; then
+    echo 0
   fi
 }
 
@@ -237,31 +309,38 @@ function warning_mode() {
 ################################################################################
 
 # Safely parse options input
-_args="args:,evaluate-with:,example:,help,containerised::,list-examples,\
-native::,results-location:,show-example:,submission:,version"
-parse_out=$(getopt -o a:e:E:hc::n::r:s:v --long $_args -n "$(basename "$0")" \
+_args="args:,evaluate-with:,example:,example-containerised,help,containerised:,\
+list-examples,native:,results-location:,show-example:,submission:,version"
+parse_out=$(getopt -o a:e:E:hc:n:r:s:v --long $_args -n "$(basename "$0")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+args=
 evaluate_method=
 example=
+example_containerised=
+extra_args=
 mode=
-mode_args=
+mode_details=
 mode_dup=
 results_location=
 while true; do
   case "$1" in
+    -a|--args)
+      args="$2" ; shift 2 ;;
     -e|--evaluate-with)
       evaluate_method="$2" ; shift 2 ;;
     -E|--example)
       example="$2"; shift 2 ;;
+    --example-containerised)
+      example_containerised=1; shift 1 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-examples)
       list_content "examples" "$_list_examples_pre" "an"; exit $? ;;
     -n|--native|-c|--containerised|-s|--submission)
       if [ ! -z "$mode" ]; then mode_dup=1; fi
-      mode="$1"; shift ;;
+      mode="$1"; mode_details="$2" ; shift 2 ;;
     -r|--results-location)
       results_location="$2"; shift 2 ;;
     --show-example)
@@ -269,19 +348,21 @@ while true; do
     -v|--version)
       print_version_info; exit ;;
     --)
-      mode_args=$(echo "$@" | sed 's/-- *//'); break ;;
+      extra_args=$(echo "$@" | sed 's/-- *//'); break ;;
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-echo "Mode args are: $mode_args"
-exit 0
-mode="$(expand_mode "$mode")"
+
+# Generate any derived configuration parameters
+mode=$(expand_mode "$mode")
+mode_num="$(submission_mode "$example" "$example_containerised" "$mode")"
+mode_details="$(echo "$mode_details $extra_args" | sed 's/^\s*//; s/\s*$//')"
 
 # Bail if any of the requested configurations are invalid
-validate_submit_args "$evaluate_method" "$example" "$mode" "$mode_dup" \
-  "$results_location" "$mode_args"
-warning_mode "$example" "$mode_args"
+validate_submit_args "$evaluate_method" "$example" "$example_containerised" \
+  "$mode" "$mode_num" "$mode_dup" "$mode_details" "$results_location" "$args"
+exit 0
 
 ################################################################################
 ################## Submit your BenchBot solution as requested ##################
