@@ -393,6 +393,7 @@ validate_submit_args "$evaluate_method" "$example" "$example_containerised" \
 
 # Before we start a submission, figure out all of our derived configuration
 sub_str="$(submission_mode_string $mode_num $example)"
+sub_str_short="$(echo "$sub_str" | sed 's/ *(.*$//')"
 sub_cmd="$(submission_command "$mode_num" "$mode_details" "$example" "$args")"
 sub_dir="$(submission_directory "$mode_num" "$mode_details" "$example")"
 sub_df="$(submission_dockerfile "$mode_num" "$mode_details" "$example")"
@@ -430,7 +431,7 @@ fi
 echo ""
 
 # Actually perform the submission
-header_block "Running submission in '$sub_str' mode" ${colour_green}
+header_block "Running submission in '$sub_str_short' mode" ${colour_green}
 
 trap "exit_gracefully $mode_num"  SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 
@@ -470,7 +471,8 @@ elif [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
   echo "Containerising '$sub_df' ..."
   pushd "$sub_dir" >/dev/null
   submission_tag="benchbot/submission:"$(echo "$(pwd)" | sha256sum | cut -c1-10)
-  eval "$(echo "$sub_cmd" | sed "s/docker build /\0 -t '$submission_tag'")" &
+  eval "$(echo "$sub_cmd" | sed \
+    "s/docker build /\0 -t '${submission_tag//\//\\\/}' /")" &
   active_pid=$!
   wait $active_pid && run_ret=0 || run_ret=1
   if [ $run_ret -ne 0 ]; then
@@ -485,7 +487,8 @@ elif [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
     # TODO PASSTHROUGH THE ARGS!!!
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
-      --hostname="$SUBMISSION_CONTAINER_NAME" -it "$submission_tag"
+      --hostname="$SUBMISSION_CONTAINER_NAME" \
+      -e args="$args" -it "$submission_tag"
     run_ret=$?
     set -e
     xhost -local:root
