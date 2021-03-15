@@ -769,7 +769,7 @@ function validate_run_args() {
   err="$(_validate_types "$robot" "$env" "${envs[@]}")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
   err="$(_validate_type "$type")"
-  if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
+  if [[ "$err" == *"ERROR:"* ]]; then echo "$err"; exit 1; fi
   err="$(_validate_environment_count ${#envs[@]} "$task")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
 }
