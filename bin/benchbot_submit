@@ -446,8 +446,9 @@ fi
 # Handle the submission
 if [ "$mode_num" == 0 ] || [ "$mode_num" == 3 ]; then
   # This is native submission mode
-  printf "%s\n\t%s\n%s\n" "Running submission natively via command:" \
-    "'$sub_cmd'" "(in directory '$sub_dir') ..."
+  printf "%s\n\n\t%s\n\n%s\n\n\t%s\n\n" \
+    "Running submission natively via command:" "'$sub_cmd'" "In directory:" \
+    "'$sub_dir'"
   pushd "$sub_dir" >/dev/null
   set +e
   eval "$sub_cmd"
