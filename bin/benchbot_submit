@@ -88,7 +88,7 @@ OPTION DETAILS:
             Runtime arguments to pass through to the submission. You will need
             to use quotes to properly handle multiple arguments. For example:
 
-              $(basename "$0") -n python3 my_script.py -a '--arg1 a --arg2 b'
+              $(basename "$0") -n 'python3 my_script.py' -a '--arg1 a --arg2 b'
 
             These arguments are handled differently depending on the mode:
               - native: they are appended to the end of the command

@@ -76,12 +76,13 @@ OPTION DETAILS:
     -h, --help             
             Show this help menu.
 
+    -a, --args
+            Same functionality as 'benchbot_submit --args'. See the help there
+            ('benchbot_submit --help') for further details.
+
     -c, --containerised
-            Runs the submission in containerised mode. The directory containing
-            the Dockerfile describing your solution must be specified as a
-            trailing argument to this command.  See '-c, --containerised' in
-            'benchbot_submit --help' for further details on containerised
-            BenchBot submissions.
+            Same functionality as 'benchbot_submit --containerised'. See the
+            help there ('benchbot_submit --help') for further details.
 
     -e, --envs
             A comma-separated list of environments for $(basename "$0") to
@@ -97,6 +98,9 @@ OPTION DETAILS:
             environment specifications.
 
     --example
+            Same functionality as 'benchbot_submit --example'. See the
+            help there ('benchbot_submit --help') for further details.
+
             Name of an installed example to run. All examples at least support
             native operation, with most also supporting containerised
             operation.
@@ -108,8 +112,8 @@ OPTION DETAILS:
             (use '--list-examples' to see a list of installed example)
 
     --example-containerised
-            runs the example in containerised mode instead of native mode. This
-            option is only valid when running an example.
+            Same functionality as 'benchbot_submit --example-containerised'. 
+            See the help there ('benchbot_submit --help') for further details.
 
     --list-batches
             Lists all supported environment batches. These can be used with the
@@ -117,10 +121,8 @@ OPTION DETAILS:
             details about a batch.
 
     -n, --native
-            Runs the submission in native mode. The command to execute natively
-            will be taken from the trailing arguments provided to your command.
-            See '-n, --native' in 'benchbot_submit --help' for further details
-            on native BenchBot submissions.
+            Same functionality as 'benchbot_submit --native'. See the help 
+            there ('benchbot_submit --help') for further details.
 
     -p, --prefix
             Prefix to use in naming of files produced by $(basename "$0"). If
