@@ -498,11 +498,13 @@ function submission_dockerfile() {
     echo "$(echo "$2" | sed 's/\/\?\s*$//')$([ ! -f "$2" ] && \
       echo "/Dockerfile")"
   elif [ "$1" == 4 ]; then
+    
     contfn="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
       "container_filename"); x and print(x)')"
     contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
       "container_directory"); x and print(x)')"
-    echo "$([ -z "$contfn"] && echo "$contdir/Dockerfile" || echo "$contfn" )"
+    echo "$(realpath "$(submission_directory "$1" "$2" "$3")/$(\
+      [ -z "$contfn"] && echo "$contdir/Dockerfile" || echo "$contfn" )")"
   fi
 }
 

@@ -385,7 +385,7 @@ elif [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
       --hostname="$SUBMISSION_CONTAINER_NAME" \
-      -e args="$args" -it "$submission_tag"
+      -e args="$args" -i "$submission_tag"
     run_ret=$?
     set -e
     xhost -local:root

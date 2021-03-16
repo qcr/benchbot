@@ -16,6 +16,7 @@ popd > /dev/null
 ################################################################################
 
 DEFAULT_PREFIX="batch"
+SUBMIT_CAT_FILE="/tmp/benchbot_batch_stdin"
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -213,11 +214,17 @@ function kill_run() {
 }
 
 submit_pid=
+submit_cat_pid=
 function kill_submit() {
   if [ -n $submit_pid ]; then
     kill -TERM $submit_pid &> /dev/null
     wait $submit_pid || true
     submit_pid=
+  fi
+  if [ -n $submit_cat_pid ]; then
+    kill -TERM $submit_cat_pid &> /dev/null
+    wait $submit_cat_pid || true
+    submit_cat_pid=
   fi
 }
 
@@ -376,8 +383,12 @@ while [ $i -lt ${#envs_list[@]} ]; do
   benchbot_run -t "${task:-None}" -e "${envs_list[$i]}" -r "${robot:-None}" -f \
     &> /tmp/benchbot_run_out &
   run_pid=$!
-  benchbot_submit -r "${prefix}_$i.json" $example_prefix $example \
-    $example_containerised $mode_prefix $mode_details $args_prefix $args &
+  rm "$SUBMIT_CAT_FILE" &> /dev/null && mkfifo "$SUBMIT_CAT_FILE"
+  cat > "$SUBMIT_CAT_FILE" &
+  submit_cat_pid=$!
+  cat "$SUBMIT_CAT_FILE" | benchbot_submit -r "${prefix}_$i.json" \
+    $example_prefix $example $example_containerised $mode_prefix \
+    $mode_details $args_prefix $args &
   submit_pid=$!
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
