@@ -202,18 +202,6 @@ _list_examples_pre=\
 "The following BenchBot examples are available in your installation:
     "
 
-function expand_mode() {
-  if [ -z "${1:-}" ]; then return; fi
-  mode="${1//-}"
-  if [[ "$mode" == n* ]]; then 
-    echo "native";
-  elif [[ "$mode" == c* ]]; then
-    echo "containerised";
-  elif [[ "$mode" == s* ]]; then
-    echo "submission";
-  fi
-}
-
 active_pid=
 exit_code=
 function exit_gracefully() {
@@ -288,7 +276,7 @@ while true; do
 done
 
 # Generate any derived configuration parameters
-mode=$(expand_mode "$mode")
+mode=$(expand_submission_mode "$mode")
 mode_num="$(submission_mode "$example" "$example_containerised" "$mode")"
 mode_details="$(echo "$mode_details $extra_args" | sed 's/^\s*//; s/\s*$//')"
 

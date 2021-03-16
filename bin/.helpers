@@ -448,6 +448,18 @@ function show_environment() {
 ##################### Shared argument validation & parsing #####################
 ################################################################################
 
+function expand_submission_mode() {
+  if [ -z "${1:-}" ]; then return; fi
+  mode="${1//-}"
+  if [[ "$mode" == n* ]]; then 
+    echo "native";
+  elif [[ "$mode" == c* ]]; then
+    echo "containerised";
+  elif [[ "$mode" == s* ]]; then
+    echo "submission";
+  fi
+}
+
 function submission_command() {
   # $1 mode (numeric), $2 mode_details, $3 example name, $4 args
   if [ "$1" == 0 ]; then
@@ -503,7 +515,7 @@ function submission_mode() {
   # 3 - example submission via native command
   # 4 - example containerised submission via Docker
   # $1 example name, $2 example_containerised, $3 mode
-  mode="$(expand_mode $3)"
+  mode="$(expand_submission_mode $3)"
   if [ -n "$1" ] && [ -z "$2" ]; then
     echo 3
   elif [ -n "$1" ]; then
@@ -757,7 +769,7 @@ function _validate_types() {
 function validate_batch_args() {
   # $1 robot, $2 task, $3 envs_str, $4 envs_batch name, $5 example name, 
   # $6 example_containerised, $7 evaluation method, $8 containerised, $9
-  # native, $10 submission mode args, $11... environments list
+  # native, $10 mode details, $11 args, $12... environments list
   robot="$1"
   task="$2"
   envs_str="$3"
@@ -767,8 +779,9 @@ function validate_batch_args() {
   evaluation_method="$7"
   containerised="$8"
   native="$9"
-  submit_args="${10}"
-  shift 10
+  mode_details="${10}"
+  args="${11}"
+  shift 11
   envs_list=($@)
 
   # Handle batch specific validation first
@@ -781,8 +794,8 @@ function validate_batch_args() {
   mode_dup=
   if [ -n "$native" ] && [ -n "$containerised" ]; then mode_dup=1; fi
   validate_submit_args "$evaluation_method" "$example" \
-    "$example_containerised" "$mode" "$mode_num" "$mode_dup" "DETAILS" "" \
-    "$submit_args"
+    "$example_containerised" "$mode" "$mode_num" "$mode_dup" "$mode_details" \
+    "" "$args"
 
   if [ -n "$evaluation_method" ]; then
     envs="$(echo "${envs_list[@]}" | tr ' ' ',')"

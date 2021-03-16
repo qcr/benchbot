@@ -233,11 +233,13 @@ function exit_gracefully() {
 ################################################################################
 
 # Safely parse options input
-_args='envs:,envs-batch:,example:,example-containerised,containerised,help,\
-list-batches,native,prefix:,robot:,evaluate-with:,show-batch,task:,version,zip'
-parse_out=$(getopt -o e:E:chnp:r:s:t:vz --long "$_args" -n "$(basename "$0")" \
-  -- "$@")
+_args='args:,envs:,envs-batch:,example:,example-containerised,containerised:,\
+help,list-batches,native:,prefix:,robot:,evaluate-with:,show-batch,task:,\
+version,zip'
+parse_out=$(getopt -o a:e:E:c:hn:p:r:s:t:vz --long "$_args" \
+  -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
+args=
 containerised=
 eval set -- "$parse_out"
 evaluate=
@@ -247,6 +249,7 @@ example_prefix=
 envs_str=
 envs_batch=
 evaluate_method=
+mode_details=
 native=
 prefix="$DEFAULT_PREFIX"
 robot=
@@ -255,8 +258,10 @@ task=
 zip=
 while true; do
   case "$1" in
+    -a|--args)
+      args="$2" ; shift 2 ;;
     -c|--containerised)
-      containerised='--containerised' ; shift ;;
+      containerised='--containerised'; mode_details="$2"; shift 2 ;;
     -e|--envs)
       envs_str="$2" ; shift 2 ;;
     -E|--envs-batch)
@@ -272,7 +277,7 @@ while true; do
     --list-batches)
       list_content "batches" "$_list_batches_pre" "a" 2; exit $? ;;
     -n|--native)
-      native='--native' ; shift ;;
+      native='--native'; mode_details="$2"; shift 2 ;;
     -p|--prefix)
       prefix="$2"; shift 2 ;;
     -r|--robot)
@@ -301,14 +306,16 @@ elif [ -n "$envs_batch" ]; then
 else
   envs_list=()
 fi
+mode_details="$(echo "$mode_details $submit_args" | sed 's/^\s*//; s/\s*$//')"
 
 # Bail if any of the requested configurations are invalid
 printf "Performing pre-run argument validation ...\n\n"
 validate_batch_args "$robot" "$task" "$envs_str" "$envs_batch" "$example" \
   "$example_containerised" "$evaluate_method" "$containerised" "$native" \
-  "$submit_args" "${envs_list[@]}"
+  "$mode_details" "$args" "${envs_list[@]}"
 printf "${colour_green}\tDone.${colour_nc}\n"
 
+exit 0
 ################################################################################
 ####################### Print settings prior to running ########################
 ################################################################################
