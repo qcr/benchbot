@@ -315,7 +315,6 @@ validate_batch_args "$robot" "$task" "$envs_str" "$envs_batch" "$example" \
   "$mode_details" "$args" "${envs_list[@]}"
 printf "${colour_green}\tDone.${colour_nc}\n"
 
-exit 0
 ################################################################################
 ####################### Print settings prior to running ########################
 ################################################################################
