@@ -567,7 +567,7 @@ function _validate_batch_envs() {
 function _validate_content() {
   # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
   # with this value (optional); $5 optional remove n characters to get singular
-  # version
+  # version; $6 mention this script as source of list flag (optional)
   singular=${1::-${5:-1}}
   full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
   check="$([ -z "${4-}" ] && \
@@ -575,7 +575,7 @@ function _validate_content() {
     echo "$4")"
   if [ "$check" != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
-      "Please check '--list-$1'."
+      "Please check '$([ -n "${6:-}" ] && echo "$6")--list-$1'."
     printf "\n${colour_red}%s${colour_nc}\n" \
       "ERROR: Invalid ${singular} selected (${singular} = '$full')"
   fi
