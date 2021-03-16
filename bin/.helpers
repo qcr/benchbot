@@ -695,7 +695,7 @@ function _validate_submission_mode() {
     cmd="$(submission_command "$4" "$6" "$1" "$7")"
     dir="$(submission_directory "$4" "$6" "$1")"
     df="$(submission_dockerfile "$4" "$6" "$1")"
-    if [ -n "$df" ] && [ ! -f "$dir/$df" ]; then
+    if [ -n "$df" ] && [ ! -f "$df" ]; then
       err="$(printf "%s %s\n\t%s\n" "Containerised mode requested with the" \
         "following non-existent Dockerfile:" "$df")"
     elif [ "$4" == 2 ] && [ ! -d "$dir" ]; then
