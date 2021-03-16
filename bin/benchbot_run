@@ -351,14 +351,14 @@ header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker logs --follow benchbot_supervisor &
 
-while [ -n $(docker ps -q -f 'name=benchbot_supervisor') ] && \
+while [ -n "$(docker ps -q -f 'name=benchbot_supervisor')" ] && \
   ([ -z "$simulator_required" ] || \
-  [ -n $(docker ps -q -f 'name=benchbot_robot') ]); do
+  [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]); do
   sleep 1
 done
 
 if [ -n "$simulator_required" ] && \
-    [ -z $(docker ps -q -f 'name=benchbot_robot') ]; then
+    [ -z "$(docker ps -q -f 'name=benchbot_robot')" ]; then
   header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
   docker logs benchbot_robot
