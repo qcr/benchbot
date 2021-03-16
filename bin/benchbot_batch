@@ -240,6 +240,7 @@ parse_out=$(getopt -o a:e:E:c:hn:p:r:s:t:vz --long "$_args" \
   -n "$(basename "$0")" -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 args=
+args_prefix=
 containerised=
 eval set -- "$parse_out"
 evaluate=
@@ -250,6 +251,7 @@ envs_str=
 envs_batch=
 evaluate_method=
 mode_details=
+mode_prefix=
 native=
 prefix="$DEFAULT_PREFIX"
 robot=
@@ -259,7 +261,7 @@ zip=
 while true; do
   case "$1" in
     -a|--args)
-      args="$2" ; shift 2 ;;
+      args="$2"; args_prefix="--args"; shift 2 ;;
     -c|--containerised)
       containerised='--containerised'; mode_details="$2"; shift 2 ;;
     -e|--envs)
@@ -307,6 +309,7 @@ else
   envs_list=()
 fi
 mode_details="$(echo "$mode_details $submit_args" | sed 's/^\s*//; s/\s*$//')"
+mode_prefix="$containerised$native"  # only one of these will be non-zero
 
 # Bail if any of the requested configurations are invalid
 printf "Performing pre-run argument validation ...\n\n"
@@ -324,18 +327,20 @@ header_block "Dumping settings before running batch" $colour_magenta
 _ind="$(printf "%0.s " {1..8})"
 printf "\nUsing the following static settings for each environment:\n"
 printf "$_ind%-25s%s\n" "Selected task:" "${task:-None}"
-printf "$_ind%-25s%s\n$_ind" "Selected robot:" "${robot:-None}"
+printf "$_ind%-25s%s\n" "Selected robot:" "${robot:-None}"
 if [ -n "$example" ]; then
-  printf "%-25s%s\n" "Example to run:" \
+  printf "$_ind%-25s%s\n" "Example to run:" \
     "$example \
     ($([ -n "$containerised" ] && echo "containerised" || echo "native"))"
 elif [ -n "$containerised" ]; then
-  printf "%-25s%s\n" "Dockerfile to build:" \
-    "$(echo "$submit_args" | awk '{print $2}')/Dockerfile"
+  printf "$_ind%-25s%s\n" "Dockerfile to build:" "$mode_details"
 elif [ -n "$native" ]; then
-  printf "%-25s%s\n" "Command to execute:" "$(echo "${submit_args[@]}")"
+  printf "$_ind%-25s%s\n" "Command to execute:" "$mode_details"
 else
-  printf "%-25s%s\n" "Command to execute:" "None"
+  printf "$_ind%-25s%s\n" "Command to execute:" "None"
+fi
+if [ -n "$args" ]; then
+  printf "$_ind%-25s%s\n" "With the args:" "$args"
 fi
 
 printf "\nIterating through the following environment list:\n$_ind"
@@ -372,7 +377,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
     &> /tmp/benchbot_run_out &
   run_pid=$!
   benchbot_submit -r "${prefix}_$i.json" $example_prefix $example \
-    $example_containerised $containerised $native $submit_args &
+    $example_containerised $mode_prefix $mode_details $args_prefix $args &
   submit_pid=$!
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1
