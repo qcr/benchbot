@@ -97,10 +97,19 @@ OPTION DETAILS:
             environment specifications.
 
     --example
-            The name of an installed example to run instead of providing
-            explicit execution commands / Dockerfiles to run at the end of this
-            command. Note that you still have to specify whether you would like
-            to run the example in native or containerised mode.
+            Name of an installed example to run. All examples at least support
+            native operation, with most also supporting containerised
+            operation.
+
+            Examples run in native mode by default. Examples can still be run
+            in containerised mode, but require the '--example-containerised'
+            flag. 
+
+            (use '--list-examples' to see a list of installed example)
+
+    --example-containerised
+            runs the example in containerised mode instead of native mode. This
+            option is only valid when running an example.
 
     --list-batches
             Lists all supported environment batches. These can be used with the
@@ -222,8 +231,8 @@ function exit_gracefully() {
 ################################################################################
 
 # Safely parse options input
-_args='envs:,envs-batch:,example:,containerised,help,list-batches,native,\
-prefix:,robot:,evaluate-with:,show-batch,task:,version,zip'
+_args='envs:,envs-batch:,example:,example-containerised,containerised,help,\
+list-batches,native,prefix:,robot:,evaluate-with:,show-batch,task:,version,zip'
 parse_out=$(getopt -o e:E:chnp:r:s:t:vz --long "$_args" -n "$(basename "$0")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -231,6 +240,7 @@ containerised=
 eval set -- "$parse_out"
 evaluate=
 example=
+example_containerised=
 example_prefix=
 envs_str=
 envs_batch=
@@ -253,6 +263,8 @@ while true; do
       evaluate_method="$2"; shift 2 ;;
     --example)
       example="$2" ; example_prefix="--example" ; shift 2 ;;
+    --example-containerised)
+      example_containerised='--example-containerised'; shift 1 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-batches)
@@ -291,7 +303,8 @@ fi
 # Bail if any of the requested configurations are invalid
 printf "Performing pre-run argument validation ...\n\n"
 validate_batch_args "$robot" "$task" "$envs_str" "$envs_batch" "$example" \
-  "$evaluate_method" "$containerised" "$native" "$submit_args" "${envs_list[@]}"
+  "$example_containerised" "$evaluate_method" "$containerised" "$native" \
+  "$submit_args" "${envs_list[@]}"
 printf "${colour_green}\tDone.${colour_nc}\n"
 
 ################################################################################
@@ -351,7 +364,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
     &> /tmp/benchbot_run_out &
   run_pid=$!
   benchbot_submit -r "${prefix}_$i.json" $example_prefix $example \
-    $containerised $native $submit_args &
+    $example_containerised $containerised $native $submit_args &
   submit_pid=$!
   while ps -p $run_pid &>/dev/null && ps -p $submit_pid &>/dev/null; do
     sleep 1

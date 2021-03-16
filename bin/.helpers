@@ -445,8 +445,100 @@ function show_environment() {
 }
 
 ################################################################################
-############################# Argument validation ##############################
+##################### Shared argument validation & parsing #####################
 ################################################################################
+
+function submission_command() {
+  # $1 mode (numeric), $2 mode_details, $3 example name, $4 args
+  if [ "$1" == 0 ]; then
+    echo "$2 ${4:-}";
+  elif [ $1 == 1 ]; then
+    echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") ."
+  elif [ $1 == 2 ]; then
+    echo "tar -czvf $([ -z "${4:-}" ] && \
+      echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$args") ."
+  elif [ $1 == 3 ]; then
+    echo "$(run_manager_cmd 'print(get_value_by_name("examples", "'$3'", \
+      "native_command"))') ${4:-}"
+  elif [ $1 == 4 ]; then
+    contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_directory"); x and print(x)')"
+    echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") $( \
+      [ -n "$contdir" ] && echo "$contdir" || echo ".")"
+  fi
+}
+
+function submission_directory() {
+  # $1 mode (numeric), $2 mode_details, $3 example name
+  if [ "$1" == 0 ] || [ "$1" == 1 ]; then
+    echo "$(realpath ".")"
+  elif [ "$1" == 2 ]; then
+    echo "$(realpath "$2")"
+  elif [ "$1" == 3 ] || [ "$1" == 4 ]; then
+    echo "$(realpath "$(dirname "$(run_manager_cmd \
+      'print(get_match("examples", [("name", "'$3'")]))')")")"
+  fi
+}
+
+function submission_dockerfile() {
+  # $1 mode (numeric), $2 mode_details, $3 example name,
+  if [ "$1" == 1 ]; then
+    echo "$(echo "$2" | sed 's/\/\?\s*$//')$([ ! -f "$2" ] && \
+      echo "/Dockerfile")"
+  elif [ "$1" == 4 ]; then
+    contfn="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_filename"); x and print(x)')"
+    contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_directory"); x and print(x)')"
+    echo "$([ -z "$contfn"] && echo "$contdir/Dockerfile" || echo "$contfn" )"
+  fi
+}
+
+function submission_mode() {
+  # Returns a numeric submission mode given the arguments. Valid submission
+  # modes are:
+  # 0 - submission via native command
+  # 1 - containerised submission via Docker
+  # 2 - submission via tarring for uploading elsewhere
+  # 3 - example submission via native command
+  # 4 - example containerised submission via Docker
+  # $1 example name, $2 example_containerised, $3 mode
+  mode="$(expand_mode $3)"
+  if [ -n "$1" ] && [ -z "$2" ]; then
+    echo 3
+  elif [ -n "$1" ]; then
+    echo 4
+  elif [ "$mode" == "submission" ]; then
+    echo 2
+  elif [ "$mode" == "containerised" ]; then
+    echo 1
+  elif [ "$mode" == "native" ]; then
+    echo 0
+  fi
+}
+
+function submission_mode_string() {
+  # $1 mode (numeric), $2 example
+  if [ "$1" == 0 ]; then
+    echo "Native"
+  elif [ "$1" == 1 ]; then
+    echo "Containerised"
+  elif [ "$1" == 2 ]; then
+    echo "Submission *.tgz creation"
+  elif [ "$1" == 3 ]; then
+    echo "Native (with example '$2')"
+  elif [ "$1" == 4 ]; then
+    echo "Containerised (with example '$2')"
+  fi
+}
+
+function submission_output() {
+  # $1 mode (numeric), $2 args
+  if [ "$1" == 2 ]; then
+    [ -z "${2:-}" ] && echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$2"
+  fi
+}
+
 
 function _validate_batch_envs() {
   # $1 requested envs, $2 requested envs batch
@@ -664,18 +756,19 @@ function _validate_types() {
 
 function validate_batch_args() {
   # $1 robot, $2 task, $3 envs_str, $4 envs_batch name, $5 example name, 
-  # $6 evaluation method, $7 containerised, $8 native, $9 submission mode args,
-  # $10... environments list
+  # $6 example_containerised, $7 evaluation method, $8 containerised, $9
+  # native, $10 submission mode args, $11... environments list
   robot="$1"
   task="$2"
   envs_str="$3"
   envs_batch="$4"
   example="$5"
-  evaluation_method="$6"
-  containerised="$7"
-  native="$8"
-  submit_args="$9"
-  shift 9
+  example_containerised="$6"
+  evaluation_method="$7"
+  containerised="$8"
+  native="$9"
+  submit_args="${10}"
+  shift 10
   envs_list=($@)
 
   # Handle batch specific validation first
@@ -684,9 +777,11 @@ function validate_batch_args() {
 
   # Divert to validation functions for each of the sub-scripts
   mode="$([ -n "$native" ] && echo "$native" || echo "$containerised")"
+  mode_num="$(submission_mode "$example" "$example_containerised" "$mode")"
   mode_dup=
   if [ -n "$native" ] && [ -n "$containerised" ]; then mode_dup=1; fi
-  validate_submit_args "$evaluation_method" "$example" "$mode" "$mode_dup" "" \
+  validate_submit_args "$evaluation_method" "$example" \
+    "$example_containerised" "$mode" "$mode_num" "$mode_dup" "DETAILS" "" \
     "$submit_args"
 
   if [ -n "$evaluation_method" ]; then
