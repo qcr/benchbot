@@ -241,7 +241,7 @@ function exit_gracefully() {
 
 # Safely parse options input
 _args='args:,envs:,envs-batch:,example:,example-containerised,containerised:,\
-help,list-batches,native:,prefix:,robot:,evaluate-with:,show-batch,task:,\
+help,list-batches,native:,prefix:,robot:,evaluate-with:,show-batch:,task:,\
 version,zip'
 parse_out=$(getopt -o a:e:E:c:hn:p:r:s:t:vz --long "$_args" \
   -n "$(basename "$0")" -- "$@")

@@ -316,12 +316,12 @@ function env_list() {
 
 function env_name() {
   # $1 env string
-  echo $1 | sed 's/:[^:]*$//'
+  echo ${1:-} | sed 's/:[^:]*$//'
 }
 
 function env_variant() {
   # $1 env string
-  echo $1 | sed 's/^.*://'
+  echo ${1:-} | sed 's/^.*://'
 }
 
 function install_addons() {
@@ -872,6 +872,7 @@ function validate_run_args() {
   [ -n "$results_format" ] && \
     err="$(_validate_content "formats" "$results_format")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  [ ${#envs[@]} -eq 0 ] && envs+=("")
   for e in "${envs[@]}"; do
     err="$(_validate_environment "$e" "$env")"
     if [ -n "$err" ]; then echo "$err"; exit 1; fi
