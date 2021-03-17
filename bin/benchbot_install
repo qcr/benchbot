@@ -928,9 +928,9 @@ function uninstall_benchbot() {
   if [ -n "$pkgs" ]; then
     echo "$pkgs" | sed 's/.*egg=\(.*\)/\1/' | xargs python3 -m pip uninstall -y
   fi
-  sitepkgs=($(python3 -c 'import site; \
+  sitepkgs=($(echo "$(python3 -c 'import site; \
     print(" ".join(site.getsitepackages() + [site.getusersitepackages()]))' \
-    2>/dev/null))
+    2>/dev/null)" | tr ' ' '\n'))
   if [ -n "$sitepkgs" ] ; then 
     echo "Manually removing eggs from pip ..."
     # This fix is needed as apparently Ubuntu patches broke pip uninstall...
@@ -939,18 +939,20 @@ function uninstall_benchbot() {
       # The loop below is WAY TOO AGGRESSIVE... but I can't do anything else
       # due to the bug above, & inconsistency of where this file will be saved
       # between raw python install, virtualenvs, conda, etc etc
-      find "$l" -regex '.*benchbot-\(api\|eval\).*' -print -delete 2>/dev/null
+      find "$l" -regex '.*benchbot-\(api\|eval\).*' -print -delete \
+        2>/dev/null || true
     done
   fi
 
   targets=$(docker images -q -f reference='benchbot/*:*')
   if [ -n "$targets" ] ; then 
     echo "Removing BenchBot Docker resources ..."
-    docker rmi $targets; 
+    docker rmi -f $targets; 
   fi
 
-  rm -rfv "$PATH_ADDONS" "$PATH_API" "$PATH_EXAMPLES" "$PATH_EVAL" 2>/dev/null
-  sudo rm -v "$PATH_SYMLINKS"/benchbot* 2>/dev/null
+  rm -rfv "$PATH_ADDONS" "$PATH_API" "$PATH_EVAL" \
+    2>/dev/null || true
+  sudo rm -v "$PATH_SYMLINKS"/benchbot* 2>/dev/null || true
 
   echo -e "\nFinished uninstalling!"
 }
