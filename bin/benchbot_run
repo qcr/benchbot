@@ -163,6 +163,7 @@ _robot_err=\
 should not happen under normal operating conditions. Please see the complete
 log below for a dump of the crash output:"
 
+exit_code=
 function exit_gracefully() {
   if [ -z "$simulator_required" ]; then
     printf "\n\n${colour_blue}%s${colour_nc}\n" \
@@ -170,71 +171,7 @@ function exit_gracefully() {
     close_network $network_forwarding $network_policy
   fi
   kill_benchbot
-  exit ${1:-0}
-}
-
-function validate_environment_count() {
-  # $1 = number of selected environments, $2 task
-  scene_count="$(run_manager_cmd 'print(\
-    get_value_by_name("tasks", "'$2'", "scene_count"))')"
-  if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
-  if [ $scene_count -ne $1 ]; then
-    printf "${colour_red}%s\n       %s${colour_nc}\n" \
-      "ERROR: Selected $1 environment/s for a task which requires $scene_count" \
-      "environment/s ('$task')"
-  fi
-}
-
-function validate_type() {
-  # $1 = type
-  if [ "$1" == "real" ]; then
-    printf "\n${colour_yellow}%s\n%s${colour_nc}\n" \
-      "WARNING: Requested running with '$1'. Assuming you have an available" \
-      "real robot & environment."
-    return
-  fi
-
-  simulators="$(simulator_type)"
-  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
-      [ "$simulators" != *"$1,"* ]; then
-    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
-      "ERROR: Requested running with '$1', but that simulator isn't installed." \
-      "Installed simulator/s are: '$simulators'"
-  fi
-}
-
-function validate_types() {
-  # $1 = robot name; $2 = environment string, $3... environments
-  robot="$1"
-  env="$2" 
-  shift 2
-  envs=($@)
-  types=()
-  types+=("$(run_manager_cmd 'print(\
-    get_value_by_name("robots", "'$robot'", "type"))')")
-  for e in "${envs[@]}"; do
-    types+=($(run_manager_cmd 'print(\
-      get_value_by_name("environments", "'$e'", "type"))'))
-  done
-
-  err=
-  for i in "${!types[@]}"; do
-    if [ "${types[$i]}" != "${types[0]}" ]; then err=1; fi
-  done
-
-  if [ ! -z "$err" ]; then
-    printf "%s %s\n%s\n\n" "Robot & environment types aren't consistent." \
-      "Please ensure each of the following" "have the same type:"
-    for i in "${!types[@]}"; do
-      if [ $i -eq 0 ]; then
-        printf "\tRobot '$robot' has type '${types[$i]}'\n"
-      else
-        printf "\tEnvironment '${envs[$((i-1))]}' has type '${types[$i]}'\n"
-      fi
-    done
-    printf "\n${colour_red}%s${colour_nc}\n" \
-      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
-  fi
+  exit ${exit_code:-0}
 }
 
 
@@ -295,36 +232,19 @@ while true; do
 done
 
 # Extract a list of environments from the provided environment string
-_pre="$(echo "$environment" | sed 's/:.*//')"
-environments=($(echo "$environment" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$_pre':/g; s/^ *//'))
-if [ ${#environments[@]} -eq 0 ]; then environments+=(""); fi
+environments=($(env_list "$environment" | tr ' ' '\n'))
 environments_string="$(printf '%s,' "${environments[@]}")"
 environments_string="${environments_string::-1}"
 
-# Bail if any of the requested configurations are invalid
 if [ -z "$updates_exit" ]; then
-  err="$(validate_content "robots" "$robot")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  type="$(run_manager_cmd 'print(\
+  # Generate any derived configuration parameters
+  type="$(run_manager_cmd 'exists("robots", [("name", "'$robot'")]) and print(\
     get_value_by_name("robots", "'$robot'", "type"))')"
   simulator_required=1
-  err="$(validate_content "tasks" "$task")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  results_format="$(run_manager_cmd 'print(\
-    get_value_by_name("tasks", "'$task'", "results_format"))')"
-  err="$(validate_content "formats" "$results_format")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
   if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
-  for e in "${environments[@]}"; do
-    err="$(validate_environment "$e" "$environment")"
-    if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  done
-  err="$(validate_types "$robot" "$environment" "${environments[@]}")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-  err="$(validate_type "$type")"; echo "$err"
-  if [[ "$err" == *"ERROR:"* ]]; then exit 1; fi
-  err="$(validate_environment_count ${#environments[@]} "$task")"
-  if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
+
+  # Bail if any of the requested configurations are invalid
+  validate_run_args "$robot" "$task" "$type" "$environment" "${environments[@]}"
 fi
 
 ################################################################################
@@ -334,17 +254,17 @@ fi
 # Check for & handles updates to the BenchBot software stack
 header_block "CHECKING FOR BENCHBOT SOFTWARE STACK UPDATES" ${colour_blue}
 
-if [ ! -z "$updates_skip" ]; then 
+if [ -n "$updates_skip" ]; then 
   echo -e "${colour_yellow}Skipping ...${colour_nc}"
 elif ! update_check "$(git branch -a --contains HEAD | grep -v HEAD | \
     grep '.*remotes/.*' | head -n 1 | sed 's/.*\/\(.*\)/\1/')"; then 
   exit 1; 
 fi
-if [ ! -z "$updates_exit" ]; then exit 0; fi
+if [ -n "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
 kill_benchbot
-trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM
+trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
 # Print some configuration information
@@ -406,7 +326,7 @@ cmd="${docker_run//'$name'/$ros_master_host}"
 ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-if [ ! -z "$simulator_required" ]; then
+if [ -n "$simulator_required" ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Starting container for BenchBot Robot Controller:"
   cmd="${docker_run//'$name'/benchbot_robot}"
@@ -431,16 +351,17 @@ header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
 docker logs --follow benchbot_supervisor &
 
-while [ ! -z $(docker ps -q -f 'name=benchbot_supervisor') ] && \
+while [ -n "$(docker ps -q -f 'name=benchbot_supervisor')" ] && \
   ([ -z "$simulator_required" ] || \
-  [ ! -z $(docker ps -q -f 'name=benchbot_robot') ]); do
+  [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]); do
   sleep 1
 done
 
-if [ ! -z "$simulator_required" ] && \
-    [ -z $(docker ps -q -f 'name=benchbot_robot') ]; then
+if [ -n "$simulator_required" ] && \
+    [ -z "$(docker ps -q -f 'name=benchbot_robot')" ]; then
   header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
   docker logs benchbot_robot
 fi
-exit_gracefully 1
+exit_code=1
+exit

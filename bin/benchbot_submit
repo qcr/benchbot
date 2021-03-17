@@ -16,13 +16,14 @@ popd > /dev/null
 ################################################################################
 
 SUBMISSION_CONTAINER_NAME="benchbot_submission"
+SUBMISSION_OUTPUT_DEFAULT="../submission.tgz"
 
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
 
 usage_text="$(basename "$0") -- Submission script for running your solution to the Scene
-Understanding Challenge against a running simulator. It supports 3 different
+Understanding Challenge against a running simulator. It supports 5 different
 modes of submission:
 
     1. native: 
@@ -41,6 +42,16 @@ modes of submission:
        challenge (not currently in use due to code being run locally on your
        machine)
 
+    4. native (example):
+       Same as native, but uses an example provided in a BenchBot add-on. The
+       example already defines the native command to run, you just have to add
+       an runtime args via the --args flag if necessary.
+
+    5. containerised (example):
+       Same as containerised, but uses an example provided in a BenchBot
+       add-on. The example already defines where the Dockerfile exists, you
+       just have to add runtime args via the --args flag if necessary.
+
 USAGE:
 
     Get information about the submission options:
@@ -51,46 +62,87 @@ USAGE:
 
     Submit, compile into a containerised environment, & run the container on
     your machine:
-        $(basename "$0") [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+        $(basename "$0") [-c|--containerised] DIRECTORY_CONTAINING_DOCKERFILE
         
     Bundle up your solution into a *.tgz ready for submssion to the challenge:
         $(basename "$0") [-s|--submission] DIRECTORY_FOR_SUBMISSION
 
     Submit, compile into a containerised environment, run the container on your
     machine, & evaluate the results which are also saved to 'my_results.json':
-        $(basename "$0") [-e|--evaluate-results] \\
+        $(basename "$0") [-e|--evaluate-with] \\
           [-r|--results-location] 'my_results.json' \\
           [-c|--containerised] DIRECTORY_FOR_SUBMISSION
+
+    Run an example, with some runtime arguments:
+
+        $(basename "$0") --example EXAMPLE_NAME -n \\
+          -a '--arg1 value --arg2 value'
+
  
 OPTION DETAILS:
 
     -h,--help             
             Show this help menu.
 
+    -a, --args
+            Runtime arguments to pass through to the submission. You will need
+            to use quotes to properly handle multiple arguments. For example:
+
+              $(basename "$0") -n 'python3 my_script.py' -a '--arg1 a --arg2 b'
+
+            These arguments are handled differently depending on the mode:
+              - native: they are appended to the end of the command
+              - containerised: they are appended to the end of the Dockerfile's
+                'CMD'
+              - submission: a single positional argument is used to specify the
+                *.tgz's save location
+
     -c, --containerised
             Uses the Dockerfile provided with your solution to start a Docker
             container running your solution. Dockerfiles are the means in which
             you concisely communicate WHAT system configuration is needed to
-            run your solution (i.e. do you need Python3, cuda, ROS, etc). This
-            mode requires an extra parameter specifying the directory where
-            your solution resides. For example, if your solution is in the 
-            current directory:
+            run your solution (i.e. do you need Python3, cuda, ROS, etc). 
+
+            This mode requires an extra parameter specifying either:
+              - the directory where your solution's Dockerfile resides (the
+                filename is assumed to be 'Dockerfile'), or
+              - the full path for your solution's Dockerfile (supports custom
+                filenames)
+
+            For example, the following commands are equivalent for a solution
+            with a Dockerfile named 'Dockerfile' in the current directory: 
 
                     $(basename "$0") -c .
+                    $(basename "$0") -c ./Dockerfile
 
     -E, --example
-            Name of an installed example to run. All examples support both
-            containerised and native operation.
+            Name of an installed example to run. All examples at least support
+            native operation, with most also supporting containerised
+            operation.
+
+            Examples run in native mode by default. Examples can still be run
+            in containerised mode, but require the '--example-containerised'
+            flag. 
 
             (use '--list-examples' to see a list of installed example)
 
-    -e, --evaluate-results
-            Evaluation method to use for evaluation on the provided submission
-            after it has finished running. No evaluation will be run if this
-            flag isn't provided.  This assumes your submission saves results to
-            the location referenced by 'benchbot_api.RESULT_LOCATION'
-            (currently '/tmp/benchbot_result').  Evaluation will not work as
-            expected if the submission saves results in any other location.
+    --example-containerised
+            Runs the example in containerised mode instead of native mode. This
+            option is only valid when running an example.
+
+    -e, --evaluate-with
+            Name of the evaluation method to use for evaluation of the provided
+            submission after it has finished running. Evaluation will only be
+            performed if this option is provided. 
+            
+            This option assumes your submission saves results to the location
+            referenced by 'benchbot_api.RESULT_LOCATION' (currently
+            '/tmp/benchbot_result'). Evaluation will not work as expected
+            results are not saved to that location.
+
+            See '--list-methods' in 'benchbot_eval' for a list of supported
+            methods, and 'benchbot_eval --help' for a description of the
+            scoring process.
 
     --list-examples
             List all available examples. The listed examples are printed in the
@@ -100,11 +152,13 @@ OPTION DETAILS:
     -n, --native
             Runs your solution directly on your system without applying any 
             containerisation (useful when you are developing & testing your 
-            solution). Everything after this flag is treated as the command used
-            to run your solution (required). For example, if your solution is a
+            solution). 
+
+            This mode requires an extra parameter specifying the command to
+            natively run your solution. For example, if your solution is a
             Python script called 'solution.py':
 
-                    $(basename "$0") -n python solution.py
+                    $(basename "$0") -n 'python3 solution.py'
 
     -r, --results-location
             Copy results produced by the submission to another location. Note:
@@ -117,11 +171,12 @@ OPTION DETAILS:
     -s, --submission
             Bundles up your solution into a *.tgz ready for submission. The 
             directory where your solution exists is a required extra parameter.
-            Optionally, another parameter can be provided to specify a name
-            (and / or what directory) to put the *.tgz. For example, to bundle
-            up your soluition in the current directory on your desktop:
 
-                    $(basename "$0") -s . \$HOME/Desktop
+            Optionally, you can also provide a positional arg via the '-a' flag
+            to specify where to put the *.tgz. For example, to bundle up your
+            solution in the current directory on your desktop:
+
+                    $(basename "$0") -s . -a \$HOME/Desktop
 
     --show-example
             Prints information about the provided example if installed. The
@@ -147,123 +202,27 @@ _list_examples_pre=\
 "The following BenchBot examples are available in your installation:
     "
 
-function expand_mode() {
-  mode="${1//-}"
-  if [[ "$mode" == n* ]]; then 
-    echo "native";
-  elif [[ "$mode" == c* ]]; then
-    echo "containerised";
-  elif [[ "$mode" == s* ]]; then
-    echo "submission";
-  fi
-}
-
 active_pid=
+exit_code=
 function exit_gracefully() {
-  # $1 mode, $2 exit code
+  # $1 mode (numeric)
   echo ""
 
   # Pass the signal to the currently running process
-  if [ ! -z "$active_pid" ]; then
-    kill -TERM $active_pid &> /dev/null
+  if [ -n "$active_pid" ]; then
+    kill -TERM $active_pid &> /dev/null || true
     wait $active_pid || true
     active_pid=
   fi
   
   # Cleanup containers if we ran in containerised mode
-  if [[ "$1" == c* ]]; then
+  if [ "$1" == 1 ] || [ "$1" == 4 ]; then
     printf "\n"
     header_block "Cleaning up user containers" ${colour_blue}
     docker system prune -f  # TODO this is probably too brutal
   fi
 
-  exit ${2:-0}
-}
-
-function submission_command() {
-  # $1 example name, $2 mode_args
-  if [[ -z "$2" && ! -z "$1" ]]; then
-    echo "pushd $(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", [("name", "'$1'")]))')); $(run_manager_cmd 'print(\
-      get_value_by_name("examples", "'$1'", "native_command"))'); popd"
-  else
-    echo "$2"
-  fi
-}
-
-function submission_directory() {
-  # $1 example name, $2 mode_args
-  if [[ -z "$2"  && ! -z "$1" ]]; then
-    pushd "$(dirname $(run_manager_cmd 'print(get_match(\
-      "examples", [("name", "'$1'")]))'))" > /dev/null
-    echo "$(realpath $(run_manager_cmd 'print(get_value_by_name(\
-      "examples", "'$1'", "container_directory"))'))"
-    popd > /dev/null
-  else
-    echo "$2"
-  fi
-}
-
-function validate_example() {
-  # $1 example name
-  text="examples"
-  singular=${text::-1}
-  if [ ! -z "$1" ] && \
-    [ "$(run_manager_cmd 'print(exists("'$text'", [("name", "'$1'")]))')" \
-      != "True" ]; then
-    printf "%s %s\n" "${singular^} '$1' is not a supported ${singular}." \
-      "Please check '--list-$text'."
-    printf "\n${colour_red}%s${colour_nc}" \
-      "ERROR: Invalid ${singular} selected (${singular} = '$1')"
-  fi
-}
-
-function validate_mode() {
-  # $1 example name, $2 duplicate mode flag, $3 mode (expanded), $4 mode_args
-  err=
-  cmd="$(submission_command "$1" "$4")"
-  dir="$(submission_directory "$1" "$4")"
-  if [ -z "$3" ]; then
-    err="$(printf "%s %s\n" "No mode was selected. Please select a submission" \
-      "mode from 'native', 'containerised', or 'submission'")"
-  elif [ ! -z "$2"]; then
-    err="$(printf "%s %s\n" "Selected more than 1 mode, please only select" \
-      "one of 'native', 'containerised', or 'submission'.")"
-  elif [ -z "$1" ] && [ -z "$4" ]; then
-    err="$(printf "%s %s\n" "Mode '$3' requires arguments, but none were" \
-      "provided. Please see '--help' for details.")"
-  elif [[ ("$3" == c* || "$3" == s*) && ! -d "$dir" ]]; then
-    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a directory as an" \
-      "argument. The provided directory does not exist:" "$dir")"
-  elif [[ "$3" == c* && ! -f "$dir/Dockerfile" ]]; then
-    err="$(printf "%s %s\n\t%s\n" "Mode '$3' requires a Dockerfile to run." \
-      "The provided Dockerfile does not exist:" "$dir/Dockerfile")"
-  fi
-
-  if [ ! -z "$err" ]; then 
-    printf "$err\n"
-    printf "\n${colour_red}%s${colour_nc}" \
-      "ERROR: Mode selection was invalid. See errors above."
-  fi
-}
-
-function validate_results() {
-  # $1 mode (expanded), $2 evaluate method, $3 results_location
-  if [[ "$1" == s* && ( ! -z "$2" || ! -z "$3" ) ]]; then
-    printf "%s %s\n" "Cannot create results or perform evaluation in '$1'" \
-      "mode. Please run again in a different mode."
-    printf "\n${colour_red}%s${colour_nc}" \
-      "ERROR: Requested results evaluation from 'submission' mode."
-  fi
-}
-
-function warning_mode() {
-  # $1 example name, $2 mode_args
-  if [[ ! -z "$1" && ! -z "$2" ]]; then
-    printf "${colour_yellow}%s\n%s\n${colour_nc}" \
-      "WARNING: You selected an example & provided arguments for the mode" \
-      "(usually you only want one or the other)"
-  fi
+  exit ${exit_code:-0}
 }
 
 ################################################################################
@@ -271,30 +230,38 @@ function warning_mode() {
 ################################################################################
 
 # Safely parse options input
-_args="evaluate-results:,example:,help,containerised,list-examples,native,\
-results-location:,show-example:,submission,version"
-parse_out=$(getopt -o e:E:hcnr:sv --long $_args -n "$(basename "$0")" -- "$@")
+_args="args:,evaluate-with:,example:,example-containerised,help,containerised:,\
+list-examples,native:,results-location:,show-example:,submission:,version"
+parse_out=$(getopt -o a:e:E:hc:n:r:s:v --long $_args -n "$(basename "$0")" \
+  -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
+args=
 evaluate_method=
 example=
+example_containerised=
+extra_args=
 mode=
-mode_args=
+mode_details=
 mode_dup=
 results_location=
 while true; do
   case "$1" in
-    -e|--evaluate-results)
+    -a|--args)
+      args="$2" ; shift 2 ;;
+    -e|--evaluate-with)
       evaluate_method="$2" ; shift 2 ;;
     -E|--example)
       example="$2"; shift 2 ;;
+    --example-containerised)
+      example_containerised=1; shift 1 ;;
     -h|--help)
       echo "$usage_text" ; shift ; exit 0 ;;
     --list-examples)
       list_content "examples" "$_list_examples_pre" "an"; exit $? ;;
     -n|--native|-c|--containerised|-s|--submission)
-      if [ ! -z "$mode" ]; then mode_dup=1; fi
-      mode="$1"; shift ;;
+      if [ -n "$mode" ]; then mode_dup=1; fi
+      mode="$1"; mode_details="$2" ; shift 2 ;;
     -r|--results-location)
       results_location="$2"; shift 2 ;;
     --show-example)
@@ -302,44 +269,38 @@ while true; do
     -v|--version)
       print_version_info; exit ;;
     --)
-      mode_args=$(echo "$@" | sed 's/-- *//'); break ;;
+      extra_args=$(echo "$@" | sed 's/-- *//'); break ;;
     *)
       echo "$(basename "$0"): option '$1' is unknown"; shift ; exit 1 ;;
   esac
 done
-mode="$(expand_mode "$mode")"
+
+# Generate any derived configuration parameters
+mode=$(expand_submission_mode "$mode")
+mode_num="$(submission_mode "$example" "$example_containerised" "$mode")"
+mode_details="$(echo "$mode_details $extra_args" | sed 's/^\s*//; s/\s*$//')"
 
 # Bail if any of the requested configurations are invalid
-err="$(validate_example "$example")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-err="$(validate_mode "$example" "$mode_dup" "$mode" "$mode_args")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-err="$(validate_results "$mode" "$evaluate_method" "$results_location")"
-if [ ! -z "$err" ]; then echo "$err"; exit 1; fi
-warning_mode "$example" "$mode_args"
+validate_submit_args "$evaluate_method" "$example" "$example_containerised" \
+  "$mode" "$mode_num" "$mode_dup" "$mode_details" "$results_location" "$args"
 
 ################################################################################
 ################## Submit your BenchBot solution as requested ##################
 ################################################################################
 
 # Before we start a submission, figure out all of our derived configuration
-config_cmd=
-config_dir=
-config_out=
-case "$mode" in
-  native)
-    config_cmd="$(submission_command "$example" "$mode_args")" ;;
-  containerised|submission)
-    config_dir="$(submission_directory "$example" "$mode_args")" ;;&
-  submission)
-    config_out="submission.tgz" ;;
-esac
-
+sub_str="$(submission_mode_string $mode_num $example)"
+sub_str_short="$(echo "$sub_str" | sed 's/ *(.*$//')"
+sub_cmd="$(submission_command "$mode_num" "$mode_details" "$example" "$args")"
+sub_dir="$(submission_directory "$mode_num" "$mode_details" "$example")"
+sub_df="$(submission_dockerfile "$mode_num" "$mode_details" "$example")"
+sub_out="$(submission_output "$mode_num" "$args")"
 
 # Now print relevant configuration information
+mode_string=""
 echo "Submitting to the BenchBot system with the following settings:
 
-    Submission mode:             $mode"
+    Submission mode:             $sub_str"
 echo \
 "    Perform evaluation:          "\
 "$([ -z "$evaluate_method" ] && echo "No" || echo "Yes ($evaluate_method)")"
@@ -348,28 +309,32 @@ if [ -n "$results_location" ]; then
 "    Results save location:       $results_location"
 fi
 echo ""
-if [ -n "$config_cmd" ]; then
+echo \
+"    Command to execute:          $sub_cmd"
+echo \
+"    Command directory:           $sub_dir"
+if [ -n "$sub_df" ]; then
   echo \
-"    Command to execute:          $config_cmd"
+"    Dockerfile to build:         $sub_df"
 fi
-if [ -n "$config_dir" ]; then
+if [ -n "$sub_df" ] && [ -n "$args" ]; then
   echo \
-"    Dockerfile to build:         $config_dir/Dockerfile"
+"    Docker runtime args:         $args"
 fi
-if [ -n "$config_out" ]; then
+if [ -n "$sub_out" ]; then
   echo \
-"    Bundling output filename:    $config_out"
+"    Output *.tgz filename:       $sub_out"
 fi
 echo ""
 
 # Actually perform the submission
-header_block "Running submission in '$mode' mode" ${colour_green}
+header_block "Running submission in '$sub_str_short' mode" ${colour_green}
 
-trap "exit_gracefully $mode"  SIGINT SIGQUIT SIGKILL SIGTERM
+trap "exit_gracefully $mode_num"  SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 
 # Clear out any previous results in default location
 results_src=
-if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
+if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
   results_src=$(python3 -c \
     'from benchbot_api.benchbot import RESULT_LOCATION; print(RESULT_LOCATION)')
   rm -rf "$results_src"
@@ -377,27 +342,34 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
 fi
 
 # Handle the submission
-if [ "$mode" == "native" ]; then
+if [ "$mode_num" == 0 ] || [ "$mode_num" == 3 ]; then
   # This is native submission mode
-  echo -e \
-    "Running submission natively via command:\n\t'$config_cmd' ...\n"
+  printf "%s\n\n\t%s\n\n%s\n\n\t%s\n\n" \
+    "Running submission natively via command:" "'$sub_cmd'" "In directory:" \
+    "'$sub_dir'"
+  pushd "$sub_dir" >/dev/null
   set +e
-  eval "$config_cmd"
+  eval "$sub_cmd"
   run_ret=$?
   set -e
-elif [ "$mode" == "submission" ]; then
-  # This is bundling up submission mode
-  echo -e "Bundling up submission from '$config_dir' ...\n"
-  pushd "$config_dir" >/dev/null
-  tar -czvf "$config_out" * && run_ret=0 || run_ret=1
   popd >/dev/null
-  echo -e "\nSaved to: $config_out"
-else
+elif [ "$mode_num" == 2 ]; then
+  # This is bundling up submission mode
+  echo -e "Bundling up submission from '$sub_dir' to '$sub_out' ...\n"
+  pushd "$sub_dir" >/dev/null
+  set +e
+  eval  "$sub_cmd"
+  run_ret=$?
+  set -e
+  popd >/dev/null
+  if [ $run_ret -eq 0 ]; then echo -e "\nSaved to: $sub_out"; fi
+elif [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
   # This is a containerised submission
-  echo "Running submission from '$config_dir' with containerisation ..."
-  pushd "$config_dir" >/dev/null
+  echo "Containerising '$sub_df' ..."
+  pushd "$sub_dir" >/dev/null
   submission_tag="benchbot/submission:"$(echo "$(pwd)" | sha256sum | cut -c1-10)
-  docker build -t "$submission_tag" . &
+  eval "$(echo "$sub_cmd" | sed \
+    "s/docker build /\0 -t '${submission_tag//\//\\\/}' /")" &
   active_pid=$!
   wait $active_pid && run_ret=0 || run_ret=1
   if [ $run_ret -ne 0 ]; then
@@ -409,29 +381,35 @@ else
       sleep 1;
     done
     set +e
+    # TODO PASSTHROUGH THE ARGS!!!
     docker run --gpus all -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
       --network "$DOCKER_NETWORK" --name="$SUBMISSION_CONTAINER_NAME" \
-      --hostname="$SUBMISSION_CONTAINER_NAME" -t "$submission_tag"
+      --hostname="$SUBMISSION_CONTAINER_NAME" \
+      -e args="$args" -i "$submission_tag"
     run_ret=$?
     set -e
     xhost -local:root
   fi
   popd >/dev/null
+else
+  echo "Run in unsupported mode '$mode_num' (this error should never happen!)"
+  run_ret=1
 fi
 
 # Exit here if the submission failed
 if [ $run_ret -ne 0 ]; then
   printf "${colour_red}\n%s: %d${colour_nc}\n" \
     "Submission failed with result error code" "$run_ret"
-  exit $run_ret
+  exit_code=$run_ret
+  exit
 fi
 
 # Perform any evaluation that may have been requested by the caller
-if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
+if [ -n "$results_location" ] || [ -n "$evaluate_method" ]; then
   header_block "Processing results" ${colour_blue}
 
   # Pull the results out of the container if appropriate
-  if [ "$mode" == "containerised" ]; then
+  if [ "$mode_num" == 1 ] || [ "$mode_num" == 4 ]; then
     if ! docker cp "${SUBMISSION_CONTAINER_NAME}:${results_src}"\
       "${results_src}" 2>/dev/null; then
       printf "${colour_yellow}\n%s%s${colour_nc}\n" \
@@ -450,14 +428,14 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
   fi
 
   # Copy results to a new location if requested
-  if [ ! -z "$results_location" ]; then
+  if [ -n "$results_location" ]; then
     printf "\nCopying results from '%s' to '%s' ...\n" "$results_src" \
       "$results_location"
     rsync -avP "$results_src" "$results_location"
   fi
 
   # Run evaluation on the results if requested
-  if [ ! -z "$evaluate_method" ]; then
+  if [ -n "$evaluate_method" ]; then
     if [ -z "$results_location" ]; then results_location="$results_src"; fi
     printf "\nRunning evaluation on results from '%s' ... \n" \
       "$results_location"
@@ -465,4 +443,4 @@ if [ ! -z "$results_location" ] || [ ! -z "$evaluate_method" ]; then
   fi
 fi
 
-exit 0
+exit

@@ -44,6 +44,7 @@ PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
 PATH_SYMLINKS="/usr/local/bin"
+PATH_TEMP_FILE="/tmp/benchbot_scratch"
 
 PORT_ROBOT=10000
 PORT_SUPERVISOR=10000
@@ -141,8 +142,8 @@ function open_network() {
 
 function print_version_info() {
   hash=$(git rev-parse HEAD)
-  version_name=$(git log --tags --no-walk --pretty='%H %D' | grep "$hash" | \
-    sed 's/^[^ ]* //; s/,[^:]*//g; s/tag: //g; s/: /, /g')
+  version_name="$(git log --tags --no-walk --pretty='%H %D' | grep "$hash" | \
+    sed 's/^[^ ]* //; s/,[^:]*//g; s/tag: //g; s/: /, /g'; true)"
   if [ -z "$version_name" ]; then
     version_name="__unnamed__"
   fi
@@ -291,6 +292,7 @@ updates."
   return $valid
 }
 
+
 ################################################################################
 ######################### BenchBot Add-ons Management ##########################
 ################################################################################
@@ -302,17 +304,41 @@ function addons_up_to_date() {
   return
 }
 
+function env_list() {
+  # Converts an environment string like "miniroom:1:4" into a space separated
+  # list like "miniroom:1 miniroom:4"
+  # $1 env string
+  name="$(echo "$1" | sed 's/:.*//')"
+  list=($(echo "$1" | sed 's/[^:]*\(:.*\)/\1/; s/:/\n'$name':/g; s/^ *//'))
+  if [ ${#list[@]} -eq 0 ]; then list+=(""); fi
+  echo "${list[@]}"
+}
+
 function env_name() {
   # $1 env string
-  echo $1 | sed 's/:[^:]*$//'
+  echo ${1:-} | sed 's/:[^:]*$//'
 }
 
 function env_variant() {
   # $1 env string
-  echo $1 | sed 's/^.*://'
+  echo ${1:-} | sed 's/^.*://'
 }
 
 function install_addons() {
+  dirty=($(run_manager_cmd 'print("\n".join(dirty_addons()))'))
+  if [ ${#dirty[@]} -gt 0 ]; then
+    printf "\n${colour_yellow}%s%s\n" \
+      "WARNING: the following add-ons have local uncomitted changes. Commit or" \
+      " delete them if you would like to return to a stable state."
+    printf "\n\t%s" "${dirty[@]}"
+    printf "${colour_nc}\n"
+  fi
+  printf "\n${colour_blue}%s${colour_nc}\n\n" \
+    "Configuring locations for local add-on content:"
+  folders="$(run_manager_cmd 'print(local_addon_path())')/{$(run_manager_cmd \
+    'print(",".join(SUPPORTED_TYPES))')}"
+  eval echo $folders | xargs mkdir -pv
+  printf "Created '$folders'.\n"
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Installing add-ons based on the request string '${1}':"
   run_manager_cmd 'install_addons("'$1'")' '\n' '\n'
@@ -418,10 +444,132 @@ function show_environment() {
   :
 }
 
-function validate_content() {
+################################################################################
+##################### Shared argument validation & parsing #####################
+################################################################################
+
+function expand_submission_mode() {
+  if [ -z "${1:-}" ]; then return; fi
+  mode="${1//-}"
+  if [[ "$mode" == n* ]]; then 
+    echo "native";
+  elif [[ "$mode" == c* ]]; then
+    echo "containerised";
+  elif [[ "$mode" == s* ]]; then
+    echo "submission";
+  fi
+}
+
+function submission_command() {
+  # $1 mode (numeric), $2 mode_details, $3 example name, $4 args
+  if [ "$1" == 0 ]; then
+    echo "$2 ${4:-}";
+  elif [ $1 == 1 ]; then
+    echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") ."
+  elif [ $1 == 2 ]; then
+    echo "tar -czvf $([ -z "${4:-}" ] && \
+      echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$args") ."
+  elif [ $1 == 3 ]; then
+    echo "$(run_manager_cmd 'print(get_value_by_name("examples", "'$3'", \
+      "native_command"))') ${4:-}"
+  elif [ $1 == 4 ]; then
+    contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_directory"); x and print(x)')"
+    echo "docker build -f $(submission_dockerfile "$1" "$2" "$3") $( \
+      [ -n "$contdir" ] && echo "$contdir" || echo ".")"
+  fi
+}
+
+function submission_directory() {
+  # $1 mode (numeric), $2 mode_details, $3 example name
+  if [ "$1" == 0 ] || [ "$1" == 1 ]; then
+    echo "$(realpath ".")"
+  elif [ "$1" == 2 ]; then
+    echo "$(realpath "$2")"
+  elif [ "$1" == 3 ] || [ "$1" == 4 ]; then
+    echo "$(realpath "$(dirname "$(run_manager_cmd \
+      'print(get_match("examples", [("name", "'$3'")]))')")")"
+  fi
+}
+
+function submission_dockerfile() {
+  # $1 mode (numeric), $2 mode_details, $3 example name,
+  if [ "$1" == 1 ]; then
+    echo "$(echo "$2" | sed 's/\/\?\s*$//')$([ ! -f "$2" ] && \
+      echo "/Dockerfile")"
+  elif [ "$1" == 4 ]; then
+    
+    contfn="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_filename"); x and print(x)')"
+    contdir="$(run_manager_cmd 'x = get_value_by_name("examples", "'$3'", \
+      "container_directory"); x and print(x)')"
+    echo "$(realpath "$(submission_directory "$1" "$2" "$3")/$(\
+      [ -z "$contfn"] && echo "$contdir/Dockerfile" || echo "$contfn" )")"
+  fi
+}
+
+function submission_mode() {
+  # Returns a numeric submission mode given the arguments. Valid submission
+  # modes are:
+  # 0 - submission via native command
+  # 1 - containerised submission via Docker
+  # 2 - submission via tarring for uploading elsewhere
+  # 3 - example submission via native command
+  # 4 - example containerised submission via Docker
+  # $1 example name, $2 example_containerised, $3 mode
+  mode="$(expand_submission_mode $3)"
+  if [ -n "$1" ] && [ -z "$2" ]; then
+    echo 3
+  elif [ -n "$1" ]; then
+    echo 4
+  elif [ "$mode" == "submission" ]; then
+    echo 2
+  elif [ "$mode" == "containerised" ]; then
+    echo 1
+  elif [ "$mode" == "native" ]; then
+    echo 0
+  fi
+}
+
+function submission_mode_string() {
+  # $1 mode (numeric), $2 example
+  if [ "$1" == 0 ]; then
+    echo "Native"
+  elif [ "$1" == 1 ]; then
+    echo "Containerised"
+  elif [ "$1" == 2 ]; then
+    echo "Submission *.tgz creation"
+  elif [ "$1" == 3 ]; then
+    echo "Native (with example '$2')"
+  elif [ "$1" == 4 ]; then
+    echo "Containerised (with example '$2')"
+  fi
+}
+
+function submission_output() {
+  # $1 mode (numeric), $2 args
+  if [ "$1" == 2 ]; then
+    [ -z "${2:-}" ] && echo "$SUBMISSION_OUTPUT_DEFAULT" || echo "$2"
+  fi
+}
+
+
+function _validate_batch_envs() {
+  # $1 requested envs, $2 requested envs batch
+  if [ -n "$1" ] && [ -n "$2" ]; then
+    printf "${colour_red}%s${colour_nc}\n" \
+      "ERROR: Only '--envs' or '--envs-batch' is valid, not both."
+  elif [ -z "$1" ] && [ -z "$2" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: No environments were provided via either" \
+      "'--envs' or '--envs-batch'"
+  fi
+}
+
+function _validate_content() {
   # $1 = content type; $2 = name; $3 = full name (optional); $4 override check
   # with this value (optional); $5 optional remove n characters to get singular
-  # version
+  # version; $6 mention this script as source of list flag (optional)
   singular=${1::-${5:-1}}
   full=$([ -z "${3-}" ] && echo "$2" || echo "$3")
   check="$([ -z "${4-}" ] && \
@@ -429,16 +577,327 @@ function validate_content() {
     echo "$4")"
   if [ "$check" != "True" ]; then
     printf "%s %s\n" "${singular^} '$2' is not a supported ${singular}." \
-      "Please check '--list-$1'."
+      "Please check '$([ -n "${6:-}" ] && echo "$6")--list-$1'."
     printf "\n${colour_red}%s${colour_nc}\n" \
       "ERROR: Invalid ${singular} selected (${singular} = '$full')"
   fi
 }
 
-function validate_environment() {
+function _validate_environment() {
   # $1 = name; $2 = full name
-  validate_content "environments" "$1" "${2-}" \
+  _validate_content "environments" "$1" "${2-}" \
     "$(run_manager_cmd 'print(exists("environments", \
     [("name", "'$(env_name $1)'"), ("variant", "'$(env_variant $1)'")]))')"
+}
+
+function _validate_environment_count() {
+  # $1 = number of selected environments, $2 task
+  scene_count="$(run_manager_cmd 'print(\
+    get_value_by_name("tasks", "'$2'", "scene_count"))')"
+  if [[ "$scene_count" == *"None"* ]]; then scene_count=1; fi
+  if [ $scene_count -ne $1 ]; then
+    printf "${colour_red}%s\n       %s${colour_nc}\n" \
+      "ERROR: Selected $1 environment/s for a task which requires $scene_count" \
+      "environment/s ('$task')"
+  fi
+}
+
+function _validate_evaluation_method() {
+  # $1 evaluation method, $2 validate only (optional)
+  v=${2:-}
+  err=
+  if [ -z "$1" ] && [ -z "$v" ]; then
+    err="$(printf "%s %s\n" "Evaluation was requested but no evaluation"\
+      "method was selected. A selection is required.")"
+  elif [ -z "$v" ] && \
+      [ "$(run_manager_cmd 'print(exists("evaluation_methods", \
+      [("name", "'$1'")]))')" != "True" ]; then
+    err="$(printf "%s %s\n" "Evaluation method '$1' is not supported." \
+      "Please check '--list-methods'.")"
+  fi
+
+  if [ -n "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Invalid evaluation mode selected (evaluation method ='$1')"
+  fi
+}
+
+function _validate_required_envs() {
+  # $1 required envs, $2 required envs batch
+  if [ -n "$1" ] && [ -n "$2" ]; then
+    printf "${colour_red}%s %s${colour_nc}\n" \
+      "ERROR: Only '--required-envs' or '--required-envs-batch' is valid,"\
+      "not both."
+  elif [ -n "$2" ]; then
+    _validate_content "batches" "$2" "" "" 2
+  fi
+}
+
+function _validate_results_files() {
+  # $@ results files list
+  err=
+  if [ $# -eq 0 ]; then
+    err="$(printf "%s %s\n" "No results file/s were provided. Please run" \
+      "again with a results file.")"
+  else
+    for r in "$@"; do
+      if [ ! -f "$r" ]; then
+        err="$(printf "%s %s\n" "Results file '$r' either doesn't exist," \
+        "or isn't a file.")"
+      fi
+    done
+  fi
+
+  if [ -n "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Results file/s provided were invalid. See errors above."
+  fi
+}
+
+function _validate_results_possible() {
+  # Validates whether creating results is feasible 
+  # $1 mode (expanded), $2 evaluate method, $3 results_location
+  if [[ "$1" == s* && ( -n "$2" || -n "$3" ) ]]; then
+    printf "%s %s\n" "Cannot create results or perform evaluation in '$1'" \
+      "mode. Please run again in a different mode."
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Requested results evaluation from 'submission' mode."
+  fi
+}
+
+function _validate_submission_mode() {
+  # $1 example name, $2 example_containerised, $3 mode, $4 mode (numeric), 
+  # $5 duplicate mode flag, $6 mode_details, $7 args
+  err=
+
+  # Handle nonsensical combinations
+  if [ -n "$1" ] && [ -n "$3" ]; then
+    err="$(printf "%s %s\n" "Provided both an example name," \
+      "and submission mode ('$3')")"
+  elif [ -z "$1" ] && [ -n "$2" ]; then
+    err="$(printf "%s\n" \
+      "Requested example containerisation but no example was provided.")"
+  elif [ -n "$5" ]; then
+    err="$(printf "%s %s\n" "Selected more than 1 mode, please only select" \
+      "one of 'native', 'containerised', or 'submission'.")"
+  elif [ -z "$1" ]; then
+    if [ -z "$3" ]; then
+      err="$(printf "%s %s\n" "No mode was selected. Please select an" \
+        "example or one of 'native', 'containerised', or 'submission' modes.")"
+    elif [ -z "$6" ]; then
+      err="$(printf "%s %s\n" "Mode '$2' requires arguments, but none were" \
+        "provided. Please see '--help' for details.")"
+    fi
+  fi
+
+  # Handle errors in submission data
+  if [ -z "$err" ]; then
+    cmd="$(submission_command "$4" "$6" "$1" "$7")"
+    dir="$(submission_directory "$4" "$6" "$1")"
+    df="$(submission_dockerfile "$4" "$6" "$1")"
+    if [ -n "$df" ] && [ ! -f "$df" ]; then
+      err="$(printf "%s %s\n\t%s\n" "Containerised mode requested with the" \
+        "following non-existent Dockerfile:" "$df")"
+    elif [ "$4" == 2 ] && [ ! -d "$dir" ]; then
+      err="$(printf "%s %s\n\t%s\n" "Mode '$3' was requested to tar & submit" \
+        "the following non-existent directory:" "$dir")"
+    fi
+  fi
+
+  # Print the error if we found one
+  if [ -n "$err" ]; then 
+    printf "$err\n"
+    printf "\n${colour_red}%s${colour_nc}" \
+      "ERROR: Mode selection was invalid. See errors above."
+  fi
+}
+
+function _validate_type() {
+  # Ensures your installation supports the requested type
+  # $1 = type
+  if [ "$1" == "real" ]; then
+    printf "\n${colour_yellow}%s\n%s${colour_nc}\n" \
+      "WARNING: Requested running with '$1'. Assuming you have an available" \
+      "real robot & environment."
+    return
+  fi
+
+  simulators="$(simulator_type)"
+  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
+      [ "$simulators" != *"$1,"* ]; then
+    printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
+      "ERROR: Requested running with '$1', but that simulator isn't installed." \
+      "Installed simulator/s are: '$simulators'"
+  fi
+}
+
+function _validate_types() {
+  # Ensures all types are the same / consistent
+  # $1 = robot name; $2 = environment string, $3 ... environments list
+  robot="$1"
+  env="$2" 
+  shift 2
+  envs=($@)
+  types=()
+  types+=("$(run_manager_cmd 'print(\
+    get_value_by_name("robots", "'$robot'", "type"))')")
+  for e in "${envs[@]}"; do
+    types+=($(run_manager_cmd 'print(\
+      get_value_by_name("environments", "'$e'", "type"))'))
+  done
+
+  err=
+  for i in "${!types[@]}"; do
+    if [ "${types[$i]}" != "${types[0]}" ]; then err=1; fi
+  done
+
+  if [ -n "$err" ]; then
+    printf "%s %s\n%s\n\n" "Robot & environment types aren't consistent." \
+      "Please ensure each of the following" "have the same type:"
+    for i in "${!types[@]}"; do
+      if [ $i -eq 0 ]; then
+        printf "\tRobot '$robot' has type '${types[$i]}'\n"
+      else
+        printf "\tEnvironment '${envs[$((i-1))]}' has type '${types[$i]}'\n"
+      fi
+    done
+    printf "\n${colour_red}%s${colour_nc}\n" \
+      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
+  fi
+}
+
+function validate_batch_args() {
+  # $1 robot, $2 task, $3 envs_str, $4 envs_batch name, $5 example name, 
+  # $6 example_containerised, $7 evaluation method, $8 containerised, $9
+  # native, $10 mode details, $11 args, $12... environments list
+  robot="$1"
+  task="$2"
+  envs_str="$3"
+  envs_batch="$4"
+  example="$5"
+  example_containerised="$6"
+  evaluation_method="$7"
+  containerised="$8"
+  native="$9"
+  mode_details="${10}"
+  args="${11}"
+  shift 11
+  envs_list=($@)
+
+  # Handle batch specific validation first
+  err="$(_validate_batch_envs "$envs_str" "$envs_batch")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+
+  # Divert to validation functions for each of the sub-scripts
+  mode="$([ -n "$native" ] && echo "$native" || echo "$containerised")"
+  mode_num="$(submission_mode "$example" "$example_containerised" "$mode")"
+  mode_dup=
+  if [ -n "$native" ] && [ -n "$containerised" ]; then mode_dup=1; fi
+  validate_submit_args "$evaluation_method" "$example" \
+    "$example_containerised" "$mode" "$mode_num" "$mode_dup" "$mode_details" \
+    "" "$args"
+
+  if [ -n "$evaluation_method" ]; then
+    envs="$(echo "${envs_list[@]}" | tr ' ' ',')"
+
+    # This is gross... but we need a file for our results files that don't
+    # exist yet, otherwise the validation will fail
+    touch "$PATH_TEMP_FILE"
+    validate_eval_args "$envs" "" "$envs" "$task" "$evaluation_method" "" \
+      "$PATH_TEMP_FILE"
+    rm "$PATH_TEMP_FILE"
+  fi
+
+  type=$(run_manager_cmd 'exists("robots", [("name", "'$robot'")]) and \
+    print(get_value_by_name("robots", "'$robot'", "type"))')
+  for e in "${envs_list[@]}"; do
+    envs=($(env_list "$e" | tr ' ' '\n'))
+    validate_run_args "$robot" "$task" "$type" "$e" "${envs[@]}"
+  done
+
+}
+
+function validate_eval_args() {
+  # $1 required_envs, $2 required_envs_batch, 
+  # $3 required_envs_list (comma separated), $4 required_task, 
+  # $5 evaluation method, $6 validate_only, $7 ... results files list
+  required_envs="$1"
+  required_envs_batch="$2"
+  required_envs_list=($(echo "$3" | tr ',' '\n'))
+  required_task="$4"
+  method="$5"
+  validate_only="$6"
+  shift 6
+  results_files=($@)
+
+  err="$(_validate_required_envs "$required_envs" "$required_envs_batch")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  if [ -n "${required_envs_list:-}" ]; then
+    for e in "${required_envs_list[@]}"; do
+      es=($(env_list "$e" | tr ' ' '\n'))
+      for ee in "${es[@]}"; do
+        err="$(_validate_environment "$ee")"
+        if [ -n "$err" ]; then echo "$err"; exit 1; fi
+      done
+    done
+  fi
+  if [ -n "$required_task" ]; then
+    err="$(_validate_content "tasks" "$required_task")"
+    if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  fi
+  err="$(_validate_evaluation_method "$method" "$validate_only")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_results_files "${results_files[@]}")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+}
+
+function validate_run_args() {
+  # $1 robot, $2 task, $3 type of run, $4 environments_string, 
+  # $5... environments list
+  robot="$1"
+  task="$2"
+  type="$3"
+  env="$4"
+  shift 4
+  envs=($@)
+
+  err="$(_validate_content "robots" "$robot")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_content "tasks" "$task")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  results_format="$(run_manager_cmd 'rf = get_value_by_name("tasks", \
+    "'$task'", "results_format"); rf is not None and print(rf)')"
+  [ -n "$results_format" ] && \
+    err="$(_validate_content "formats" "$results_format")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  [ ${#envs[@]} -eq 0 ] && envs+=("")
+  for e in "${envs[@]}"; do
+    err="$(_validate_environment "$e" "$env")"
+    if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  done
+  err="$(_validate_types "$robot" "$env" "${envs[@]}")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_type "$type")"
+  if [[ "$err" == *"ERROR:"* ]]; then echo "$err"; exit 1; fi
+  err="$(_validate_environment_count ${#envs[@]} "$task")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+}
+
+function validate_submit_args() {
+  # $1 evaluation method, $2 example, $3 example_containerised, $4 mode, 
+  # $5 mode_num, $6 duplicate mode flag, $7 mode details, $8 results location, 
+  # $9 args
+  if [ -n "$1" ]; then
+    err="$(_validate_evaluation_method "$1")"
+    if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  fi
+  err="$([ -n "$2" ] && _validate_content "examples" "$2" || true)"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_submission_mode "$2" "$3" "$4" "$5" "$6" "$7" "$9")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+  err="$(_validate_results_possible "$3" "$1" "$5")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
 }
 

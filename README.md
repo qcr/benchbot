@@ -104,7 +104,7 @@ Getting a solution up and running with BenchBot is as simple as 1,2,3. Here's ho
    You can also simply run evaluation automatically after your submission completes:
 
    ```
-   u@pc:~$ benchbot_submit --evaluate-results omq --native --example hello_eval_semantic_slam
+   u@pc:~$ benchbot_submit --evaluate-with omq --native --example hello_eval_semantic_slam
    ```
 
 The [BenchBot Tutorial](https://github.com/qcr/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet) is a great place to start working with BenchBot; the tutorial takes you from a blank system to a working Semantic SLAM solution, with many educational steps along the way. Also remember the examples in your installation ([`benchbot-addons/examples_base`](https://github.com/benchbot-addons/examples_base) is a good starting point) which show how to get up and running with the BenchBot software stack.
@@ -128,7 +128,7 @@ Once you are confident your algorithm is a solution to the chosen task, the Benc
   Additionally, you can create a results ZIP and request an overall evaluation score at the end of the batch:
 
   ```
-  u@pc:~$ benchbot_batch --robot carter --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --zip --score-results omq --native python my_solution.py
+  u@pc:~$ benchbot_batch --robot carter --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --zip --evaluate-with omq --native python my_solution.py
   ```
 
   Lastly, both native and containerised submissions are supported exactly as in `benchbot_submit`:
