@@ -834,7 +834,7 @@ function validate_eval_args() {
 
   err="$(_validate_required_envs "$required_envs" "$required_envs_batch")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
-  if [ -n "$required_envs_list" ]; then
+  if [ -n "${required_envs_list:-}" ]; then
     for e in "${required_envs_list[@]}"; do
       es=($(env_list "$e" | tr ' ' '\n'))
       for ee in "${es[@]}"; do

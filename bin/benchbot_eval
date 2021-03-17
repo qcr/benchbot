@@ -230,7 +230,7 @@ if [ -n "$required_task" ]; then
   python_req_task=', required_task="'"$required_task"'"'
 fi
 python_req_envs=
-if [ -n "$required_envs_list" ]; then
+if [ -n "${required_envs_list:-}" ]; then
   python_req_envs=', required_envs=["'$(echo "${required_envs_list[@]}" | \
     sed 's/ /","/g')'"]'
 fi
