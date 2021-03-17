@@ -142,8 +142,8 @@ function open_network() {
 
 function print_version_info() {
   hash=$(git rev-parse HEAD)
-  version_name=$(git log --tags --no-walk --pretty='%H %D' | grep "$hash" | \
-    sed 's/^[^ ]* //; s/,[^:]*//g; s/tag: //g; s/: /, /g')
+  version_name="$(git log --tags --no-walk --pretty='%H %D' | grep "$hash" | \
+    sed 's/^[^ ]* //; s/,[^:]*//g; s/tag: //g; s/: /, /g'; true)"
   if [ -z "$version_name" ]; then
     version_name="__unnamed__"
   fi
