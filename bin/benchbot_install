@@ -924,7 +924,7 @@ function uninstall_benchbot() {
 
   header_block "UNINSTALLING BENCHBOT" ${colour_blue}
 
-  pkgs=$(python3 -m pip freeze | grep benchbot)
+  pkgs="$(python3 -m pip freeze | grep benchbot || true)"
   if [ -n "$pkgs" ]; then
     echo "$pkgs" | sed 's/.*egg=\(.*\)/\1/' | xargs python3 -m pip uninstall -y
   fi
