@@ -408,17 +408,9 @@ while [ $i -lt ${#envs_list[@]} ]; do
     exit 1
   fi
 
-  # Handle the result of failed submissions (looking for an error code)
-  wait $submit_pid && submit_result=0 || submit_result=1
-  if [ $submit_result -ne 0 ]; then
-    echo ""
-    kill_run
-    printf "\n${colour_red}$submission_err${colour_nc}\n" "${envs_list[$i]}"
-    exit 1
-  fi
-
   # Skip moving on if we collided using 'move_next' actuation, otherwise move
   # to the next environment
+  retry=
   if [ -n "$(run_manager_cmd 'print(get_value_by_name("tasks", "'$task'", \
         "actions"))' | grep "'move_next'")" ] && \
       [ -n "$(docker run --rm --network $DOCKER_NETWORK -it \
@@ -427,7 +419,19 @@ while [ $i -lt ${#envs_list[@]} ]; do
         grep "true")" ]; then
     printf "\n${colour_yellow}$collision_warn${colour_nc}\n\n" \
       "${envs_list[$i]}"
-  else
+    retry=1
+  fi
+
+  # Handle the result of failed submissions (looking for an error code)
+  wait $submit_pid && submit_result=0 || submit_result=1
+  if [ $submit_result -ne 0 ] && [ -z $retry ]; then
+    echo ""
+    kill_run
+    printf "\n${colour_red}$submission_err${colour_nc}\n" "${envs_list[$i]}"
+    exit 1
+  fi
+
+  if [ -z $retry ]; then
     results_list+=("${prefix}_$i.json")
     i=$((i+1))
   fi
