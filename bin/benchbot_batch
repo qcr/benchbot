@@ -207,7 +207,7 @@ _list_batches_pre=\
 run_pid=
 function kill_run() {
   if [ -n $run_pid ]; then
-    kill -TERM $run_pid &> /dev/null
+    kill -TERM $run_pid &> /dev/null || true
     wait $run_pid || true
     run_pid=
   fi
@@ -217,12 +217,12 @@ submit_pid=
 submit_cat_pid=
 function kill_submit() {
   if [ -n $submit_pid ]; then
-    kill -TERM $submit_pid &> /dev/null
+    kill -TERM $submit_pid &> /dev/null || true
     wait $submit_pid || true
     submit_pid=
   fi
   if [ -n $submit_cat_pid ]; then
-    kill -TERM $submit_cat_pid &> /dev/null
+    kill -TERM $submit_cat_pid &> /dev/null || true
     wait $submit_cat_pid || true
     submit_cat_pid=
   fi
@@ -396,7 +396,7 @@ while [ $i -lt ${#envs_list[@]} ]; do
   sleep 3
 
   # Run should never die normally, so treat this as an error
-  if ! $(ps -p $run_pid &>/dev/null); then
+  if [ 0 -ne $(ps -p $run_pid &>/dev/null; echo $?) ]; then
     echo ""
     kill_submit
     header_block "Crash detected for environment: ${envs_list[$i]}" \
