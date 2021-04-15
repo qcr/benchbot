@@ -4,6 +4,11 @@
 
 # BenchBot Software Stack
 
+[![BenchBot project](https://img.shields.io/badge/collection-BenchBot-%231a2857)](http://benchbot.org)
+[![QUT Centre for Robotics Open Source](https://github.com/qcr/qcr.github.io/raw/master/misc/badge.svg)](https://qcr.github.io)
+![Primary language](https://img.shields.io/github/languages/top/qcr/benchbot)
+[![License](https://img.shields.io/github/license/qcr/benchbot)](./LICENSE.txt)
+
 ![benchbot_web](./docs/benchbot_web.gif)
 
 The BenchBot software stack is a collection of software packages that allow end users to control robots in real or simulated environments with a simple python API. It leverages the simple "observe, act, repeat" approach to robot problems prevalent in reinforcement learning communities ([OpenAI Gym](https://gym.openai.com/) users will find the BenchBot API interface very similar).
