@@ -1,7 +1,13 @@
 <p align=center><strong>~ Our <a href="https://evalai.cloudcv.org/web/challenges/challenge-page/807/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include $2,500USD provided by <a href="https://www.roboticvision.org/">ACRV</a> & GPUs provided by sponsors <a href="https://www.nvidia.com/en-us/research/robotics/">NVIDIA</a>)</strong></p>
+<p align=center><strong>~Access our Benchbot Environments for Active Robotics (BEAR) through our <a href="https://github.com/benchbot-addons/envs_isaac_challenge"> challenge </a> and <a href="https://github.com/benchbot-addons/envs_isaac_develop">development </a> environment addons (installed by default)~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/qcr/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
 # BenchBot Software Stack
+
+[![BenchBot project](https://img.shields.io/badge/collection-BenchBot-%231a2857)](http://benchbot.org)
+[![QUT Centre for Robotics Open Source](https://github.com/qcr/qcr.github.io/raw/master/misc/badge.svg)](https://qcr.github.io)
+![Primary language](https://img.shields.io/github/languages/top/qcr/benchbot)
+[![License](https://img.shields.io/github/license/qcr/benchbot)](./LICENSE.txt)
 
 ![benchbot_web](./docs/benchbot_web.gif)
 
