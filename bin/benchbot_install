@@ -671,7 +671,7 @@ chk_addonsuptodate_fix=\
 'pushd '"$PATH_ADDONS"' && 
 git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
-git pull && popd'
+git pull && popd && pip3 uninstall -y benchbot_addons'
 chk_addonsuptodate_reboot=1
 
 chk_addonsinstalled_name='BenchBot Add-ons Manager installed'
@@ -690,7 +690,7 @@ chk_addonsinstalled_issue="\
   environment before running BenchBot."
 chk_addonsinstalled_fix=\
 'pushd '"$PATH_ADDONS"' &&  
-python3 -m pip install -e . && popd'
+python3 -m pip install --upgrade -e . && popd'
 chk_addonsinstalled_reboot=1
 
 chk_apicloned_name='BenchBot API cloned'
@@ -729,7 +729,7 @@ chk_apiuptodate_fix=\
 'pushd '"$PATH_API"' && 
 git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
-git pull && popd'
+git pull && popd && pip3 uninstall -y benchbot_api'
 chk_apiuptodate_reboot=1
 
 chk_apiinstalled_name='BenchBot API installed'
@@ -748,7 +748,7 @@ chk_apiinstalled_issue="\
   environment before running BenchBot."
 chk_apiinstalled_fix=\
 'pushd '"$PATH_API"' &&  
-python3 -m pip install -e . && popd'
+python3 -m pip install --upgrade -e . && popd'
 chk_apiinstalled_reboot=1
 
 chk_evalcloned_name='BenchBot evaluation cloned'
@@ -787,7 +787,7 @@ chk_evaluptodate_fix=\
 'pushd '"$PATH_EVAL"' && 
 git fetch --all && git checkout -- . &&
 (git checkout -t origin/$BRANCH_DEFAULT || git checkout $BRANCH_DEFAULT) && 
-git pull && popd'
+git pull && popd && python3 -m pip uninstall -y benchbot_eval'
 chk_evaluptodate_reboot=1
 
 chk_evalinstalled_name='BenchBot evaluation installed'
@@ -806,7 +806,7 @@ chk_evalinstalled_issue="\
   environment before running BenchBot."
 chk_evalinstalled_fix=\
 'pushd '"$PATH_EVAL"' && 
-python3 -m pip install -e . && popd'
+python3 -m pip install --upgrade -e . && popd'
 chk_evalinstalled_reboot=1
 
 chk_hostsavail_name='BenchBot hosts available'
