@@ -648,7 +648,8 @@ chk_addonscloned_fix=\
 'rm -rf '"$PATH_ADDONS"' && 
 git clone '"$GIT_ADDONS $PATH_ADDONS"' &&
 pushd '"$PATH_ADDONS"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
+git fetch --all && (git checkout -t origin/$BRANCH_DEFAULT || 
+git checkout $BRANCH_DEFAULT) && popd'
 chk_addonscloned_reboot=1
 
 chk_addonsuptodate_name='BenchBot Add-ons Manager up-to-date'
@@ -707,7 +708,8 @@ chk_apicloned_fix=\
 'rm -rf '"$PATH_API"' && 
 git clone '"$GIT_API $PATH_API"' &&
 pushd '"$PATH_API"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
+git fetch --all && (git checkout -t origin/$BRANCH_DEFAULT || 
+git checkout $BRANCH_DEFAULT) && popd'
 chk_apicloned_reboot=1
 
 chk_apiuptodate_name='BenchBot API up-to-date'
@@ -765,7 +767,8 @@ chk_evalcloned_fix=\
 'rm -rf '"$PATH_EVAL"' && 
 git clone '"$GIT_EVAL $PATH_EVAL"' &&
 pushd '"$PATH_EVAL"' && 
-git fetch --all && git checkout -t origin/$BRANCH_DEFAULT && popd'
+git fetch --all && (git checkout -t origin/$BRANCH_DEFAULT || 
+git checkout $BRANCH_DEFAULT) && popd'
 chk_evalcloned_reboot=1
 
 chk_evaluptodate_name='BenchBot evaluation up-to-date'
