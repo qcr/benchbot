@@ -1150,7 +1150,8 @@ cuda_drivers_version=$(apt list --installed 2>/dev/null | \
 cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
   sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
-sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
+  sdk_file=$($(eval "$chk_isaac_check") && \
+      realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check") || echo "")
 
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
@@ -1181,7 +1182,7 @@ docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
   --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
   --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
   --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
-  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
+  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash:-}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" \
   --build-arg ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT && \
