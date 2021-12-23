@@ -66,7 +66,7 @@ ARG BENCHBOT_SUPERVISOR_HASH
 ENV BENCHBOT_SUPERVISOR_PATH="/benchbot/benchbot_supervisor"
 RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     pushd $BENCHBOT_SUPERVISOR_PATH && git checkout $BENCHBOT_SUPERVISOR_HASH && \
-    pip3 install . 
+    pip install . 
 ARG BENCHBOT_CONTROLLER_GIT
 ARG BENCHBOT_CONTROLLER_HASH
 ENV BENCHBOT_CONTROLLER_PATH="/benchbot/benchbot_robot_controller"
@@ -79,7 +79,7 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
 # Create a place to mount our add-ons, & install manager dependencies
 ARG ADDONS_PATH
 ENV BENCHBOT_ADDONS_PATH=$ADDONS_PATH
-RUN mkdir -p $BENCHBOT_ADDONS_PATH && pip3 install pyyaml
+RUN mkdir -p $BENCHBOT_ADDONS_PATH && pip install pyyaml
 
 # Record the type of backend built
 ENV BENCHBOT_SIMULATORS="${SIMULATORS}"
