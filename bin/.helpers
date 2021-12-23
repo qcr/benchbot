@@ -765,7 +765,7 @@ function _validate_types() {
       fi
     done
     printf "\n${colour_red}%s${colour_nc}\n" \
-      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
+      "ERROR: Inconsistent types selected (robot = '$1', environment = '$env')"
   fi
 }
 
