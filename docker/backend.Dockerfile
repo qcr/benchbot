@@ -33,15 +33,15 @@ RUN sudo rosdep init && rosdep update && \
 
 # Install & build Isaac (using local copies of licensed libraries)
 # TODO adapt this to handle multiple simulators
-ARG SIMULATORS
-ARG ISAAC_SDK_DIR
-ARG ISAAC_SDK_TGZ
-ENV ISAAC_SDK_SRCS="/isaac_srcs"
-COPY --chown=benchbot:benchbot ${ISAAC_SDK_DIR} ${ISAAC_SDK_SRCS}
-ENV ISAAC_SDK_PATH="/benchbot/isaac_sdk"
-RUN [ -z "$SIMULATORS" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
-    tar -xf "$ISAAC_SDK_SRCS/$ISAAC_SDK_TGZ" -C "$ISAAC_SDK_PATH" && \
-    pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh
+# ARG SIMULATORS
+# ARG ISAAC_SDK_DIR
+# ARG ISAAC_SDK_TGZ
+# ENV ISAAC_SDK_SRCS="/isaac_srcs"
+# COPY --chown=benchbot:benchbot ${ISAAC_SDK_DIR} ${ISAAC_SDK_SRCS}
+# ENV ISAAC_SDK_PATH="/benchbot/isaac_sdk"
+# RUN [ -z "$SIMULATORS" ] && exit 0 || mkdir "$ISAAC_SDK_PATH" && \
+#     tar -xf "$ISAAC_SDK_SRCS/$ISAAC_SDK_TGZ" -C "$ISAAC_SDK_PATH" && \
+#     pushd "$ISAAC_SDK_PATH" && engine/build/scripts/install_dependencies.sh
 
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_MSGS_GIT

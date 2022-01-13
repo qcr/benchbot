@@ -1175,8 +1175,6 @@ printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
 docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
   --build-arg SIMULATORS="$simulators" \
-  --build-arg ISAAC_SDK_DIR="$(dirname "$sdk_file")" \
-  --build-arg ISAAC_SDK_TGZ="$(basename "$sdk_file")" \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
   --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
   --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
