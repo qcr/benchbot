@@ -351,8 +351,10 @@ function install_addons() {
   printf "\n${colour_blue}%s${colour_nc}\n\n" \
     "Baking external add-on dependencies into the Docker backend:"
   docker run --name tmp --detach -it "$DOCKER_TAG_BACKEND" 
+  py="$(docker exec -it tmp /bin/bash -c \ "which pip3 || which pip2" | \
+    tr -d '[:space:]')"
   docker exec -it tmp /bin/bash -c \
-    "$(run_manager_cmd 'print(install_external_deps(True))')"
+    "$(run_manager_cmd 'print(install_external_deps(True))' | sed "s|pip3|$py|")"
   docker commit tmp "$DOCKER_TAG_BACKEND"
   docker rm -f tmp
   printf "\n"
