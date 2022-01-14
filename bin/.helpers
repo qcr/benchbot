@@ -280,10 +280,11 @@ updates."
   is_latest_benchbot_eval "$1" > /dev/null
   eval_valid=$?
   [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot Simulator version ...\t\t\t"
-  is_latest_benchbot_simulator "$1" > /dev/null
-  simulator_valid=$?
-  [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  # echo -ne "Checking BenchBot Simulator version ...\t\t\t"
+  # is_latest_benchbot_simulator "$1" > /dev/null
+  # simulator_valid=$?
+  # [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  simulator_valid=0
   echo -ne "Checking BenchBot Supervisor version ...\t\t"
   is_latest_benchbot_supervisor "$1" > /dev/null
   supervisor_valid=$?
