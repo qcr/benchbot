@@ -767,7 +767,7 @@ function _validate_type() {
   fi
 
   simulators="$(simulators_installed)"
-  if simulators_installed "$1" "$simulators"; then
+  if ! simulators_installed "$1" "$simulators"; then
     printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
       "ERROR: Requested running with '$1', but that simulator isn't installed." \
       "Installed simulator/s are: '$simulators'"
