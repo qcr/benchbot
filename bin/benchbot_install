@@ -157,7 +157,6 @@ checks_list_pre=(
   "cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
   "cudappa"  # Is cuda from the Nvidia PPA?
-  "isaac"  # Is the Isaac *.zip readily available?
   "Running Docker related system checks:"
   "dockeravailable"  # Is Docker available?
   "dockerversion"  # Is Docker version > 19.0?
@@ -375,28 +374,6 @@ chk_cudappa_fix=\
 'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudappa_reboot=1
-
-chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
-chk_isaac_pass='Found archive'
-chk_isaac_fail='Not found'
-chk_isaac_check='find $PATH_ISAAC_SRCS -type f -exec md5sum {} + | \
-grep "$MD5_ISAAC_SDK" | tr -s " " | cut -d " " -f 2'
-chk_isaac_eval='[ -n "$check_result" ]'
-chk_isaac_issue="\
-  "'$check_result'"
-  Isaac SDK was not found in the folder:
-    $(realpath $PATH_ISAAC_SRCS)
-
-  Due to licensing restrictions we cannot automatically download this file.
-  Please sign up for an Nvidia developer account, download the *.zip for Isaac 
-  2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
-  in the 'isaac' folder of BenchBot (mentioned above). The 2019.2 version of
-  Isaac is hidden under the 'Archive' section of the downloads page.
-
-  This check will only pass when a file is found with the following MD5SUM:
-    $MD5_ISAAC_SDK"
-chk_isaac_fix=''
-chk_isaac_reboot=1
 
 chk_dockeravailable_name='Docker is available'
 chk_dockeravailable_pass='Found'
@@ -1055,7 +1032,7 @@ header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 # Patch in any values that can only be determined at runtime
 # TODO clean this all up for use with multiple simulators...
 if [ -z "$simulators" ]; then
-  checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
+  : # Remove simulator specific checks here (i.e. ( "${chesks_list[@]/NAME}" ) )
 fi
 _sz=$([ -n "$simulators" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
@@ -1155,8 +1132,6 @@ cuda_drivers_version=$(apt list --installed 2>/dev/null | \
 cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
   sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
-  sdk_file=$($(eval "$chk_isaac_check") && \
-      realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check") || echo "")
 
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
