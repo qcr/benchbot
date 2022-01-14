@@ -154,11 +154,15 @@ function print_version_info() {
   printf "(%s)\n" "$hash"
 }
 
-function simulator_type() {
+function simulator_installed() {
+  # $1 query simulator, $2 string returned by simulators_installed
+  return [[ "$2" == "$1" ]] || [[ "$2" == *",$1"* ]] || [ "$2" == *"$1,"* ]
+}
+
+function simulators_installed() {
   echo "$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'echo "$BENCHBOT_SIMULATORS"' | tr -d '[:space:]')"
-  return
 }
 
 ################################################################################
@@ -727,9 +731,8 @@ function _validate_type() {
     return
   fi
 
-  simulators="$(simulator_type)"
-  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
-      [ "$simulators" != *"$1,"* ]; then
+  simulators="$(simulators_installed)"
+  if simulators_installed "$1" "$simulators"; then
     printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
       "ERROR: Requested running with '$1', but that simulator isn't installed." \
       "Installed simulator/s are: '$simulators'"
