@@ -49,8 +49,16 @@ PATH_TEMP_FILE="/tmp/benchbot_scratch"
 PORT_ROBOT=10000
 PORT_SUPERVISOR=10000
 
+RETIRED_SIMULATORS=(
+  "sim_unreal:Isaac Sim 2019.2, powered by Unreal engine"
+  )
+
 SIZE_GB_FULL=64
 SIZE_GB_LITE=32
+
+SUPPORTED_SIMULATORS=(
+  "sim_omni:The latest Isaac Sim, powered by Omniverse"
+  )
 
 URL_DEBUG="172.20.0.200"
 URL_DOCKER_SUBNET="172.20.0.0/24"
@@ -156,7 +164,8 @@ function print_version_info() {
 
 function simulator_installed() {
   # $1 query simulator, $2 string returned by simulators_installed
-  return [[ "$2" == "$1" ]] || [[ "$2" == *",$1"* ]] || [ "$2" == *"$1,"* ]
+  [[ "$2" == "$1" ]] || [[ "$2" == *",$1"* ]] || [[ "$2" == *"$1,"* ]]
+  return $?
 }
 
 function simulators_installed() {
@@ -399,6 +408,32 @@ See the '--show-"$singular" "${singular^^}"_NAME' command for specific "\
 each "$singular", or check you have the appropriate add-on installed if you are 
 missing "${2:-a}" "${singular}".
 "
+}
+
+function list_simulators() {
+  simulators="$(simulators_installed)"
+  printf "\nThe following simulator options are supported by BenchBot:\n"
+  for s in "${SUPPORTED_SIMULATORS[@]}"; do
+    n="$(echo "$s" | sed 's/:.*//')"
+    d="$(echo "$s" | sed 's/^[^:]*://')"
+    if simulator_installed "$n" "$simulators"; then
+      printf "${colour_green}\t%-16s$d (installed)${colour_nc}\n" "$n"
+    else
+      printf "\t%-16s$d (available)\n" "$n"
+    fi
+  done
+
+  printf "\nSupport is retired for the following simulator options:\n"
+  for s in "${RETIRED_SIMULATORS[@]}"; do
+    n="$(echo "$s" | sed 's/:.*//')"
+    d="$(echo "$s" | sed 's/^[^:]*://')"
+    if simulator_installed "$n" "$simulators"; then
+      printf "${colour_yellow}\t%-16s$d (installed)${colour_nc}\n" "$n"
+    else
+      printf "\t$n\t$d\n"
+    fi
+  done
+  printf "\n"
 }
 
 function remove_addons() {

@@ -973,7 +973,7 @@ trap cleanup_terminal EXIT
 # Safely parse options input
 input=("$@")
 _args="help,addons:,addons-only:,branch:,force-clean,uninstall,list-addons,\
-no-simulator,no-update,remove-addons:,simulators:,version"
+list-simulators,no-simulator,no-update,remove-addons:,simulators:,version"
 parse_out=$(getopt -o ha:A:b:fs:uv --long $_args -n "$(basename "$abs_path")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -1005,6 +1005,8 @@ while true; do
       print_version_info; exit ;;
     --list-addons)
       list_addons; exit ;;
+    --list-simulators)
+      list_simulators; exit ;; 
     --no-simulator)
       no_simulator=1; shift ;;
     --no-update)
