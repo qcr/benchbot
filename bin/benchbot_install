@@ -26,7 +26,7 @@ $URL_DEBUG $HOSTNAME_DEBUG"
 ADDONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
 NVIDIA_DEFAULT='nvidia-driver-455'
-SIMULATOR_DEFAULT='sim_unreal'
+SIMULATOR_DEFAULT='sim_omni'
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -86,8 +86,12 @@ OPTION DETAILS:
             instructions here:
               https://github.com/qcr/benchbot-addons
 
+    --list-simulators
+            List all supported simulators that can be installed. It will also
+            show which simulators you currently have installed.
+
     --no-simulator
-            Runs installation without installing the Nvidia Isaac Unreal
+            Runs installation without installing Nvidia's Omniverse-based Isaac
             simulator.  This option is useful for avoiding the excessive space
             requirements (>100GB) when using the BenchBot software stack on a
             machine that will only be used with a real robot.
@@ -105,11 +109,10 @@ OPTION DETAILS:
             prompted before removal commences.
 
     -s, --simulators
-            Specify simulator/s to install (only 'sim_unreal' is currently
-            supported). Comma-separated lists are accepted to specify multiple
-            simulators. If this option isn't included, the default 'sim_unreal'
-            is installed. This flag will have more practical use in the future
-            when we add Omniverse support.
+            Specify simulator/s to install. Comma-separated lists are accepted
+            to specify multiple simulators. The default '$SIMULATOR_DEFAULT' is
+            installed if this option isn't included. See '--list-simulators'
+            for a list of supported options.
 
     -u, --uninstall
             Uninstall the BenchBot software stack from the machine. All BenchBot
