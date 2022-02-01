@@ -502,7 +502,7 @@ chk_fsnosuid_fix=\
 sudo systemctl daemon-reload'
 chk_fsnosuid_reboot=1
 
-chk_fsspace_name='/var/lib/docker driver space check'
+chk_fsspace_name='/var/lib/docker drive space check'
 chk_fsspace_pass='Sufficient space ($check_resultG)'
 chk_fsspace_fail='Insufficient space ($check_resultG)'
 chk_fsspace_check=\
