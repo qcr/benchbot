@@ -11,28 +11,16 @@ RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
     python-rosinstall python-rosinstall-generator python-wstool \
     python-catkin-tools python-pip build-essential
 
-# Install Vulkan
-RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | \
-    apt-key add - && wget -qO /etc/apt/sources.list.d/lunarg-vulkan-bionic.list \
-    http://packages.lunarg.com/vulkan/lunarg-vulkan-bionic.list && \
-    apt update && DEBIAN_FRONTEND=noninteractive apt install -yq vulkan-sdk
+# Install Python3 for benchbot_supervisor (required due to addons integration)
+RUN apt update && apt install -y python3 python3-pip
 
-# Create a benchbot user with ownership of the benchbot software stack (Unreal
-# for some irritating reason will not accept being run by root...) 
-RUN useradd --create-home --password "" benchbot && passwd -d benchbot && \
-    apt update && apt install -yq sudo && usermod -aG sudo benchbot && \
-    usermod -aG root benchbot && mkdir /benchbot && \
-    chown benchbot:benchbot /benchbot
-USER benchbot
+# Create a /benchbot working directory
 WORKDIR /benchbot
 
-# Build ROS
+# Build a ROS Catkin workspace
 RUN sudo rosdep init && rosdep update && \
     mkdir -p ros_ws/src && source /opt/ros/melodic/setup.bash && \
     pushd ros_ws && catkin_make && source devel/setup.bash && popd 
-
-# Install requested simulators
-ARG SIMULATORS
 
 # Install benchbot components, ordered by how expensive installation is
 ARG BENCHBOT_MSGS_GIT
@@ -43,21 +31,12 @@ RUN git clone $BENCHBOT_MSGS_GIT $BENCHBOT_MSGS_PATH && \
     pushd $BENCHBOT_MSGS_PATH && git checkout $BENCHBOT_MSGS_HASH && \
     pip install -r requirements.txt && pushd $ROS_WS_PATH && \
     ln -sv $BENCHBOT_MSGS_PATH src/ && source devel/setup.bash && catkin_make
-ARG BENCHBOT_SIMULATOR_GIT
-ARG BENCHBOT_SIMULATOR_HASH
-ENV BENCHBOT_SIMULATOR_PATH="/benchbot/benchbot_simulator"
-# RUN [ -z "$SIMULATORS" ] && exit 0 || \ 
-#     git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
-#     pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
-#     .isaac_patches/apply_patches && source $ROS_WS_PATH/devel/setup.bash && \
-#     ./bazelros build //apps/benchbot_simulator && \
-#     pip install -r requirements.txt
 ARG BENCHBOT_SUPERVISOR_GIT
 ARG BENCHBOT_SUPERVISOR_HASH
 ENV BENCHBOT_SUPERVISOR_PATH="/benchbot/benchbot_supervisor"
 RUN git clone $BENCHBOT_SUPERVISOR_GIT $BENCHBOT_SUPERVISOR_PATH && \
     pushd $BENCHBOT_SUPERVISOR_PATH && git checkout $BENCHBOT_SUPERVISOR_HASH && \
-    pip install . 
+    pip3 install . 
 ARG BENCHBOT_CONTROLLER_GIT
 ARG BENCHBOT_CONTROLLER_HASH
 ENV BENCHBOT_CONTROLLER_PATH="/benchbot/benchbot_robot_controller"
@@ -71,6 +50,3 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
 ARG ADDONS_PATH
 ENV BENCHBOT_ADDONS_PATH=$ADDONS_PATH
 RUN mkdir -p $BENCHBOT_ADDONS_PATH && pip install pyyaml
-
-# Record the type of backend built
-ENV BENCHBOT_SIMULATORS="${SIMULATORS}"
