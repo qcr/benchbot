@@ -31,6 +31,6 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
 # Create a place to mount our add-ons, & install manager dependencies
-ARG ADDONS_PATH
-ENV BENCHBOT_ADDONS_PATH="$ADDONS_PATH"
+ARG BENCHBOT_ADDONS_PATH
+ENV BENCHBOT_ADDONS_PATH="$BENCHBOT_ADDONS_PATH"
 RUN mkdir -p $BENCHBOT_ADDONS_PATH && pip install pyyaml

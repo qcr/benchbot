@@ -1124,7 +1124,8 @@ echo -e "\t\t$benchbot_msgs_hash."
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
-# Get some useful variables from the host
+# Gather some useful variables, including from the host
+_tmp_dockerfile="/tmp/dockerfile"
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
 cuda_drivers_version=$(apt list --installed 2>/dev/null | \
@@ -1150,20 +1151,17 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build the BenchBot Backend Docker image
-# TODO adapt this to handle multiple simulators
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
-  --build-arg SIMULATORS="$simulators" \
+cat "$PATH_DOCKERFILE_BACKEND" "$PATH_DOCKERFILE_SHARED" > "$_tmp_dockerfile"
+docker build -t "$DOCKER_TAG_BACKEND" -f "$_tmp_dockerfile" \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
   --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
   --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
   --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
-  --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
-  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash:-}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" \
-  --build-arg ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT && \
+  --build-arg BENCHBOT_ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT && \
   build_ret=0 || build_ret=1
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
@@ -1171,6 +1169,9 @@ if [ $build_ret -ne 0 ]; then
     "$build_ret"
   exit 1
 fi
+
+# Build Docker images for each of the requested simulators
+# TODO
 
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
@@ -1185,6 +1186,8 @@ if [ $build_ret -ne 0 ]; then
     "$build_ret"
   exit 1
 fi
+
+rm "$_tmp_dockerfile"
 
 # Cleanup any unnecessary / outdated BenchBot components still lying around
 printf "\n${colour_blue}%s${colour_nc}\n" \
