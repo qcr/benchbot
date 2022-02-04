@@ -1002,8 +1002,6 @@ validate_install_args "$simulators"
 if [ -z "$addons" ]; then addons="$ADDONS_DEFAULT"; fi
 simulators=( $([ -z "$no_simulator" ] && echo "$simulators" | sed 's/,/\n/g') )
 
-exit 0
-
 # Pre-install
 if [ -z "$updates_skip" ]; then
   header_block "CHECKING BENCHBOT SCRIPTS VERSION" ${colour_blue}
@@ -1179,7 +1177,25 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build Docker images for each of the requested simulators
-# TODO
+for s in "${simulators[@]}"; do
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "BUILDING BENCHBOT SIMULATOR '$s' DOCKER IMAGE:"
+  cat "$PATH_DOCKERFILE_SIM_PREFIX$s.Dockerfile" "$PATH_DOCKERFILE_SHARED" > \
+    "$_tmp_dockerfile"
+  docker build -t "$DOCKER_TAG_SIM_PREFIX$s" -f "$_tmp_dockerfile" \
+    --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
+    --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
+    --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
+    --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
+    --build-arg BENCHBOT_ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT && \
+    build_ret=0 || build_ret=1
+  if [ $build_ret -ne 0 ]; then
+    printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+      "ERROR: Building BenchBot simulator '$s' returned a non-zero error code" \
+      "$build_ret"
+    exit 1
+  fi
+done
 
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
