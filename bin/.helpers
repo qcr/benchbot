@@ -170,9 +170,19 @@ function simulator_installed() {
 }
 
 function simulators_installed() {
+  # TODO overall this to work with simulator-specific Docker images
   echo "$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'echo "$BENCHBOT_SIMULATORS"' | tr -d '[:space:]')"
+}
+
+function simulator_supported() {
+  # $1 simulator name
+  local s
+  for s in "${SUPPORTED_SIMULATORS[@]}"; do
+    if [ "$(echo "$s" | sed 's/:.*//')" = "$1" ]; then return 0; fi
+  done
+  return 1;
 }
 
 ################################################################################
@@ -711,6 +721,26 @@ function _validate_results_possible() {
   fi
 }
 
+function _validate_simulators() {
+  # Validate whether simulator selection is supported
+  # $1 comma-separated simulator list
+  err=
+  sims=($(echo "$1" | sed 's/,/\n/g'))
+  local s
+  for s in "${sims[@]}"; do
+    if ! simulator_supported "$s"; then
+      err="Simulator '$s' is not a supported simulator."
+    fi
+  done
+
+  if [ -n "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s%s${colour_nc}" \
+      "ERROR: Simulator selection was invalid. " \
+      "See errors above & --list-simulators."
+  fi
+}
+
 function _validate_submission_mode() {
   # $1 example name, $2 example_containerised, $3 mode, $4 mode (numeric), 
   # $5 duplicate mode flag, $6 mode_details, $7 args
@@ -893,6 +923,14 @@ function validate_eval_args() {
   err="$(_validate_evaluation_method "$method" "$validate_only")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
   err="$(_validate_results_files "${results_files[@]}")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+}
+
+function validate_install_args() {
+  # $1 simulator selection
+  simulators="$1"
+
+  err="$(_validate_simulators "$simulators")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
 }
 

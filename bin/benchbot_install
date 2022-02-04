@@ -941,7 +941,7 @@ function uninstall_benchbot() {
 }
 
 ################################################################################
-############################# Installation process #############################
+################## Parse & handle arguments / installer state ##################
 ################################################################################
 
 # Cleanup terminal colours whenever exiting
@@ -970,7 +970,7 @@ while true; do
     -b|--branch)
       # This is a real dirty way to do this... sorry
       BRANCH_DEFAULT="$2"; shift 2
-      printf "\n${colour_yellow}%s${colour_nc}\n" \
+      printf "\n${colour_yellow}%s${colour_nc}\n\n" \
         "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
@@ -997,9 +997,12 @@ while true; do
   esac
 done
 
-# Sanitise argument values
+# Validate and sanitise argument values
+validate_install_args "$simulators"
 if [ -z "$addons" ]; then addons="$ADDONS_DEFAULT"; fi
-if [ -n "$no_simulator" ]; then simulators=""; fi
+simulators=( $([ -z "$no_simulator" ] && echo "$simulators" | sed 's/,/\n/g') )
+
+exit 0
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1026,13 +1029,18 @@ if [ -z "$updates_skip" ]; then
   fi
 fi
 
+################################################################################
+############################# Installation process #############################
+################################################################################
+
+
 # PART 1: Ensuring the system state is compatible with BenchBot
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
 # Patch in any values that can only be determined at runtime
 # TODO clean this all up for use with multiple simulators...
 if [ -z "$simulators" ]; then
-  : # Remove simulator specific checks here (i.e. ( "${chesks_list[@]/NAME}" ) )
+  : # Remove simulator specific checks here (i.e. ( "${checks_list[@]/NAME}" ) )
 fi
 _sz=$([ -n "$simulators" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
