@@ -6,10 +6,19 @@
 ENV BENCHBOT_DIR="/benchbot"
 RUN mkdir -p $BENCHBOT_DIR
 
+# Install ROS Melodic
+RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
+    /etc/apt/sources.list.d/ros-latest.list && \
+    apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
+    C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
+    apt update && apt install -y ros-melodic-desktop-full python-rosdep \
+    python-rosinstall python-rosinstall-generator python-wstool \
+    python-catkin-tools python-pip build-essential
+
 # Build a ROS Catkin workspace
 ENV ROS_WS_PATH="$BENCHBOT_DIR/ros_ws"
-RUN sudo rosdep init && rosdep update && \
-    mkdir -p $ROS_WS_PATH/src && source /opt/ros/melodic/setup.bash && \
+RUN rosdep init && rosdep update && mkdir -p $ROS_WS_PATH/src && \
+    source /opt/ros/melodic/setup.bash && \
     pushd $ROS_WS_PATH && catkin_make && source devel/setup.bash && popd 
 
 # Add BenchBot's common ROS packages
