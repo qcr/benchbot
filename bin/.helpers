@@ -24,7 +24,7 @@ GIT_BENCHBOT="https://github.com/qcr/benchbot"
 GIT_CONTROLLER="https://github.com/qcr/benchbot_robot_controller"
 GIT_EVAL="https://github.com/qcr/benchbot_eval"
 GIT_MSGS="https://github.com/qcr/benchbot_msgs"
-GIT_SIMULATOR="https://github.com/qcr/benchbot_simulator"
+GIT_SIMULATOR_PREFIX="https://github.com/qcr/benchbot_"
 GIT_SUPERVISOR="https://github.com/qcr/benchbot_supervisor"
 
 HOSTNAME_DEBUG="benchbot_debug"
@@ -244,12 +244,13 @@ function is_latest_benchbot_msgs() {
 }
 
 function is_latest_benchbot_simulator() {
-  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+  # $1 = simulator name, $2 = branch name
+  current_hash=$(docker inspect "$DOCKER_TAG_SIM_PREFIX$1" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIM_PREFIX$1" /bin/bash -c \
     'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
-  latest_hash=$(git ls-remote "$GIT_SIMULATOR" "$1" | awk '{print $1}')
-  echo "Current BenchBot Simulator: $current_hash"
-  echo "Latest BenchBot Simulator: $latest_hash"
+  latest_hash=$(git ls-remote "$GIT_SIMULATOR_PREFIX$1" "$2" | awk '{print $1}')
+  echo "Current BenchBot Simulator '$1': $current_hash"
+  echo "Latest BenchBot Simulator '$1': $latest_hash"
   [ "$current_hash" == "$latest_hash" ]
   return
 }

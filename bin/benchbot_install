@@ -1084,14 +1084,19 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 # TODO adapt this to handle multiple simulators...
 hash_fail_msg="Failed (check Internet connection & valid branch name!). Exiting."
 if [ -n "$simulators" ]; then
-  echo -e "\nFetching latest hash for BenchBot Simulator ... "
-  benchbot_simulator_hash=$( (is_latest_benchbot_simulator $BRANCH_DEFAULT || \
-    true) | latest_version_info)
-  if [ -z "$benchbot_simulator_hash" ]; then
-    printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
-    exit 1
-  fi
-  echo -e "\t\t$benchbot_simulator_hash."
+  benchbot_simulator_hashes=()
+  for s in "${simulators[@]}"; do
+    echo -e "\nFetching latest hash for BenchBot Simulator '$s' ... "
+    benchbot_simulator_hashes+=$( \
+      (is_latest_benchbot_simulator $s $BRANCH_DEFAULT || true) | \
+      latest_version_info \
+    )
+    if [ -z "${benchbot_simulator_hashes[-1]}" ]; then
+      printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
+      exit 1
+    fi
+    echo -e "\t\t${benchbot_simulator_hashes[-1]}."
+  done
 fi
 echo "Fetching latest hash for BenchBot Robot Controller ... "
 benchbot_controller_hash=$( (is_latest_benchbot_controller $BRANCH_DEFAULT || \
