@@ -327,11 +327,16 @@ ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 if [ -n "$simulator_required" ]; then
+  # TODO upgrade this
+  # printf "\n${colour_blue}%s${colour_nc}\n" \
+  #   "Starting container for BenchBot Robot Controller:"
+  # cmd="${docker_run//'$name'/benchbot_robot}"
+  # ${cmd// /$'\t'} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+  #   "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
   printf "\n${colour_blue}%s${colour_nc}\n" \
-    "Starting container for BenchBot Robot Controller:"
+      "Starting container for BenchBot Robot Controller ($type):"
   cmd="${docker_run//'$name'/benchbot_robot}"
-  ${cmd// /$'\t'} --ip "$URL_ROBOT" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-    "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  ${cmd// /$'\t'} --ip "$URL_ROBOT" -it -d $DOCKER_TAG_SIM_PREFIX"sim_omni" /bin/bash
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
