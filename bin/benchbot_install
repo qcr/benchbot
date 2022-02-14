@@ -1148,7 +1148,7 @@ cuda_version=$(apt list --installed 2>/dev/null | \
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT CORE DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
+docker buildx build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
@@ -1165,7 +1165,7 @@ fi
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
 cat "$PATH_DOCKERFILE_BACKEND" "$PATH_DOCKERFILE_SHARED" > "$_tmp_dockerfile"
-docker build -t "$DOCKER_TAG_BACKEND" -f "$_tmp_dockerfile" \
+docker buildx build -t "$DOCKER_TAG_BACKEND" -f "$_tmp_dockerfile" \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
   --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
   --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
@@ -1188,7 +1188,7 @@ for i in "${!simulators[@]}"; do
     "BUILDING BENCHBOT SIMULATOR '$s' DOCKER IMAGE:"
   cat "$PATH_DOCKERFILE_SIM_PREFIX$s.Dockerfile" "$PATH_DOCKERFILE_SHARED" > \
     "$_tmp_dockerfile"
-  docker build -t "$DOCKER_TAG_SIM_PREFIX$s" -f "$_tmp_dockerfile" \
+  docker buildx build -t "$DOCKER_TAG_SIM_PREFIX$s" -f "$_tmp_dockerfile" \
     --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
     --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
     --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
@@ -1208,7 +1208,8 @@ done
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SUBMISSION DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
+docker buildx build -t "$DOCKER_TAG_SUBMISSION" \
+  -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT && \
   build_ret=0 || build_ret=1
