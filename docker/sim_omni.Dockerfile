@@ -4,7 +4,7 @@ FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
 
 # Overrides to make things play nicely with the BenchBot ecosystem
 SHELL ["/bin/bash", "-c"]
-ENTRYPOINT []
+ENTRYPOINT ["/bin/sh", "-c"]
 ENV ACCEPT_EULA="Y"
 
 # Install the BenchBot Simulator wrappers for 'sim_omni'
