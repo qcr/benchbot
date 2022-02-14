@@ -7,11 +7,12 @@ ENV BENCHBOT_DIR="/benchbot"
 RUN mkdir -p $BENCHBOT_DIR
 
 # Install ROS Melodic
-RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
+RUN apt update && apt install -y curl && \
+    echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
     /etc/apt/sources.list.d/ros-latest.list && \
-    apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key \
-    C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
-    apt update && apt install -y ros-melodic-desktop-full python-rosdep \
+    curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | \
+    apt-key add - && apt update && \
+    apt install -y ros-melodic-ros-base python-rosdep \
     python-rosinstall python-rosinstall-generator python-wstool \
     python-catkin-tools python-pip build-essential
 
@@ -42,4 +43,5 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
 # Create a place to mount our add-ons, & install manager dependencies
 ARG BENCHBOT_ADDONS_PATH
 ENV BENCHBOT_ADDONS_PATH="$BENCHBOT_ADDONS_PATH"
-RUN mkdir -p $BENCHBOT_ADDONS_PATH && pip install pyyaml
+RUN mkdir -p $BENCHBOT_ADDONS_PATH && pip install pyyaml && \
+    pip3 install --upgrade pip setuptools wheel

@@ -1186,9 +1186,8 @@ for i in "${!simulators[@]}"; do
   s="${simulators[i]}"
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "BUILDING BENCHBOT SIMULATOR '$s' DOCKER IMAGE:"
-  # cat "$PATH_DOCKERFILE_SIM_PREFIX$s.Dockerfile" "$PATH_DOCKERFILE_SHARED" > \
-  #   "$_tmp_dockerfile"
-  cat "$PATH_DOCKERFILE_SIM_PREFIX$s.Dockerfile" > "$_tmp_dockerfile"
+  cat "$PATH_DOCKERFILE_SIM_PREFIX$s.Dockerfile" "$PATH_DOCKERFILE_SHARED" > \
+    "$_tmp_dockerfile"
   docker build -t "$DOCKER_TAG_SIM_PREFIX$s" -f "$_tmp_dockerfile" \
     --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
     --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \

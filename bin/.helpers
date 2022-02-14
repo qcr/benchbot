@@ -376,6 +376,7 @@ function install_addons() {
     "Installing external add-on dependencies:"
   run_manager_cmd 'install_external_deps()' '\n' '\n'
 
+  # TODO now also need to bake into all of the sim images???
   printf "\n${colour_blue}%s${colour_nc}\n\n" \
     "Baking external add-on dependencies into the Docker backend:"
   docker run --name tmp --detach -it "$DOCKER_TAG_BACKEND" 
