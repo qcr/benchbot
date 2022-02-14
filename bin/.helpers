@@ -376,11 +376,11 @@ function install_addons() {
     "Installing external add-on dependencies:"
   run_manager_cmd 'install_external_deps()' '\n' '\n'
 
-  containers="$(docker images \
+  containers=( $(docker images \
     --filter "reference=$DOCKER_TAG_BACKEND" \
-    --filter "reference=$DOCKER_TAG_SIM_PREFIX" \
+    --filter "reference=$DOCKER_TAG_SIM_PREFIX*" \
     --format "{{.Repository}}:{{.Tag}}"
-    )"
+      ) )
   for c in "${containers[@]}"; do
     printf "\n${colour_blue}%s${colour_nc}\n\n" \
       "Baking external add-on dependencies into '$c' container:"
