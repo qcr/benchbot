@@ -384,7 +384,7 @@ function install_addons() {
   for c in "${containers[@]}"; do
     printf "\n${colour_blue}%s${colour_nc}\n\n" \
       "Baking external add-on dependencies into '$c' container:"
-    docker run --name tmp --detach -it "$c"
+    docker run --name tmp --detach -it "$c" /bin/bash
     py="$(docker exec -it tmp /bin/bash -c \ "which pip3 || which pip2" | \
       tr -d '[:space:]')"
     docker exec -it tmp /bin/bash -c "$(run_manager_cmd \
