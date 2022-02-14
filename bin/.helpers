@@ -376,17 +376,23 @@ function install_addons() {
     "Installing external add-on dependencies:"
   run_manager_cmd 'install_external_deps()' '\n' '\n'
 
-  # TODO now also need to bake into all of the sim images???
-  printf "\n${colour_blue}%s${colour_nc}\n\n" \
-    "Baking external add-on dependencies into the Docker backend:"
-  docker run --name tmp --detach -it "$DOCKER_TAG_BACKEND" 
-  py="$(docker exec -it tmp /bin/bash -c \ "which pip3 || which pip2" | \
-    tr -d '[:space:]')"
-  docker exec -it tmp /bin/bash -c \
-    "$(run_manager_cmd 'print(install_external_deps(True))' | sed "s|pip3|$py|")"
-  docker commit tmp "$DOCKER_TAG_BACKEND"
-  docker rm -f tmp
-  printf "\n"
+  containers="$(docker images \
+    --filter "reference=$DOCKER_TAG_BACKEND" \
+    --filter "reference=$DOCKER_TAG_SIM_PREFIX" \
+    --format "{{.Repository}}:{{.Tag}}"
+    )"
+  for c in "${containers[@]}"; do
+    printf "\n${colour_blue}%s${colour_nc}\n\n" \
+      "Baking external add-on dependencies into '$c' container:"
+    docker run --name tmp --detach -it "$c"
+    py="$(docker exec -it tmp /bin/bash -c \ "which pip3 || which pip2" | \
+      tr -d '[:space:]')"
+    docker exec -it tmp /bin/bash -c "$(run_manager_cmd \
+      'print(install_external_deps(True))' | sed "s|pip3|$py|")"
+    docker commit tmp "$DOCKER_TAG_BACKEND"
+    docker rm -f tmp
+    printf "\n"
+  done
 }
 
 function list_addons() {
