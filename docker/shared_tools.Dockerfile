@@ -43,5 +43,6 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
 # Create a place to mount our add-ons, & install manager dependencies
 ARG BENCHBOT_ADDONS_PATH
 ENV BENCHBOT_ADDONS_PATH="$BENCHBOT_ADDONS_PATH"
-RUN mkdir -p $BENCHBOT_ADDONS_PATH && \
-    pip install --upgrade pip setuptools wheel pyyaml
+RUN apt update && apt install -y python3 python3-pip && \
+    python3 -m pip install --upgrade pip setuptools wheel pyyaml && \
+    mkdir -p $BENCHBOT_ADDONS_PATH
