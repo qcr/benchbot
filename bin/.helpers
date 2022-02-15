@@ -389,7 +389,7 @@ function install_addons() {
       tr -d '[:space:]')"
     docker exec -it tmp /bin/bash -c "$(run_manager_cmd \
       'print(install_external_deps(True))' | sed "s|pip3|$py|")"
-    docker commit tmp "$DOCKER_TAG_BACKEND"
+    docker commit tmp "$c"
     docker rm -f tmp
     printf "\n"
   done
