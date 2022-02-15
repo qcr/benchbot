@@ -12,7 +12,7 @@ RUN apt update && apt install -y curl && \
     /etc/apt/sources.list.d/ros-latest.list && \
     curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | \
     apt-key add - && apt update && \
-    apt install -y ros-melodic-ros-base python-rosdep \
+    apt install -y ros-melodic-desktop python-rosdep \
     python-rosinstall python-rosinstall-generator python-wstool \
     python-catkin-tools python-pip build-essential
 
