@@ -16,13 +16,13 @@ source .helpers
 
 SIM_OMNI_ARGS=(
   -e "NO_NUCLEUS=Y"
-  -v /home/benchbot/docker/isaac-sim/cache/ov:/root/.cache/ov:rw
-  -v /home/benchbot/docker/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
-  -v /home/benchbot/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
-  -v /home/benchbot/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
-  -v /home/benchbot/docker/isaac-sim/config:/root/.nvidia-omniverse/config:rw
-  -v /home/benchbot/docker/isaac-sim/data:/root/.local/share/ov/data:rw
-  -v /home/benchbot/docker/isaac-sim/documents:/root/Documents:rw
+  -v $PATH_CACHE/isaac-sim/cache/ov:/root/.cache/ov:rw
+  -v $PATH_CACHE/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
+  -v $PATH_CACHE/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
+  -v $PATH_CACHE/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
+  -v $PATH_CACHE/isaac-sim/config:/root/.nvidia-omniverse/config:rw
+  -v $PATH_CACHE/isaac-sim/data:/root/.local/share/ov/data:rw
+  -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
 )
 
 ################################################################################
