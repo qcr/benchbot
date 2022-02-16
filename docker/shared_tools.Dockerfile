@@ -12,9 +12,10 @@ RUN apt update && apt install -y curl && \
     /etc/apt/sources.list.d/ros-latest.list && \
     curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | \
     apt-key add - && apt update && \
-    apt install -y ros-melodic-desktop python-rosdep \
+    apt install -y ros-melodic-ros-base python-rosdep \
     python-rosinstall python-rosinstall-generator python-wstool \
-    python-catkin-tools python-pip build-essential
+    python-catkin-tools python-pip build-essential \
+    ros-melodic-tf2-ros
 
 # Build a ROS Catkin workspace
 ENV ROS_WS_PATH="$BENCHBOT_DIR/ros_ws"
