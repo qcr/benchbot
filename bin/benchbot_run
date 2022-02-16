@@ -14,7 +14,16 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-# empty
+SIM_OMNI_ARGS=(
+  -e "NO_NUCLEUS=Y"
+  -v /home/benchbot/docker/isaac-sim/cache/ov:/root/.cache/ov:rw
+  -v /home/benchbot/docker/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
+  -v /home/benchbot/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
+  -v /home/benchbot/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
+  -v /home/benchbot/docker/isaac-sim/config:/root/.nvidia-omniverse/config:rw
+  -v /home/benchbot/docker/isaac-sim/data:/root/.local/share/ov/data:rw
+  -v /home/benchbot/docker/isaac-sim/documents:/root/Documents:rw
+)
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -327,11 +336,19 @@ ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
 if [ -n "$simulator_required" ]; then
+  # TODO would be nice to have a less stupid way to do this, but bash's lack of
+  # nested arrays makes it hard...
+  args=()
+  if [ "$type" = "sim_omni" ]; then
+      args=("${SIM_OMNI_ARGS[@]}")
+  fi
+
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Starting container for BenchBot Robot Controller ($type):"
   cmd="${docker_run//'$name'/benchbot_robot}"
-  ${cmd// /$'\t'} --ip "$URL_ROBOT" -d -it $DOCKER_TAG_SIM_PREFIX$type /bin/bash \
-      -c "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
+    -it $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
+    "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
