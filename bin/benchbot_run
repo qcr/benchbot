@@ -15,7 +15,6 @@ source .helpers
 ################################################################################
 
 SIM_OMNI_ARGS=(
-  -e "NO_NUCLEUS=Y"
   -v $PATH_CACHE/isaac-sim/cache/ov:/root/.cache/ov:rw
   -v $PATH_CACHE/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
   -v $PATH_CACHE/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw

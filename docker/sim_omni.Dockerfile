@@ -6,6 +6,7 @@ FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT []
 ENV ACCEPT_EULA="Y"
+ENV NO_NUCLEUS="Y"
 
 # Install the BenchBot Simulator wrappers for 'sim_omni'
 RUN apt update && apt install -y git
