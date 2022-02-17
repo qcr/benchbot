@@ -1,4 +1,5 @@
-<p align=center><strong>~Access our Benchbot Environments for Active Robotics (BEAR) through our <a href="https://github.com/benchbot-addons/envs_isaac_challenge"> challenge </a> and <a href="https://github.com/benchbot-addons/envs_isaac_develop">development </a> environment addons (installed by default)~</strong></p>
+<p align=center><strong>~ Our <a href="https://evalai.cloudcv.org/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include $2,500USD cash)</strong></p>
+<p align=center><strong>~ BenchBot is now powered by <a href="https://developer.nvidia.com/nvidia-omniverse-platform">NVIDIA Omniverse</a> and <a href="https://developer.nvidia.com/isaac-sim">Isaac Sim</a>. We are aware of some issues, please <a href="https://github.com/qcr/benchbot/issues">report any you encounter.</a> ~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/qcr/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
 # BenchBot Software Stack
@@ -22,20 +23,20 @@ This repository contains the software stack needed to develop solutions for Benc
 
 ## System recommendations and requirements
 
-The BenchBot software stack is designed to run seamlessly on a wide number of system configurations (currently limited to Ubuntu 18.04+). System hardware requirements are relatively high due to the software run for 3D simulation (Unreal Engine, Nvidia Isaac, Vulkan, etc.):
+The BenchBot software stack is designed to run seamlessly on a wide number of system configurations (currently limited to Ubuntu 18.04+). System hardware requirements are relatively high due to the software run for 3D simulation (e.g. NVIDIA Omniverse-powered Isaac Sim):
 
-- Nvidia Graphics card (GeForce GTX 1080 minimum, Titan XP+ / GeForce RTX 2070+ recommended)
-- CPU with multiple cores (Intel i7-6800K minimum)
+- Nvidia Graphics card (GeForce RTX 2070 minimum, GeForce GTX 3080+ / RTX A6000+ recommended)
+- CPU with multiple cores (Intel i7-6800K 7th Generation minimum)
 - 32GB+ RAM
 - 64GB+ spare storage (an SSD storage device is **strongly** recommended)
 
 Having a system that meets the above hardware requirements is all that is required to begin installing the BenchBot software stack. The install script analyses your system configuration and offers to install any missing software components interactively. The list of 3rd party software components involved includes:
 
-- Nvidia Driver (4.18+ required, 4.50+ recommended)
+- NVIDIA GPU Driver (470.57+ recommended)
 - CUDA with GPU support (10.0+ required, 10.1+ recommended)
 - Docker Engine - Community Edition (19.03+ required, 19.03.2+ recommended)
-- Nvidia Container Toolkit (1.0+ required, 1.0.5+ recommended)
-- ISAAC 2019.2 SDK (requires an Nvidia developer login)
+- NVIDIA Container Toolkit (1.0+ required, 1.0.5+ recommended)
+- Isaac 2021.2 Omniverse simulator (when installing `sim_omni`)
 
 ## Managing your installation
 
@@ -48,10 +49,10 @@ u@pc:~$ ./install
 
 Any missing software components, or configuration issues with your system, should be detected by the install script and resolved interactively. The installation asks if you want to add BenchBot helper scripts to your `PATH`. Choosing yes will make the following commands available from any directory: `benchbot_install` (same as `./install` above), `benchbot_run`, `benchbot_submit`, `benchbot_eval`, and `benchbot_batch`.
 
-BenchBot installs a default set of add-ons (currently `'benchbot-addons/ssu'`), but this can be changed based on how you want to use BenchBot. For example, the following will also install the `'benchbot-addons/sqa'` add-ons:
+BenchBot installs a default set of add-ons (currently `'benchbot-addons/ssu'`), but this can be changed based on how you want to use BenchBot. For example, the following will also install the `'benchbot-addons/data_collect'` add-ons:
 
 ```
-u@pc:~$ benchbot_install --addons benchbot-addons/ssu,benchbot-addons/sqa
+u@pc:~$ benchbot_install --addons benchbot-addons/ssu,benchbot-addons/data_collect
 ```
 
 See the [BenchBot Add-ons Manager's documentation](https://github.com/qcr/benchbot_addons) for more information on using add-ons.
@@ -175,7 +176,7 @@ The BenchBot software stack is split into a number of standalone components, eac
 - **[benchbot_addons](https://github.com/qcr/benchbot_addons):** a Python manager for add-ons to a BenchBot system, with full documentation on how to create and add your own add-ons
 - **[benchbot_supervisor](https://github.com/qcr/benchbot_supervisor):** a HTTP server facilitating communication between user-facing interfaces and the underlying robot controller
 - **[benchbot_robot_controller](https://github.com/qcr/benchbot_robot_controller):** a wrapping script which controls the low-level ROS functionality of a simulator or real robot, handles automated subprocess management, and exposes interaction via a HTTP server
-- **[benchbot_simulator](https://github.com/qcr/benchbot_simulator):** a realistic 3D simulator employing Nvidia's Isaac framework, in combination with Unreal Engine environments
+- **[benchbot_sim_omni](https://github.com/qcr/benchbot_sim_omni):** wrappers around NVIDIA's Omniverse powered Isaac Simulator, providing realistic 3D simulation and lighting (replaces our old Unreal Engine-based [benchbot_sim_unreal](https://github.com/qcr/benchbot_sim_unreal) wrappers)
 - **[benchbot_eval](https://github.com/qcr/benchbot_eval):** Python library for evaluating the performance in a task, based on the results produced by a submission
 
 ## Further information
@@ -187,4 +188,4 @@ The BenchBot software stack is split into a number of standalone components, eac
 
 Development of the BenchBot software stack was directly supported by:
 
-[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)
+[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)
