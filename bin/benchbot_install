@@ -195,7 +195,7 @@ chk_ubuntu1804_issue="\
 chk_ubuntu1804_fix='touch /tmp/benchbot_chk_ubuntu1804'
 chk_ubuntu1804_reboot=1
   
-chk_nvidiacard_name='Nvidia GPU available'
+chk_nvidiacard_name='NVIDIA GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
 chk_nvidiacard_check=\
@@ -203,19 +203,19 @@ chk_nvidiacard_check=\
 sed -E '"'"'s/.*(10de:[0-9a-f]{4}).*/\1/'"'"' | head -n 1'
 chk_nvidiacard_eval='[ -n "$check_result" ]'
 chk_nvidiacard_issue="\
-  No Nvidia Graphics Card was detected. If there is a card available on your 
+  No NVIDIA Graphics Card was detected. If there is a card available on your 
   host system, then it should be visible in 'lspci -nn | grep VGA' with an ID
   of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
 chk_nvidiacard_fix=''
 chk_nvidiacard_reboot=0
 
-chk_nvidiadriver_name='Nvidia driver is running'
+chk_nvidiadriver_name='NVIDIA driver is running'
 chk_nvidiadriver_pass='Found' 
 chk_nvidiadriver_fail='Not found'
 chk_nvidiadriver_check='cat /proc/driver/nvidia/version 2>/dev/null'
 chk_nvidiadriver_eval='[ -n "$check_result" ]'
 chk_nvidiadriver_issue="\
-  No Nvidia driver detected. If a driver is installed & loaded, it should be
+  No NVIDIA driver detected. If a driver is installed & loaded, it should be
   visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
 chk_nvidiadriver_fix=\
 'v=$(. /etc/os-release; echo "$VERSION_ID" | sed "s/\.//") &&
@@ -229,21 +229,21 @@ cuda/repos/ubuntu${v}/x86_64/ /" &&
 sudo apt-get update && sudo apt-get -y install '"$NVIDIA_DEFAULT"
 chk_nvidiadriver_reboot=0
 
-chk_nvidiaversion_name='Nvidia driver version valid'
+chk_nvidiaversion_name='NVIDIA driver version valid'
 chk_nvidiaversion_pass='Valid ($check_result)'
 chk_nvidiaversion_fail='Invalid ($check_result)'
 chk_nvidiaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
 'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/'"'"
-chk_nvidiaversion_eval='eval_version "$check_result" 418'
+chk_nvidiaversion_eval='eval_version "$check_result" 470'
 chk_nvidiaversion_issue="\
   The version of the running Nvidia driver ("'$check_result'") is incompatible
-  with BenchBot which requires at least version 418 for the Isaac SDK.
+  with BenchBot which requires at least version 470 for the Isaac SDK.
 
   Please install a more recent version of the driver from the Nvidia repository."
 chk_nvidiaversion_fix="$chk_nvidiadriver_fix"
 chk_nvidiaversion_reboot=0
 
-chk_nvidiappa_name='Nvidia driver from a standard PPA'
+chk_nvidiappa_name='NVIDIA driver from a standard PPA'
 chk_nvidiappa_pass='PPA is valid'
 chk_nvidiappa_fail='PPA is invalid'
 chk_nvidiappa_check='version=$(apt list --installed 2>/dev/null | '\
@@ -254,13 +254,13 @@ chk_nvidiappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"'| \
 '"'"'ppa.launchpad.net/graphics-drivers/ppa/ubuntu'"'"').* ]]'
 chk_nvidiappa_issue="\
-  The installed Nvidia driver was detected to have come from somewhere other
-  than the Nvidia / Ubuntu graphics-drivers PPAs. The driver was sourced from:
+  The installed NVIDIA driver was detected to have come from somewhere other
+  than the NVIDIA / Ubuntu graphics-drivers PPAs. The driver was sourced from:
     "'$check_result'"
 
   Our Docker container only supports official drivers, & GPUs only work in 
   containers if the driver version exactly matches the version of the host.
-  Please use a driver from either of the following locations (the Nvidia PPA is
+  Please use a driver from either of the following locations (the NVIDIA PPA is
   preferred):
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
     http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
@@ -277,7 +277,7 @@ chk_cudadriversavailable_check='apt list --installed 2>/dev/null | grep -E '\
 chk_cudadriversavailable_eval='[ -n "$check_result" ]'
 chk_cudadriversavailable_issue="\
   No version of CUDA drivers detected. Our Docker only supports CUDA drivers 
-  installations from the official Nvidia repository. Please add the Nvidia 
+  installations from the official Nvidia repository. Please add the NVIDIA 
   repository, & install 'cuda-drivers' through apt."
 chk_cudadriversavailable_fix=\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
@@ -293,13 +293,13 @@ chk_cudadriversversion_issue="\
   The version of CUDA drivers detected ("'$check_result'") is incompatible with 
   BenchBot which requires CUDA drivers 418+ for the Isaac SDK.
 
-  Please install a more recent version of the CUDA drivers from the Nvidia 
+  Please install a more recent version of the CUDA drivers from the NVIDIA 
   repository."
 chk_cudadriversversion_fix=\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
 chk_cudadriversversion_reboot=1
 
-chk_cudadriversppa_name='CUDA drivers from the Nvidia PPA'
+chk_cudadriversppa_name='CUDA drivers from the NVIDIA PPA'
 chk_cudadriversppa_pass='PPA is valid'
 chk_cudadriversppa_fail='PPA is invalid'
 chk_cudadriversppa_check=\
@@ -311,13 +311,13 @@ cut -d'"'"' '"'"' -f1'
 chk_cudadriversppa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudadriversppa_issue="\
-  CUDA drivers were detected to have come from somewhere other than the Nvidia 
+  CUDA drivers were detected to have come from somewhere other than the NVIDIA 
   PPAs. The CUDA drivers were sourced from:
     "'$check_result'"
 
   Our Docker container only supports official CUDA installs, & GPUs only work
   in containers if the CUDA drivers version exactly matches the version of the
-  host.  Please install CUDA drivers from the official Nvidia repository:
+  host.  Please install CUDA drivers from the official NVIDIA repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudadriversppa_fix=\
 'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
@@ -332,7 +332,7 @@ chk_cudaavailable_check='apt list --installed 2>/dev/null | grep -E '\
 chk_cudaavailable_eval='[ -n "$check_result" ]'
 chk_cudaavailable_issue="\
   No version of CUDA detected. Our Docker only supports CUDA installations from
-  the official Nvidia repository. Please add the Nvidia repository, & install 
+  the official Nvidia repository. Please add the NVIDIA repository, & install 
   'cuda' through apt."
 chk_cudaavailable_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaavailable_reboot=1
@@ -347,11 +347,11 @@ chk_cudaversion_issue="\
   The version of CUDA detected ("'$check_result'") is incompatible with BenchBot
   which requires at least 10.0 for the Isaac SDK.
 
-  Please install a more recent version of CUDA from the Nvidia repository."
+  Please install a more recent version of CUDA from the NVIDIA repository."
 chk_cudaversion_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaversion_reboot=1
 
-chk_cudappa_name='CUDA is from the Nvidia PPA'
+chk_cudappa_name='CUDA is from the NVIDIA PPA'
 chk_cudappa_pass='PPA is valid'
 chk_cudappa_fail='PPA is invalid'
 chk_cudappa_check=\
@@ -362,13 +362,13 @@ apt download --print-uris "$(echo "$installed" | sed '"'"'s/\([^\/]*\).*/\1/'"'"
 chk_cudappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudappa_issue="\
-  CUDA was detected to have come from somewhere other than the Nvidia PPAs. The 
+  CUDA was detected to have come from somewhere other than the NVIDIA PPAs. The 
   CUDA package was sourced from:
     "'$check_result'"
 
   Our Docker container only supports official CUDA installs, & GPUs only work in 
   containers if the CUDA version exactly matches the version of the host.
-  Please install CUDA from the official Nvidia repository:
+  Please install CUDA from the official NVIDIA repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudappa_fix=\
 'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
@@ -422,14 +422,14 @@ sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockerversion_reboot=0
 
-chk_dockernct_name='Nvidia Container Toolkit installed'
+chk_dockernct_name='NVIDIA Container Toolkit installed'
 chk_dockernct_pass='Found ($check_result)'
 chk_dockernct_fail='Not found'
 chk_dockernct_check='nvidia-container-cli --version 2>/dev/null | head -n 1 | '\
 'cut -d " " -f2'
 chk_dockernct_eval='[ -n "$check_result" ]'
 chk_dockernct_issue="\
-  Nvidia Container Toolkit was not detected. It is required to allow Docker
+  NVIDIA Container Toolkit was not detected. It is required to allow Docker
   containers to access the GPU on your host system.
 
   Please install the toolkit from https://github.com/NVIDIA/nvidia-docker"
@@ -590,7 +590,7 @@ chk_simomninvcrio_eval='[ $check_result -eq 0 ]'
 chk_simomninvcrio_issue="\
   Could not access the nvcr.io Docker registry.
 
-  Please follow the NVIDIA's instruction for generating an account NGC key:
+  Please follow NVIDIA's instruction for generating an account NGC key:
     https://docs.nvidia.com/ngc/ngc-overview/index.html#generating-api-key
 
   Then either:
@@ -622,7 +622,7 @@ checks_list_post=(
   "symlinks"
   )
 
-chk_cudadriverdep_name='CUDA / Nvidia versions match'
+chk_cudadriverdep_name='CUDA / NVIDIA versions match'
 chk_cudadriverdep_pass='Matches'
 chk_cudadriverdep_fail='Does not match'
 chk_cudadriverdep_check=\
@@ -638,12 +638,12 @@ eq=$([ "$host" == "$bb" ] && echo "==" || echo "!=") &&
 printf "%s\n%s\n%s" "Host: $host" "BenchBot: $bb" "Result: $eq"'
 chk_cudadriverdep_eval='[[ "$check_result" == *"=="* ]]'
 chk_cudadriverdep_issue="\
-  The CUDA / Nvidia driver version pairing in the installed BenchBot does not
+  The CUDA / NVIDIA driver version pairing in the installed BenchBot does not
   match the version on your host system, despite our best efforts:
 
 "'$check_result'"
 
-  This can sometimes happen due to the way CUDA / Nvidia driver pairings are
+  This can sometimes happen due to the way CUDA / NVIDIA driver pairings are
   passed through the apt dependency tree (cuda -> cuda-drivers ->
   nvidia-driver)
 
