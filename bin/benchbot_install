@@ -26,7 +26,7 @@ $URL_DEBUG $HOSTNAME_DEBUG"
 ADDONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
 NVIDIA_DEFAULT='nvidia-driver-455'
-SIMULATOR_DEFAULT='sim_unreal'
+SIMULATOR_DEFAULT='sim_omni'
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -86,8 +86,12 @@ OPTION DETAILS:
             instructions here:
               https://github.com/qcr/benchbot-addons
 
+    --list-simulators
+            List all supported simulators that can be installed. It will also
+            show which simulators you currently have installed.
+
     --no-simulator
-            Runs installation without installing the Nvidia Isaac Unreal
+            Runs installation without installing Nvidia's Omniverse-based Isaac
             simulator.  This option is useful for avoiding the excessive space
             requirements (>100GB) when using the BenchBot software stack on a
             machine that will only be used with a real robot.
@@ -105,11 +109,10 @@ OPTION DETAILS:
             prompted before removal commences.
 
     -s, --simulators
-            Specify simulator/s to install (only 'sim_unreal' is currently
-            supported). Comma-separated lists are accepted to specify multiple
-            simulators. If this option isn't included, the default 'sim_unreal'
-            is installed. This flag will have more practical use in the future
-            when we add Omniverse support.
+            Specify simulator/s to install. Comma-separated lists are accepted
+            to specify multiple simulators. The default '$SIMULATOR_DEFAULT' is
+            installed if this option isn't included. See '--list-simulators'
+            for a list of supported options.
 
     -u, --uninstall
             Uninstall the BenchBot software stack from the machine. All BenchBot
@@ -154,7 +157,6 @@ checks_list_pre=(
   "cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
   "cudappa"  # Is cuda from the Nvidia PPA?
-  "isaac"  # Is the Isaac *.zip readily available?
   "Running Docker related system checks:"
   "dockeravailable"  # Is Docker available?
   "dockerversion"  # Is Docker version > 19.0?
@@ -193,7 +195,7 @@ chk_ubuntu1804_issue="\
 chk_ubuntu1804_fix='touch /tmp/benchbot_chk_ubuntu1804'
 chk_ubuntu1804_reboot=1
   
-chk_nvidiacard_name='Nvidia GPU available'
+chk_nvidiacard_name='NVIDIA GPU available'
 chk_nvidiacard_pass='Found card of type '"'"'$check_result'"'"
 chk_nvidiacard_fail='None found'
 chk_nvidiacard_check=\
@@ -201,19 +203,19 @@ chk_nvidiacard_check=\
 sed -E '"'"'s/.*(10de:[0-9a-f]{4}).*/\1/'"'"' | head -n 1'
 chk_nvidiacard_eval='[ -n "$check_result" ]'
 chk_nvidiacard_issue="\
-  No Nvidia Graphics Card was detected. If there is a card available on your 
+  No NVIDIA Graphics Card was detected. If there is a card available on your 
   host system, then it should be visible in 'lspci -nn | grep VGA' with an ID
   of [10de:<product_id>]). For example, a GeForce 1080 appears as [10de:1b80]."
 chk_nvidiacard_fix=''
 chk_nvidiacard_reboot=0
 
-chk_nvidiadriver_name='Nvidia driver is running'
+chk_nvidiadriver_name='NVIDIA driver is running'
 chk_nvidiadriver_pass='Found' 
 chk_nvidiadriver_fail='Not found'
 chk_nvidiadriver_check='cat /proc/driver/nvidia/version 2>/dev/null'
 chk_nvidiadriver_eval='[ -n "$check_result" ]'
 chk_nvidiadriver_issue="\
-  No Nvidia driver detected. If a driver is installed & loaded, it should be
+  No NVIDIA driver detected. If a driver is installed & loaded, it should be
   visible with 'nvidia-smi' or 'cat /proc/driver/nvidia/version'."
 chk_nvidiadriver_fix=\
 'v=$(. /etc/os-release; echo "$VERSION_ID" | sed "s/\.//") &&
@@ -227,21 +229,21 @@ cuda/repos/ubuntu${v}/x86_64/ /" &&
 sudo apt-get update && sudo apt-get -y install '"$NVIDIA_DEFAULT"
 chk_nvidiadriver_reboot=0
 
-chk_nvidiaversion_name='Nvidia driver version valid'
+chk_nvidiaversion_name='NVIDIA driver version valid'
 chk_nvidiaversion_pass='Valid ($check_result)'
 chk_nvidiaversion_fail='Invalid ($check_result)'
 chk_nvidiaversion_check='cat /proc/driver/nvidia/version 2>/dev/null | '\
 'sed '"'"'/NVRM version/!d; s/.*Kernel Module *\([0-9\.]*\).*/\1/'"'"
-chk_nvidiaversion_eval='eval_version "$check_result" 418'
+chk_nvidiaversion_eval='eval_version "$check_result" 470'
 chk_nvidiaversion_issue="\
   The version of the running Nvidia driver ("'$check_result'") is incompatible
-  with BenchBot which requires at least version 418 for the Isaac SDK.
+  with BenchBot which requires at least version 470 for the Isaac SDK.
 
   Please install a more recent version of the driver from the Nvidia repository."
 chk_nvidiaversion_fix="$chk_nvidiadriver_fix"
 chk_nvidiaversion_reboot=0
 
-chk_nvidiappa_name='Nvidia driver from a standard PPA'
+chk_nvidiappa_name='NVIDIA driver from a standard PPA'
 chk_nvidiappa_pass='PPA is valid'
 chk_nvidiappa_fail='PPA is invalid'
 chk_nvidiappa_check='version=$(apt list --installed 2>/dev/null | '\
@@ -252,13 +254,13 @@ chk_nvidiappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"'| \
 '"'"'ppa.launchpad.net/graphics-drivers/ppa/ubuntu'"'"').* ]]'
 chk_nvidiappa_issue="\
-  The installed Nvidia driver was detected to have come from somewhere other
-  than the Nvidia / Ubuntu graphics-drivers PPAs. The driver was sourced from:
+  The installed NVIDIA driver was detected to have come from somewhere other
+  than the NVIDIA / Ubuntu graphics-drivers PPAs. The driver was sourced from:
     "'$check_result'"
 
   Our Docker container only supports official drivers, & GPUs only work in 
   containers if the driver version exactly matches the version of the host.
-  Please use a driver from either of the following locations (the Nvidia PPA is
+  Please use a driver from either of the following locations (the NVIDIA PPA is
   preferred):
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
     http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
@@ -275,7 +277,7 @@ chk_cudadriversavailable_check='apt list --installed 2>/dev/null | grep -E '\
 chk_cudadriversavailable_eval='[ -n "$check_result" ]'
 chk_cudadriversavailable_issue="\
   No version of CUDA drivers detected. Our Docker only supports CUDA drivers 
-  installations from the official Nvidia repository. Please add the Nvidia 
+  installations from the official Nvidia repository. Please add the NVIDIA 
   repository, & install 'cuda-drivers' through apt."
 chk_cudadriversavailable_fix=\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
@@ -291,13 +293,13 @@ chk_cudadriversversion_issue="\
   The version of CUDA drivers detected ("'$check_result'") is incompatible with 
   BenchBot which requires CUDA drivers 418+ for the Isaac SDK.
 
-  Please install a more recent version of the CUDA drivers from the Nvidia 
+  Please install a more recent version of the CUDA drivers from the NVIDIA 
   repository."
 chk_cudadriversversion_fix=\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
 chk_cudadriversversion_reboot=1
 
-chk_cudadriversppa_name='CUDA drivers from the Nvidia PPA'
+chk_cudadriversppa_name='CUDA drivers from the NVIDIA PPA'
 chk_cudadriversppa_pass='PPA is valid'
 chk_cudadriversppa_fail='PPA is invalid'
 chk_cudadriversppa_check=\
@@ -309,13 +311,13 @@ cut -d'"'"' '"'"' -f1'
 chk_cudadriversppa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudadriversppa_issue="\
-  CUDA drivers were detected to have come from somewhere other than the Nvidia 
+  CUDA drivers were detected to have come from somewhere other than the NVIDIA 
   PPAs. The CUDA drivers were sourced from:
     "'$check_result'"
 
   Our Docker container only supports official CUDA installs, & GPUs only work
   in containers if the CUDA drivers version exactly matches the version of the
-  host.  Please install CUDA drivers from the official Nvidia repository:
+  host.  Please install CUDA drivers from the official NVIDIA repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudadriversppa_fix=\
 'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
@@ -330,7 +332,7 @@ chk_cudaavailable_check='apt list --installed 2>/dev/null | grep -E '\
 chk_cudaavailable_eval='[ -n "$check_result" ]'
 chk_cudaavailable_issue="\
   No version of CUDA detected. Our Docker only supports CUDA installations from
-  the official Nvidia repository. Please add the Nvidia repository, & install 
+  the official Nvidia repository. Please add the NVIDIA repository, & install 
   'cuda' through apt."
 chk_cudaavailable_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaavailable_reboot=1
@@ -345,11 +347,11 @@ chk_cudaversion_issue="\
   The version of CUDA detected ("'$check_result'") is incompatible with BenchBot
   which requires at least 10.0 for the Isaac SDK.
 
-  Please install a more recent version of CUDA from the Nvidia repository."
+  Please install a more recent version of CUDA from the NVIDIA repository."
 chk_cudaversion_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaversion_reboot=1
 
-chk_cudappa_name='CUDA is from the Nvidia PPA'
+chk_cudappa_name='CUDA is from the NVIDIA PPA'
 chk_cudappa_pass='PPA is valid'
 chk_cudappa_fail='PPA is invalid'
 chk_cudappa_check=\
@@ -360,40 +362,18 @@ apt download --print-uris "$(echo "$installed" | sed '"'"'s/\([^\/]*\).*/\1/'"'"
 chk_cudappa_eval=\
 '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
 chk_cudappa_issue="\
-  CUDA was detected to have come from somewhere other than the Nvidia PPAs. The 
+  CUDA was detected to have come from somewhere other than the NVIDIA PPAs. The 
   CUDA package was sourced from:
     "'$check_result'"
 
   Our Docker container only supports official CUDA installs, & GPUs only work in 
   containers if the CUDA version exactly matches the version of the host.
-  Please install CUDA from the official Nvidia repository:
+  Please install CUDA from the official NVIDIA repository:
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
 chk_cudappa_fix=\
 'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudappa_reboot=1
-
-chk_isaac_name='Isaac SDK archive in '"'"'isaac'"'"' folder'
-chk_isaac_pass='Found archive'
-chk_isaac_fail='Not found'
-chk_isaac_check='find $PATH_ISAAC_SRCS -type f -exec md5sum {} + | \
-grep "$MD5_ISAAC_SDK" | tr -s " " | cut -d " " -f 2'
-chk_isaac_eval='[ -n "$check_result" ]'
-chk_isaac_issue="\
-  "'$check_result'"
-  Isaac SDK was not found in the folder:
-    $(realpath $PATH_ISAAC_SRCS)
-
-  Due to licensing restrictions we cannot automatically download this file.
-  Please sign up for an Nvidia developer account, download the *.zip for Isaac 
-  2019.2 from https://developer.nvidia.com/isaac/downloads, & place the *.zip
-  in the 'isaac' folder of BenchBot (mentioned above). The 2019.2 version of
-  Isaac is hidden under the 'Archive' section of the downloads page.
-
-  This check will only pass when a file is found with the following MD5SUM:
-    $MD5_ISAAC_SDK"
-chk_isaac_fix=''
-chk_isaac_reboot=1
 
 chk_dockeravailable_name='Docker is available'
 chk_dockeravailable_pass='Found'
@@ -442,14 +422,14 @@ sudo groupadd docker;
 sudo usermod -aG docker '"$USER"
 chk_dockerversion_reboot=0
 
-chk_dockernct_name='Nvidia Container Toolkit installed'
+chk_dockernct_name='NVIDIA Container Toolkit installed'
 chk_dockernct_pass='Found ($check_result)'
 chk_dockernct_fail='Not found'
 chk_dockernct_check='nvidia-container-cli --version 2>/dev/null | head -n 1 | '\
 'cut -d " " -f2'
 chk_dockernct_eval='[ -n "$check_result" ]'
 chk_dockernct_issue="\
-  Nvidia Container Toolkit was not detected. It is required to allow Docker
+  NVIDIA Container Toolkit was not detected. It is required to allow Docker
   containers to access the GPU on your host system.
 
   Please install the toolkit from https://github.com/NVIDIA/nvidia-docker"
@@ -522,7 +502,7 @@ chk_fsnosuid_fix=\
 sudo systemctl daemon-reload'
 chk_fsnosuid_reboot=1
 
-chk_fsspace_name='/var/lib/docker driver space check'
+chk_fsspace_name='/var/lib/docker drive space check'
 chk_fsspace_pass='Sufficient space ($check_resultG)'
 chk_fsspace_fail='Insufficient space ($check_resultG)'
 chk_fsspace_check=\
@@ -580,6 +560,50 @@ chk_pythontk_issue="\
 chk_pythontk_fix='sudo apt install -y python3-tk'
 chk_pythontk_reboot=1
 
+
+checks_list_sim_omni=(
+  "Manual installation steps for Omniverse-powered Isaac Sim:"
+  "simomnilicense"
+  "simomninvcrio"
+  )
+
+chk_simomnilicense_name='License accepted for Omniverse'
+chk_simomnilicense_pass='Yes'
+chk_simomnilicense_fail='No'
+chk_simomnilicense_check='echo "'$PATH_LICENSES'/omniverse"'
+chk_simomnilicense_eval='[ -f "$check_result" ]'
+chk_simomnilicense_issue="\
+  The NVIDIA Omniverse License Agreement (EULA) must be accepted before
+  Omniverse Kit can start. The license terms for this product can be viewed at:
+    https://docs.omniverse.nvidia.com/app_isaacsim/common/NVIDIA_Omniverse_License_Agreement.html
+
+  Accept the following command to accept the license."
+chk_simomnilicense_fix=\
+'mkdir -p '$PATH_LICENSES' && touch "'$PATH_LICENSES'/omniverse"'
+chk_simomnilicense_reboot=1
+
+chk_simomninvcrio_name='Access to nvcr.io Docker registry'
+chk_simomninvcrio_pass='Yes'
+chk_simomninvcrio_fail='No'
+chk_simomninvcrio_check='echo "" | docker login nvcr.io &>/dev/null; echo $?'
+chk_simomninvcrio_eval='[ $check_result -eq 0 ]'
+chk_simomninvcrio_issue="\
+  Could not access the nvcr.io Docker registry.
+
+  Please follow NVIDIA's instruction for generating an account NGC key:
+    https://docs.nvidia.com/ngc/ngc-overview/index.html#generating-api-key
+
+  Then either:
+    1) Follow the Isaac Sim instructions to login (DON'T USE sudo):
+      https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/install_advanced.html
+    2) Run the auto-fix below, and paste your key in when prompted."
+chk_simomninvcrio_fix=\
+'clear_stdin
+read -p "NGC API Key for your account: " ngc_key
+echo "$ngc_key" | docker login --username \$oauthtoken --password-stdin nvcr.io'
+chk_simomninvcrio_reboot=1
+
+
 checks_list_post=(
   "Validating the build against the host system:"
   "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?
@@ -598,7 +622,7 @@ checks_list_post=(
   "symlinks"
   )
 
-chk_cudadriverdep_name='CUDA / Nvidia versions match'
+chk_cudadriverdep_name='CUDA / NVIDIA versions match'
 chk_cudadriverdep_pass='Matches'
 chk_cudadriverdep_fail='Does not match'
 chk_cudadriverdep_check=\
@@ -614,12 +638,12 @@ eq=$([ "$host" == "$bb" ] && echo "==" || echo "!=") &&
 printf "%s\n%s\n%s" "Host: $host" "BenchBot: $bb" "Result: $eq"'
 chk_cudadriverdep_eval='[[ "$check_result" == *"=="* ]]'
 chk_cudadriverdep_issue="\
-  The CUDA / Nvidia driver version pairing in the installed BenchBot does not
+  The CUDA / NVIDIA driver version pairing in the installed BenchBot does not
   match the version on your host system, despite our best efforts:
 
 "'$check_result'"
 
-  This can sometimes happen due to the way CUDA / Nvidia driver pairings are
+  This can sometimes happen due to the way CUDA / NVIDIA driver pairings are
   passed through the apt dependency tree (cuda -> cuda-drivers ->
   nvidia-driver)
 
@@ -961,7 +985,7 @@ function uninstall_benchbot() {
 }
 
 ################################################################################
-############################# Installation process #############################
+################## Parse & handle arguments / installer state ##################
 ################################################################################
 
 # Cleanup terminal colours whenever exiting
@@ -970,7 +994,7 @@ trap cleanup_terminal EXIT
 # Safely parse options input
 input=("$@")
 _args="help,addons:,addons-only:,branch:,force-clean,uninstall,list-addons,\
-no-simulator,no-update,remove-addons:,simulators:,version"
+list-simulators,no-simulator,no-update,remove-addons:,simulators:,version"
 parse_out=$(getopt -o ha:A:b:fs:uv --long $_args -n "$(basename "$abs_path")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
@@ -990,7 +1014,7 @@ while true; do
     -b|--branch)
       # This is a real dirty way to do this... sorry
       BRANCH_DEFAULT="$2"; shift 2
-      printf "\n${colour_yellow}%s${colour_nc}\n" \
+      printf "\n${colour_yellow}%s${colour_nc}\n\n" \
         "Using branch '$BRANCH_DEFAULT' instead of the default!" ;;
     -f|--force-clean)
       uninstall_benchbot; shift ;;
@@ -1002,6 +1026,8 @@ while true; do
       print_version_info; exit ;;
     --list-addons)
       list_addons; exit ;;
+    --list-simulators)
+      list_simulators; exit ;; 
     --no-simulator)
       no_simulator=1; shift ;;
     --no-update)
@@ -1015,9 +1041,10 @@ while true; do
   esac
 done
 
-# Sanitise argument values
+# Validate and sanitise argument values
+validate_install_args "$simulators"
 if [ -z "$addons" ]; then addons="$ADDONS_DEFAULT"; fi
-if [ -n "$no_simulator" ]; then simulators=""; fi
+simulators=( $([ -z "$no_simulator" ] && echo "$simulators" | sed 's/,/\n/g') )
 
 # Pre-install
 if [ -z "$updates_skip" ]; then
@@ -1044,22 +1071,30 @@ if [ -z "$updates_skip" ]; then
   fi
 fi
 
+################################################################################
+############################# Installation process #############################
+################################################################################
+
+
 # PART 1: Ensuring the system state is compatible with BenchBot
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
 # Patch in any values that can only be determined at runtime
-# TODO clean this all up for use with multiple simulators...
-if [ -z "$simulators" ]; then
-  checks_list_pre=( "${checks_list_pre[@]/isaac}" ) # Remove the Isaac check
-fi
+# TODO clean this up to properly understand sizes for different simulators...
 _sz=$([ -n "$simulators" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
 chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
 chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
 
+# Create our list of checks based on what simulators where requested
+_chks=("${checks_list_pre[@]}")
+for s in "${simulators[@]}"; do
+  _chks=("${_chks[@]}" $(printf "%s\n" "${checks_list_sim_omni[@]}") )
+done
+
 # Iterate through the list of checks, doing some dirty string based variable
 # extraction in the handle_requirement() function...
-for c in "${checks_list_pre[@]}"; do
+for c in "${_chks[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
   elif [ -n "$c" ]; then
@@ -1096,14 +1131,19 @@ header_block "PART 2: FETCHING LATEST BENCHBOT VERSION INFO" $colour_blue
 # TODO adapt this to handle multiple simulators...
 hash_fail_msg="Failed (check Internet connection & valid branch name!). Exiting."
 if [ -n "$simulators" ]; then
-  echo -e "\nFetching latest hash for BenchBot Simulator ... "
-  benchbot_simulator_hash=$( (is_latest_benchbot_simulator $BRANCH_DEFAULT || \
-    true) | latest_version_info)
-  if [ -z "$benchbot_simulator_hash" ]; then
-    printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
-    exit 1
-  fi
-  echo -e "\t\t$benchbot_simulator_hash."
+  benchbot_simulator_hashes=()
+  for s in "${simulators[@]}"; do
+    echo -e "\nFetching latest hash for BenchBot Simulator '$s' ... "
+    benchbot_simulator_hashes+=$( \
+      (is_latest_benchbot_simulator $s $BRANCH_DEFAULT || true) | \
+      latest_version_info \
+    )
+    if [ -z "${benchbot_simulator_hashes[-1]}" ]; then
+      printf "\n${colour_red}$hash_fail_msg${colour_nc}\n\n" 
+      exit 1
+    fi
+    echo -e "\t\t${benchbot_simulator_hashes[-1]}."
+  done
 fi
 echo "Fetching latest hash for BenchBot Robot Controller ... "
 benchbot_controller_hash=$( (is_latest_benchbot_controller $BRANCH_DEFAULT || \
@@ -1142,7 +1182,8 @@ echo -e "\t\t$benchbot_msgs_hash."
 # PART 3: Build docker images (both simulator & submission base image)
 header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
-# Get some useful variables from the host
+# Gather some useful variables, including from the host
+_tmp_dockerfile="/tmp/dockerfile"
 nvidia_driver_version=$(apt list --installed 2>/dev/null | \
   grep "nvidia-driver-" | cut -d ' ' -f 2)
 cuda_drivers_version=$(apt list --installed 2>/dev/null | \
@@ -1150,12 +1191,11 @@ cuda_drivers_version=$(apt list --installed 2>/dev/null | \
 cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
   sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
-sdk_file=$(realpath --relative-to="$PATH_ROOT" $(eval "$chk_isaac_check"))
 
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT CORE DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
+docker buildx build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
   --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
   --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
@@ -1169,23 +1209,18 @@ if [ $build_ret -ne 0 ]; then
 fi
 
 # Build the BenchBot Backend Docker image
-# TODO adapt this to handle multiple simulators
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT BACKEND DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_BACKEND" -f "$PATH_DOCKERFILE_BACKEND" \
-  --build-arg SIMULATORS="$simulators" \
-  --build-arg ISAAC_SDK_DIR="$(dirname "$sdk_file")" \
-  --build-arg ISAAC_SDK_TGZ="$(basename "$sdk_file")" \
+cat "$PATH_DOCKERFILE_BACKEND" "$PATH_DOCKERFILE_SHARED" > "$_tmp_dockerfile"
+docker buildx build -t "$DOCKER_TAG_BACKEND" -f - \
   --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
   --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
   --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
   --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
-  --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR}" \
-  --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hash}" \
   --build-arg BENCHBOT_SUPERVISOR_GIT="${GIT_SUPERVISOR}" \
   --build-arg BENCHBOT_SUPERVISOR_HASH="${benchbot_supervisor_hash}" \
-  --build-arg ADDONS_PATH="${PATH_ADDONS_INTERNAL}" $PATH_ROOT && \
-  build_ret=0 || build_ret=1
+  --build-arg BENCHBOT_ADDONS_PATH="${PATH_ADDONS_INTERNAL}" \
+  $PATH_ROOT < "$_tmp_dockerfile" && build_ret=0 || build_ret=1
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
     "ERROR: Building BenchBot backend returned a non-zero error code" \
@@ -1193,10 +1228,35 @@ if [ $build_ret -ne 0 ]; then
   exit 1
 fi
 
+# Build Docker images for each of the requested simulators
+for i in "${!simulators[@]}"; do
+  s="${simulators[i]}"
+  printf "\n${colour_blue}%s${colour_nc}\n" \
+    "BUILDING BENCHBOT SIMULATOR '$s' DOCKER IMAGE:"
+  cat "$PATH_DOCKERFILE_SIM_PREFIX$s.Dockerfile" "$PATH_DOCKERFILE_SHARED" > \
+    "$_tmp_dockerfile"
+  docker buildx build -t "$DOCKER_TAG_SIM_PREFIX$s" -f - \
+    --build-arg BENCHBOT_CONTROLLER_GIT="${GIT_CONTROLLER}" \
+    --build-arg BENCHBOT_CONTROLLER_HASH="${benchbot_controller_hash}" \
+    --build-arg BENCHBOT_MSGS_GIT="${GIT_MSGS}" \
+    --build-arg BENCHBOT_MSGS_HASH="${benchbot_msgs_hash}" \
+    --build-arg BENCHBOT_SIMULATOR_GIT="${GIT_SIMULATOR_PREFIX}${s}" \
+    --build-arg BENCHBOT_SIMULATOR_HASH="${benchbot_simulator_hashes[i]}" \
+    --build-arg BENCHBOT_ADDONS_PATH="${PATH_ADDONS_INTERNAL}" \
+    $PATH_ROOT < "$_tmp_dockerfile" && build_ret=0 || build_ret=1
+  if [ $build_ret -ne 0 ]; then
+    printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \
+      "ERROR: Building BenchBot simulator '$s' returned a non-zero error code" \
+      "$build_ret"
+    exit 1
+  fi
+done
+
 # Build the BenchBot Submission Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT SUBMISSION DOCKER IMAGE:"
-docker build -t "$DOCKER_TAG_SUBMISSION" -f "$PATH_DOCKERFILE_SUBMISSION" \
+docker buildx build -t "$DOCKER_TAG_SUBMISSION" \
+  -f "$PATH_DOCKERFILE_SUBMISSION" \
   --build-arg BENCHBOT_API_GIT="${GIT_API}" \
   --build-arg BENCHBOT_API_HASH="${benchbot_api_hash}" $PATH_ROOT && \
   build_ret=0 || build_ret=1
@@ -1206,6 +1266,8 @@ if [ $build_ret -ne 0 ]; then
     "$build_ret"
   exit 1
 fi
+
+rm "$_tmp_dockerfile"
 
 # Cleanup any unnecessary / outdated BenchBot components still lying around
 printf "\n${colour_blue}%s${colour_nc}\n" \

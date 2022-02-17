@@ -11,6 +11,7 @@ BRANCH_DEFAULT="master"
 
 DOCKER_TAG_CORE="benchbot/core:base"
 DOCKER_TAG_BACKEND="benchbot/backend:base"
+DOCKER_TAG_SIM_PREFIX="benchbot/simulator:"
 DOCKER_TAG_SUBMISSION="benchbot/submission:base"
 DOCKER_NETWORK="benchbot_network"
 
@@ -23,7 +24,7 @@ GIT_BENCHBOT="https://github.com/qcr/benchbot"
 GIT_CONTROLLER="https://github.com/qcr/benchbot_robot_controller"
 GIT_EVAL="https://github.com/qcr/benchbot_eval"
 GIT_MSGS="https://github.com/qcr/benchbot_msgs"
-GIT_SIMULATOR="https://github.com/qcr/benchbot_simulator"
+GIT_SIMULATOR_PREFIX="https://github.com/qcr/benchbot_"
 GIT_SUPERVISOR="https://github.com/qcr/benchbot_supervisor"
 
 HOSTNAME_DEBUG="benchbot_debug"
@@ -38,18 +39,31 @@ PATH_ROOT="$(realpath ..)"
 PATH_API="$PATH_ROOT/api"
 PATH_ADDONS="$PATH_ROOT/addons"
 PATH_ADDONS_INTERNAL="/benchbot/addons"
-PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
+PATH_CACHE="$PATH_ROOT/.cache"
 PATH_DOCKERFILE_BACKEND="$PATH_ROOT/docker/backend.Dockerfile"
+PATH_DOCKERFILE_CORE="$PATH_ROOT/docker/core.Dockerfile"
+PATH_DOCKERFILE_SHARED="$PATH_ROOT/docker/shared_tools.Dockerfile"
+PATH_DOCKERFILE_SIM_PREFIX="$PATH_ROOT/docker/"
 PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
+PATH_LICENSES="$PATH_ROOT/.cache/licenses"
 PATH_SYMLINKS="/usr/local/bin"
 PATH_TEMP_FILE="/tmp/benchbot_scratch"
 
 PORT_ROBOT=10000
 PORT_SUPERVISOR=10000
 
+RETIRED_SIMULATORS=(
+  "sim_unreal:Isaac Sim 2019.2, powered by Unreal engine"
+  )
+
 SIZE_GB_FULL=64
+SIZE_GB_LITE=32
+
+SUPPORTED_SIMULATORS=(
+  "sim_omni:The latest Isaac Sim, powered by Omniverse"
+  )
 
 URL_DEBUG="172.20.0.200"
 URL_DOCKER_SUBNET="172.20.0.0/24"
@@ -119,14 +133,14 @@ function kill_benchbot() {
   fi
 
   targets=$(pgrep -f "docker attach benchbot" || true)
-  if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then
+  if [ -n "$targets" ]; then
     echo -e "${colour_blue}Detached from the following containers:${colour_nc}"
     echo "$targets"
     for pid in "$targets"; do kill -9 $pid; done
   fi
 
   targets=$(docker ps -q -f name='benchbot*' || true)
-  if [ $(echo -n "$targets" | wc -l) -gt 0 ]; then
+  if [ -n "$targets" ]; then
     echo -e "\n${colour_blue}Stopped the following containers:${colour_nc}"
     docker stop $targets
   fi
@@ -153,11 +167,26 @@ function print_version_info() {
   printf "(%s)\n" "$hash"
 }
 
-function simulator_type() {
+function simulator_installed() {
+  # $1 query simulator, $2 string returned by simulators_installed
+  [[ "$2" == "$1" ]] || [[ "$2" == *",$1"* ]] || [[ "$2" == *"$1,"* ]]
+  return $?
+}
+
+function simulators_installed() {
+  # TODO overall this to work with simulator-specific Docker images
   echo "$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
     docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
     'echo "$BENCHBOT_SIMULATORS"' | tr -d '[:space:]')"
-  return
+}
+
+function simulator_supported() {
+  # $1 simulator name
+  local s
+  for s in "${SUPPORTED_SIMULATORS[@]}"; do
+    if [ "$(echo "$s" | sed 's/:.*//')" = "$1" ]; then return 0; fi
+  done
+  return 1;
 }
 
 ################################################################################
@@ -217,12 +246,13 @@ function is_latest_benchbot_msgs() {
 }
 
 function is_latest_benchbot_simulator() {
-  current_hash=$(docker inspect "$DOCKER_TAG_BACKEND" > /dev/null 2>&1 && \
-    docker run --rm -t "$DOCKER_TAG_BACKEND" /bin/bash -c \
+  # $1 = simulator name, $2 = branch name
+  current_hash=$(docker inspect "$DOCKER_TAG_SIM_PREFIX$1" > /dev/null 2>&1 && \
+    docker run --rm -t "$DOCKER_TAG_SIM_PREFIX$1" /bin/bash -c \
     'cd $BENCHBOT_SIMULATOR_PATH && git rev-parse HEAD' | tr -d '[:space:]')
-  latest_hash=$(git ls-remote "$GIT_SIMULATOR" "$1" | awk '{print $1}')
-  echo "Current BenchBot Simulator: $current_hash"
-  echo "Latest BenchBot Simulator: $latest_hash"
+  latest_hash=$(git ls-remote "$GIT_SIMULATOR_PREFIX$1" "$2" | awk '{print $1}')
+  echo "Current BenchBot Simulator '$1': $current_hash"
+  echo "Latest BenchBot Simulator '$1': $latest_hash"
   [ "$current_hash" == "$latest_hash" ]
   return
 }
@@ -266,10 +296,11 @@ updates."
   is_latest_benchbot_eval "$1" > /dev/null
   eval_valid=$?
   [ $eval_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
-  echo -ne "Checking BenchBot Simulator version ...\t\t\t"
-  is_latest_benchbot_simulator "$1" > /dev/null
-  simulator_valid=$?
-  [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  # echo -ne "Checking BenchBot Simulator version ...\t\t\t"
+  # is_latest_benchbot_simulator "$1" > /dev/null
+  # simulator_valid=$?
+  # [ $simulator_valid -eq 0 ] && echo "$_valid_str." || echo "$_invalid_str."
+  simulator_valid=0
   echo -ne "Checking BenchBot Supervisor version ...\t\t"
   is_latest_benchbot_supervisor "$1" > /dev/null
   supervisor_valid=$?
@@ -347,14 +378,23 @@ function install_addons() {
     "Installing external add-on dependencies:"
   run_manager_cmd 'install_external_deps()' '\n' '\n'
 
-  printf "\n${colour_blue}%s${colour_nc}\n\n" \
-    "Baking external add-on dependencies into the Docker backend:"
-  docker run --name tmp --detach -it "$DOCKER_TAG_BACKEND" 
-  docker exec -it tmp /bin/bash -c \
-    "$(run_manager_cmd 'print(install_external_deps(True))')"
-  docker commit tmp "$DOCKER_TAG_BACKEND"
-  docker rm -f tmp
-  printf "\n"
+  containers=( $(docker images \
+    --filter "reference=$DOCKER_TAG_BACKEND" \
+    --filter "reference=$DOCKER_TAG_SIM_PREFIX*" \
+    --format "{{.Repository}}:{{.Tag}}"
+      ) )
+  for c in "${containers[@]}"; do
+    printf "\n${colour_blue}%s${colour_nc}\n\n" \
+      "Baking external add-on dependencies into '$c' container:"
+    docker run --name tmp --detach -it "$c" /bin/bash
+    py="$(docker exec -it tmp /bin/bash -c \ "which pip3 || which pip2" | \
+      tr -d '[:space:]')"
+    docker exec -it tmp /bin/bash -c "$(run_manager_cmd \
+      'print(install_external_deps(True))' | sed "s|pip3|$py|")"
+    docker commit tmp "$c"
+    docker rm -f tmp
+    printf "\n"
+  done
 }
 
 function list_addons() {
@@ -392,6 +432,32 @@ See the '--show-"$singular" "${singular^^}"_NAME' command for specific "\
 each "$singular", or check you have the appropriate add-on installed if you are 
 missing "${2:-a}" "${singular}".
 "
+}
+
+function list_simulators() {
+  simulators="$(simulators_installed)"
+  printf "\nThe following simulator options are supported by BenchBot:\n"
+  for s in "${SUPPORTED_SIMULATORS[@]}"; do
+    n="$(echo "$s" | sed 's/:.*//')"
+    d="$(echo "$s" | sed 's/^[^:]*://')"
+    if simulator_installed "$n" "$simulators"; then
+      printf "${colour_green}\t%-16s$d (installed)${colour_nc}\n" "$n"
+    else
+      printf "\t%-16s$d (available)\n" "$n"
+    fi
+  done
+
+  printf "\nSupport is retired for the following simulator options:\n"
+  for s in "${RETIRED_SIMULATORS[@]}"; do
+    n="$(echo "$s" | sed 's/:.*//')"
+    d="$(echo "$s" | sed 's/^[^:]*://')"
+    if simulator_installed "$n" "$simulators"; then
+      printf "${colour_yellow}\t%-16s$d (installed)${colour_nc}\n" "$n"
+    else
+      printf "\t$n\t$d\n"
+    fi
+  done
+  printf "\n"
 }
 
 function remove_addons() {
@@ -667,6 +733,26 @@ function _validate_results_possible() {
   fi
 }
 
+function _validate_simulators() {
+  # Validate whether simulator selection is supported
+  # $1 comma-separated simulator list
+  err=
+  sims=($(echo "$1" | sed 's/,/\n/g'))
+  local s
+  for s in "${sims[@]}"; do
+    if ! simulator_supported "$s"; then
+      err="Simulator '$s' is not a supported simulator."
+    fi
+  done
+
+  if [ -n "$err" ]; then
+    printf "$err\n"
+    printf "\n${colour_red}%s%s${colour_nc}" \
+      "ERROR: Simulator selection was invalid. " \
+      "See errors above & --list-simulators."
+  fi
+}
+
 function _validate_submission_mode() {
   # $1 example name, $2 example_containerised, $3 mode, $4 mode (numeric), 
   # $5 duplicate mode flag, $6 mode_details, $7 args
@@ -724,9 +810,8 @@ function _validate_type() {
     return
   fi
 
-  simulators="$(simulator_type)"
-  if [ "$simulators" != "$1" ] && [ "$simulators" != *",$1" ] && \
-      [ "$simulators" != *"$1,"* ]; then
+  simulators="$(simulators_installed)"
+  if ! simulators_installed "$1" "$simulators"; then
     printf "\n${colour_red}%s\n       %s${colour_nc}\n" \
       "ERROR: Requested running with '$1', but that simulator isn't installed." \
       "Installed simulator/s are: '$simulators'"
@@ -764,7 +849,7 @@ function _validate_types() {
       fi
     done
     printf "\n${colour_red}%s${colour_nc}\n" \
-      "ERROR: Inconsistent types selected (robot = '$1', environment = '$3')"
+      "ERROR: Inconsistent types selected (robot = '$1', environment = '$env')"
   fi
 }
 
@@ -850,6 +935,14 @@ function validate_eval_args() {
   err="$(_validate_evaluation_method "$method" "$validate_only")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
   err="$(_validate_results_files "${results_files[@]}")"
+  if [ -n "$err" ]; then echo "$err"; exit 1; fi
+}
+
+function validate_install_args() {
+  # $1 simulator selection
+  simulators="$1"
+
+  err="$(_validate_simulators "$simulators")"
   if [ -n "$err" ]; then echo "$err"; exit 1; fi
 }
 
