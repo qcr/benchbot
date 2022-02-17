@@ -560,6 +560,24 @@ chk_pythontk_issue="\
 chk_pythontk_fix='sudo apt install -y python3-tk'
 chk_pythontk_reboot=1
 
+checks_list_sim_omni=(
+  "Manual installation steps for Omniverse-powered Isaac Sim:"
+  "simomnilicense"
+  # "simomninvcrio"
+  )
+
+chk_simomnilicense_name='License accepted for Omniverse'
+chk_simomnilicense_pass='Yes'
+chk_simomnilicense_fail='No'
+chk_simomnilicense_check='echo "'$PATH_LICENSES'/omniverse"'
+chk_simomnilicense_eval='[ -f "$check_result" ]'
+chk_simomnilicense_issue="\
+  The NVIDIA Omniverse License Agreement (EULA) must be accepted before
+  Omniverse Kit can start. The license terms for this product can be viewed at:
+    https://docs.omniverse.nvidia.com/app_isaacsim/common/NVIDIA_Omniverse_License_Agreement.html"
+chk_simomnilicense_fix='touch "'$PATH_LICENSES'/omniverse"'
+chk_simomnilicense_reboot=0
+
 checks_list_post=(
   "Validating the build against the host system:"
   "cudadriverdep"  # Does Nvidia driver satisfy cuda dep?

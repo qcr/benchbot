@@ -47,6 +47,7 @@ PATH_DOCKERFILE_SIM_PREFIX="$PATH_ROOT/docker/"
 PATH_DOCKERFILE_SUBMISSION="$PATH_ROOT/docker/submission.Dockerfile"
 PATH_EVAL="$PATH_ROOT/eval"
 PATH_ISAAC_SRCS="$PATH_ROOT/isaac"
+PATH_LICENSES="$PATH_ROOT/.cache/licenses"
 PATH_SYMLINKS="/usr/local/bin"
 PATH_TEMP_FILE="/tmp/benchbot_scratch"
 
