@@ -560,10 +560,11 @@ chk_pythontk_issue="\
 chk_pythontk_fix='sudo apt install -y python3-tk'
 chk_pythontk_reboot=1
 
+
 checks_list_sim_omni=(
   "Manual installation steps for Omniverse-powered Isaac Sim:"
   "simomnilicense"
-  # "simomninvcrio"
+  "simomninvcrio"
   )
 
 chk_simomnilicense_name='License accepted for Omniverse'
@@ -580,6 +581,28 @@ chk_simomnilicense_issue="\
 chk_simomnilicense_fix=\
 'mkdir -p '$PATH_LICENSES' && touch "'$PATH_LICENSES'/omniverse"'
 chk_simomnilicense_reboot=1
+
+chk_simomninvcrio_name='Access to nvcr.io Docker registry'
+chk_simomninvcrio_pass='Yes'
+chk_simomninvcrio_fail='No'
+chk_simomninvcrio_check='echo "" | docker login nvcr.io &>/dev/null; echo $?'
+chk_simomninvcrio_eval='[ $check_result -eq 0 ]'
+chk_simomninvcrio_issue="\
+  Could not access the nvcr.io Docker registry.
+
+  Please follow the NVIDIA's instruction for generating an account NGC key:
+    https://docs.nvidia.com/ngc/ngc-overview/index.html#generating-api-key
+
+  Then either:
+    1) Follow the Isaac Sim instructions to login (DON'T USE sudo):
+      https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/install_advanced.html
+    2) Run the auto-fix below, and paste your key in when prompted."
+chk_simomninvcrio_fix=\
+'clear_stdin
+read -p "NGC API Key for your account: " ngc_key
+echo "$ngc_key" | docker login --username \$oauthtoken --password-stdin nvcr.io'
+chk_simomninvcrio_reboot=1
+
 
 checks_list_post=(
   "Validating the build against the host system:"
