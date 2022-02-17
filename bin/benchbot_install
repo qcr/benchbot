@@ -574,9 +574,12 @@ chk_simomnilicense_eval='[ -f "$check_result" ]'
 chk_simomnilicense_issue="\
   The NVIDIA Omniverse License Agreement (EULA) must be accepted before
   Omniverse Kit can start. The license terms for this product can be viewed at:
-    https://docs.omniverse.nvidia.com/app_isaacsim/common/NVIDIA_Omniverse_License_Agreement.html"
-chk_simomnilicense_fix='touch "'$PATH_LICENSES'/omniverse"'
-chk_simomnilicense_reboot=0
+    https://docs.omniverse.nvidia.com/app_isaacsim/common/NVIDIA_Omniverse_License_Agreement.html
+
+  Accept the following command to accept the license."
+chk_simomnilicense_fix=\
+'mkdir -p '$PATH_LICENSES' && touch "'$PATH_LICENSES'/omniverse"'
+chk_simomnilicense_reboot=1
 
 checks_list_post=(
   "Validating the build against the host system:"
@@ -1054,18 +1057,21 @@ fi
 header_block "PART 1: EXAMINING SYSTEM STATE" $colour_blue
 
 # Patch in any values that can only be determined at runtime
-# TODO clean this all up for use with multiple simulators...
-if [ -z "$simulators" ]; then
-  : # Remove simulator specific checks here (i.e. ( "${checks_list[@]/NAME}" ) )
-fi
+# TODO clean this up to properly understand sizes for different simulators...
 _sz=$([ -n "$simulators" ] && echo "$SIZE_GB_FULL" || echo "$SIZE_GB_LITE")
 chk_fsspace_eval=${chk_fsspace_eval/SIZE/$_sz}
 chk_fsspace_issue=${chk_fsspace_issue/SIZE/$_sz}
 chk_fsspace_fix=${chk_fsspace_fix/SIZE/$_sz}
 
+# Create our list of checks based on what simulators where requested
+_chks=("${checks_list_pre[@]}")
+for s in "${simulators[@]}"; do
+  _chks=("${_chks[@]}" $(printf "%s\n" "${checks_list_sim_omni[@]}") )
+done
+
 # Iterate through the list of checks, doing some dirty string based variable
 # extraction in the handle_requirement() function...
-for c in "${checks_list_pre[@]}"; do
+for c in "${_chks[@]}"; do
   if [[ "$c" =~ :$ ]]; then
     printf "\n${colour_blue}$c${colour_nc}\n"
   elif [ -n "$c" ]; then
