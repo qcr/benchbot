@@ -38,7 +38,7 @@ ENV BENCHBOT_CONTROLLER_PATH="$BENCHBOT_DIR/benchbot_robot_controller"
 RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pushd $BENCHBOT_CONTROLLER_PATH && git checkout $BENCHBOT_CONTROLLER_HASH && \
     pip install -r requirements.txt && pushd $ROS_WS_PATH && \
-    pushd src && git clone https://github.com/eric-wieser/ros_numpy.git && popd && \
+    pushd src && git clone https://github.com/qcr/spatialmath_ros && popd && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
 # Create a place to mount our add-ons, & install manager dependencies
