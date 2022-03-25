@@ -17,10 +17,6 @@ RUN apt update && apt install -y curl && \
     python-catkin-tools python-pip build-essential \
     ros-melodic-tf2-ros ros-melodic-tf
 
-# Install Python3 (& use wherever possible)
-RUN apt update && apt install -y python3 python3-pip && \
-    python3 -m pip install --upgrade pip setuptools wheel 
-
 # Build a ROS Catkin workspace
 ENV ROS_WS_PATH="$BENCHBOT_DIR/ros_ws"
 RUN rosdep init && rosdep update && mkdir -p $ROS_WS_PATH/src && \
@@ -41,7 +37,7 @@ ARG BENCHBOT_CONTROLLER_HASH
 ENV BENCHBOT_CONTROLLER_PATH="$BENCHBOT_DIR/benchbot_robot_controller"
 RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pushd $BENCHBOT_CONTROLLER_PATH && git checkout $BENCHBOT_CONTROLLER_HASH && \
-    python3 -m pip install -r requirements.txt && pushd $ROS_WS_PATH && \
+    pip install -r requirements.txt && pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/qcr/spatialmath_ros && \
     git clone https://github.com/eric-wieser/ros_numpy && popd && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
@@ -49,4 +45,6 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
 # Create a place to mount our add-ons, & install manager dependencies
 ARG BENCHBOT_ADDONS_PATH
 ENV BENCHBOT_ADDONS_PATH="$BENCHBOT_ADDONS_PATH"
-RUN python3 -m pip install pyyaml && mkdir -p $BENCHBOT_ADDONS_PATH
+RUN apt update && apt install -y python3 python3-pip && \
+    python3 -m pip install --upgrade pip setuptools wheel pyyaml && \
+    mkdir -p $BENCHBOT_ADDONS_PATH
