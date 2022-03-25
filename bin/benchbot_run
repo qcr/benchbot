@@ -372,6 +372,7 @@ while [ -n "$(docker ps -q -f 'name=benchbot_supervisor')" ] && \
   [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]); do
   sleep 1
 done
+# sleep infinity
 
 if [ -n "$simulator_required" ] && \
     [ -z "$(docker ps -q -f 'name=benchbot_robot')" ]; then
