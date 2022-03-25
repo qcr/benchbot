@@ -179,6 +179,7 @@ function exit_gracefully() {
     close_network $network_forwarding $network_policy
   fi
   kill_benchbot
+  xhost -local:root > /dev/null
   exit ${exit_code:-0}
 }
 
@@ -360,7 +361,6 @@ ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
 cmd="${docker_run//'$name'/benchbot_debug}"
 ${cmd// /$'\t'} --ip "$URL_DEBUG" -it -d $DOCKER_TAG_BACKEND /bin/bash
-xhost -local:root > /dev/null
 
 # Print the output of the Supervisor, watching for failures
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
@@ -372,6 +372,7 @@ while [ -n "$(docker ps -q -f 'name=benchbot_supervisor')" ] && \
   [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]); do
   sleep 1
 done
+# sleep infinity
 
 if [ -n "$simulator_required" ] && \
     [ -z "$(docker ps -q -f 'name=benchbot_robot')" ]; then
