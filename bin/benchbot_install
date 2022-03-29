@@ -25,7 +25,7 @@ $URL_DEBUG $HOSTNAME_DEBUG"
 # Defaults for the installation process
 ADDONS_DEFAULT='benchbot-addons/ssu'
 CUDA_DEFAULT='cuda'
-NVIDIA_DEFAULT='nvidia-driver-455'
+NVIDIA_DEFAULT='nvidia-driver-510'
 SIMULATOR_DEFAULT='sim_omni'
 
 ################################################################################
