@@ -369,14 +369,23 @@ if [ -n "$simulator_required" ]; then
         -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c $persist
     fi
 
-    while [ $loaded -eq 1 ]; do 
-      eval $persist_chk && loaded=0 || loaded=1 
-    done
-
     printf "\n${colour_blue}%s${colour_nc}\n" \
       "Executing BenchBot Robot Controller in persistent container:"
-    docker exec benchbot_robot /bin/bash -c \
+    while [ $loaded -eq 1 ]; do 
+      eval $persist_chk && loaded=0 || loaded=1 
+      sleep 1
+    done
+
+    docker exec -d benchbot_robot /bin/bash -c \
       "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+
+    controller_pid=
+    while [ -z "$controller_pid" ]; do
+      controller_pid="$(docker container top benchbot_robot | \
+        grep benchbot_robot_controller | awk '{print $2}')"
+      sleep 1
+    done
+    printf "\tStarted in persistent container (pid = $controller_pid)"
   else
     # Run a new container each time when there's no persistence requirement
     printf "\n${colour_blue}%s${colour_nc}\n" \
