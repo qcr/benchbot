@@ -1,4 +1,4 @@
-<p align=center><strong>~ Our <a href="https://eval.ai/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include $2,500USD cash)</strong></p>
+<p align=center><strong>~ Our <a href="https://eval.ai/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include RTX A6000 NVIDIA GPUs and $2,500USD cash)</strong></p>
 <p align=center><strong>~ BenchBot is now powered by <a href="https://developer.nvidia.com/nvidia-omniverse-platform">NVIDIA Omniverse</a> and <a href="https://developer.nvidia.com/isaac-sim">Isaac Sim</a>. We are aware of some issues, please <a href="https://github.com/qcr/benchbot/issues">report any you do encounter</a>. ~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/qcr/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
@@ -188,4 +188,6 @@ The BenchBot software stack is split into a number of standalone components, eac
 
 Development of the BenchBot software stack was directly supported by:
 
-[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)
+[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)&emsp;&emsp;&emsp;&emsp;[![NVIDIA AI & Robotics](./docs/nvidia_logo_small.png)](https://www.nvidia.com/en-au/ai-data-science/)&emsp;&emsp;&emsp;&emsp;[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)
+
+
