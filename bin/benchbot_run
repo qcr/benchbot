@@ -24,6 +24,10 @@ SIM_OMNI_ARGS=(
   -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
 )
 
+SIM_OMNI_PERSISTENT_CMD=(
+  './isaac-sim/start_nucleus.sh && sleep infinity'
+  )
+
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
@@ -342,13 +346,37 @@ if [ -n "$simulator_required" ]; then
   if [ "$type" = "sim_omni" ]; then
       args=("${SIM_OMNI_ARGS[@]}")
   fi
+  persist=
+  if [ "$type" = "sim_omni" ]; then
+      persist="$SIM_OMNI_PERSISTENT_CMD"
+  fi
 
-  printf "\n${colour_blue}%s${colour_nc}\n" \
-    "Starting container for BenchBot Robot Controller ($type):"
-  cmd="${docker_run//'$name'/benchbot_robot}"
-  ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
-    -it $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
-    "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  if [ -n "$persist" ]; then 
+    # Run a persistent container and execute within it if our simulator has
+    # caching utilities (e.g. Cache in Omniverse)
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Starting persistent container for BenchBot Robot Controller ($type):"
+    if [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]; then
+      printf "\tSkipping (already running)\n"
+    else
+      cmd="${docker_run//'$name'/benchbot_robot}"
+      ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[0]}" \
+        -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c $persist
+    fi
+
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Executing BenchBot Robot Controller in persistent container:"
+    docker exec benchbot_robot /bin/bash -c \
+      "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  else
+    # Run a new container each time when there's no persistence requirement
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Starting container for BenchBot Robot Controller ($type):"
+    cmd="${docker_run//'$name'/benchbot_robot}"
+    ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
+      -it $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
+      "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  fi
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
