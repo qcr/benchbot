@@ -24,6 +24,10 @@ SIM_OMNI_ARGS=(
   -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
 )
 
+SIM_OMNI_PERSISTENT_CHK=$(printf "%s%s" \
+  'docker logs benchbot_robot 2>/dev/null | tail -n 1 | ' \
+  'grep -q "Omniverse System Monitor.*started"')
+
 SIM_OMNI_PERSISTENT_CMD=(
   '/isaac-sim/start_nucleus.sh && sleep infinity'
   )
@@ -187,6 +191,20 @@ function exit_gracefully() {
   exit ${exit_code:-0}
 }
 
+function persist_chk() {
+  # $1 run type
+  if [ "$type" = "sim_omni" ]; then
+    echo "$SIM_OMNI_PERSISTENT_CHK"
+  fi
+}
+
+function persist_cmd() {
+  # $1 run type
+  if [ "$type" = "sim_omni" ]; then
+    echo "$SIM_OMNI_PERSISTENT_CMD"
+  fi
+}
+
 
 ################################################################################
 #################### Parse & handle command line arguments #####################
@@ -341,21 +359,16 @@ ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
 
 if [ -n "$simulator_required" ]; then
   # TODO would be nice to have a less stupid way to do this, but bash's lack of
-  # nested arrays makes it hard...
+  # nested arrays (and difficulties passing arrays in general from functions)
+  # makes it hard...
   args=()
   if [ "$type" = "sim_omni" ]; then
       args=("${SIM_OMNI_ARGS[@]}")
   fi
-  persist=
-  persist_chk=
-  if [ "$type" = "sim_omni" ]; then
-      persist="$SIM_OMNI_PERSISTENT_CMD"
-      persist_chk=$(printf "%s%s" \
-        'docker logs benchbot_robot 2>/dev/null | tail -n 1 | ' \
-        'grep -q "Omniverse System Monitor.*started"')
-  fi
+  persist_cmd="$(persist_cmd "$type")"
+  persist_chk="$(persist_chk "$type")"
 
-  if [ -n "$persist" ]; then 
+  if [ -n "$persist_cmd" ]; then 
     # TODO there are LOTS of ways this can go wrong. Need to do this more
     # robustly if we ever expand outside Omniverse-only focus. Examples:
     # - if next run uses a different simulator type, what do we do?
@@ -374,7 +387,7 @@ if [ -n "$simulator_required" ]; then
     else
       cmd="${docker_run//'$name'/benchbot_robot}"
       ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[0]}" \
-        -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c $persist
+        -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c $persist_cmd
     fi
 
     printf "\n${colour_blue}%s${colour_nc}\n" \
