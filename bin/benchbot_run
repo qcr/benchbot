@@ -180,13 +180,14 @@ should not happen under normal operating conditions. Please see the complete
 log below for a dump of the crash output:"
 
 exit_code=
+kill_persist=
 function exit_gracefully() {
   if [ -z "$simulator_required" ]; then
     printf "\n\n${colour_blue}%s${colour_nc}\n" \
       "Re-closing network openings used for real robot:"
     close_network $network_forwarding $network_policy
   fi
-  kill_benchbot
+  kill_benchbot "" $kill_persist
   xhost -local:root > /dev/null
   exit ${exit_code:-0}
 }
@@ -274,6 +275,9 @@ if [ -z "$updates_exit" ]; then
   simulator_required=1
   if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
 
+  # TODO this is logic is flaky as all hell... (see 'TODO DANGER' notice below)
+  [ -z "$(persist_cmd "$type")" ] && kill_persist=0 || kill_persist=1
+
   # Bail if any of the requested configurations are invalid
   validate_run_args "$robot" "$task" "$type" "$environment" "${environments[@]}"
 fi
@@ -294,7 +298,7 @@ fi
 if [ -n "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
-kill_benchbot
+kill_benchbot "" $kill_persist
 trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
@@ -369,8 +373,8 @@ if [ -n "$simulator_required" ]; then
   persist_chk="$(persist_chk "$type")"
 
   if [ -n "$persist_cmd" ]; then 
-    # TODO there are LOTS of ways this can go wrong. Need to do this more
-    # robustly if we ever expand outside Omniverse-only focus. Examples:
+    # TODO DANGER: there are LOTS of ways this can go wrong. Need to do this
+    # more robustly if we ever expand outside Omniverse-only focus. Examples:
     # - if next run uses a different simulator type, what do we do?
     # - the persist variables are vary ad-hoc / hacky
     # - it's really unclear to the user what is still running in background
