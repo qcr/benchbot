@@ -330,7 +330,8 @@ echo ""
 
 # Create the network for BenchBot software stack
 echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
-docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
+docker network inspect "$DOCKER_NETWORK" >/dev/null 2>&1 || \
+  docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
 if [ -z "$simulator_required" ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
