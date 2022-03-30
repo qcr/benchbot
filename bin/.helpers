@@ -127,8 +127,10 @@ function eval_version() {
 }
 
 function kill_benchbot() {
+  # $1 set this to run without header block
+  # $2 binary flag on whether we should keep persistent containers
   # TODO make this quieter when I am confident it works as expected...
-  if [ -z "${1-}" ]; then
+  if [ -z "${1:-}" ]; then
     header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
   fi
 
@@ -140,6 +142,21 @@ function kill_benchbot() {
   fi
 
   targets=$(docker ps -q -f name='benchbot*' || true)
+  if [ "${2:-0}" -ne 0 ]; then
+    # Remove benchbot_robot container from our "stop list"
+    targets="$(echo targets | \
+      grep -v "$(docker ps -q -f -name=$HOSTNAME_ROBOT)")"
+
+    # Kill specific processes within the container instead
+    kill_targets="$(docker exec benchbot_robot /bin/bash -c \
+      'ps aux | grep benchbot_robot_controller' | grep -v 'grep' | \
+      awk '{ for (i=11; i<=NF; i++) { printf $i " " } print "(pid="$2")" }')"
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Killing following targets in '$HOSTNAME_ROBOT' container:"
+    echo "$kill_targets" | sed 's/.*pid=\(.*\)).*/\1/' | \
+      while read pid ; do
+        docker exec $HOSTNAME_ROBOT /bin/bash -c 'kill -9 '$pid
+      done
   if [ -n "$targets" ]; then
     echo -e "\n${colour_blue}Stopped the following containers:${colour_nc}"
     docker stop $targets
