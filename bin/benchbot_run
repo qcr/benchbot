@@ -356,6 +356,14 @@ if [ -n "$simulator_required" ]; then
   fi
 
   if [ -n "$persist" ]; then 
+    # TODO there are LOTS of ways this can go wrong. Need to do this more
+    # robustly if we ever expand outside Omniverse-only focus. Examples:
+    # - if next run uses a different simulator type, what do we do?
+    # - the persist variables are vary ad-hoc / hacky
+    # - it's really unclear to the user what is still running in background
+    # - our checks for the status of things are weak (how do we know if an exec
+    #   has failed now???)
+
     # Run a persistent container and execute within it if our simulator has
     # caching utilities (e.g. Cache in Omniverse)
     printf "\n${colour_blue}%s${colour_nc}\n" \
