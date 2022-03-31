@@ -5,8 +5,9 @@ FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
 # TODO undo this hack when the broken repository has been fixed
 RUN rm /etc/apt/sources.list.d/nvidia-ml.list
 
-# Fix python.sh script
+# Fix scripts provided with image
 RUN sed -i 's/$@/"\0"/' python.sh
+RUN sed -i 's/sleep/# \0/' start_nucleus.sh
 
 # Overrides to make things play nicely with the BenchBot ecosystem
 SHELL ["/bin/bash", "-c"]
