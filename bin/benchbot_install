@@ -1257,12 +1257,14 @@ for i in "${!simulators[@]}"; do
     printf "\n${colour_blue}%s${colour_nc}\n" \
       "BAKING SIMULATOR DATA INTO '$s' DOCKER IMAGE:"
     docker container rm tmp >/dev/null 2>&1 || true
+    xhost +local:root > /dev/null
     docker run "${SIM_OMNI_ARGS[@]}" --gpus all --name tmp \
       --env DISPLAY --volume /tmp/.X11-unix:/tmp/.X11-unix \
       -t $DOCKER_TAG_SIM_PREFIX$s /bin/bash -c "$(printf '%s %s' \
       "./python.sh -c 'from omni.isaac.kit import SimulationApp; " \
-      "k = SimulationApp(); k.close()'"
+      "k = SimulationApp({\"headless\": False}); k.close()'"
       )"
+    xhost -local:root > /dev/null
     docker commit --change "ENV SIM_BAKED=1" tmp $DOCKER_TAG_SIM_PREFIX$s
     docker container rm tmp
   fi
