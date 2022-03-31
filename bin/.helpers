@@ -58,8 +58,8 @@ RETIRED_SIMULATORS=(
   "sim_unreal:Isaac Sim 2019.2, powered by Unreal engine"
   )
 
-SIZE_GB_FULL=64
-SIZE_GB_LITE=32
+SIZE_GB_FULL=32
+SIZE_GB_LITE=20
 
 SUPPORTED_SIMULATORS=(
   "sim_omni:The latest Isaac Sim, powered by Omniverse"
