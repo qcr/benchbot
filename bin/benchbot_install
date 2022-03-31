@@ -1250,6 +1250,12 @@ for i in "${!simulators[@]}"; do
       "$build_ret"
     exit 1
   fi
+
+  # Pre-baking (TODO need a way to generalise this... at the moment it is very
+  # ad-hoc)
+  echo "$s"
+  exit 0
+  docker run 
 done
 
 # Build the BenchBot Submission Docker image

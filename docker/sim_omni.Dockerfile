@@ -2,6 +2,9 @@
 #   https://catalog.ngc.nvidia.com/orgs/nvidia/containers/isaac-sim
 FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
 
+# TODO undo this hack when the broken repository has been fixed
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+
 # Overrides to make things play nicely with the BenchBot ecosystem
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT []
