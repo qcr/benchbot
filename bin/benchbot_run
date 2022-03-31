@@ -381,7 +381,7 @@ if [ -n "$simulator_required" ]; then
       printf "Skipping (already running)\n"
     else
       cmd="${docker_run//'$name'/benchbot_robot}"
-      ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[0]}" \
+      ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
         -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c $persist_cmd
     fi
 
