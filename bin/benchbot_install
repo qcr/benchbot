@@ -1253,12 +1253,10 @@ for i in "${!simulators[@]}"; do
 
   # Pre-baking (TODO need a way to generalise this... at the moment it is very
   # ad-hoc)
-  # TODO need a way to avoid re-baking without breaking in-built Docker change
-  # detection
   if [ "$s" = "sim_omni" ]; then
     printf "\n${colour_blue}%s${colour_nc}\n" \
       "BAKING SIMULATOR DATA INTO '$s' DOCKER IMAGE:"
-    docker container rm tmp || true
+    docker container rm tmp >/dev/null 2>&1 || true
     docker run "${SIM_OMNI_ARGS[@]}" --gpus all --name tmp \
       --env DISPLAY --volume /tmp/.X11-unix:/tmp/.X11-unix \
       -t $DOCKER_TAG_SIM_PREFIX$s /bin/bash -c "$(printf '%s %s' \
