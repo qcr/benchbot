@@ -378,7 +378,7 @@ if [ -n "$simulator_required" ]; then
       "Starting persistent container for BenchBot Robot Controller ($type):"
     eval $persist_chk && loaded=0 || loaded=1
     if [ $loaded -eq 0 ]; then
-      printf "\tSkipping (already running)\n"
+      printf "Skipping (already running)\n"
     else
       cmd="${docker_run//'$name'/benchbot_robot}"
       ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[0]}" \
@@ -401,7 +401,7 @@ if [ -n "$simulator_required" ]; then
         grep 'benchbot_robot_controller' | grep -v 'grep' | awk '{print $2}')"
       sleep 1
     done
-    printf "Started in persistent container (pid = $controller_pid)"
+    printf "Started in persistent container (pid = $controller_pid)\n"
   else
     # Run a new container each time when there's no persistence requirement
     printf "\n${colour_blue}%s${colour_nc}\n" \
