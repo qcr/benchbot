@@ -168,7 +168,8 @@ function kill_benchbot() {
       echo "$kill_targets"
       if [ -n "$kill_targets" ]; then
         echo "$kill_targets" | sed 's/.*pid=\(.*\)).*/\1/' | while read pid ; \
-          do docker exec $HOSTNAME_ROBOT /bin/bash -c 'kill -TERM '$pid; done
+          do docker exec $HOSTNAME_ROBOT /bin/bash -c \
+          'kill -TERM '$pid'; while kill -0 '$pid' 2>/dev/null; do sleep 1; done'; done
       fi
     fi
   fi
