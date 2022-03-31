@@ -15,7 +15,7 @@ source .helpers
 ################################################################################
 
 SIM_OMNI_PERSISTENT_CHK=$(printf "%s%s" \
-  'docker logs benchbot_robot 2>/dev/null | tail -n 1 | ' \
+  'docker logs benchbot_robot 2>/dev/null | tail -n 100 | ' \
   'grep -q "Omniverse System Monitor.*started"')
 
 SIM_OMNI_PERSISTENT_CMD=(
