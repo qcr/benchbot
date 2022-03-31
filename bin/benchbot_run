@@ -14,16 +14,6 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-SIM_OMNI_ARGS=(
-  -v $PATH_CACHE/isaac-sim/cache/ov:/root/.cache/ov:rw
-  -v $PATH_CACHE/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
-  -v $PATH_CACHE/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
-  -v $PATH_CACHE/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
-  -v $PATH_CACHE/isaac-sim/config:/root/.nvidia-omniverse/config:rw
-  -v $PATH_CACHE/isaac-sim/data:/root/.local/share/ov/data:rw
-  -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
-)
-
 SIM_OMNI_PERSISTENT_CHK=$(printf "%s%s" \
   'docker logs benchbot_robot 2>/dev/null | tail -n 1 | ' \
   'grep -q "Omniverse System Monitor.*started"')
