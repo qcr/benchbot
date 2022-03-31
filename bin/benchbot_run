@@ -398,10 +398,11 @@ if [ -n "$simulator_required" ]; then
     controller_pid=
     while [ -z "$controller_pid" ]; do
       controller_pid="$(docker container top benchbot_robot | \
-        grep 'benchbot_robot_controller' | grep -v 'grep' | awk '{print $2}')"
+        grep 'benchbot_robot_controller' | grep -v 'grep' | awk '{print $2}' | \
+        tr '\n' ',' | sed 's/,$//')"
       sleep 1
     done
-    printf "Started in persistent container (pid = $controller_pid)\n"
+    printf "Started in persistent container (pids = $controller_pid)\n"
   else
     # Run a new container each time when there's no persistence requirement
     printf "\n${colour_blue}%s${colour_nc}\n" \
