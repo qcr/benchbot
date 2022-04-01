@@ -168,7 +168,8 @@ checks_list_pre=(
   "fsspace"  # Is /var/lib/docker on a filesystem with enough space?
   "Miscellaneous requirements:"
   "pip" # Is pip available? (required to install Python libraries)
-  "pythontk" # Is python-tk installed (required for matplotlib...)
+  "pythontk" # Is python3-tk installed (required for matplotlib...)
+  "pythonpil" # Is python3-pil & python3-pil.imagetk installed?
   )
 
 chk_ubuntu1804_name='Ubuntu version >= 18.04'
@@ -554,11 +555,23 @@ chk_pythontk_fail='Not found'
 chk_pythontk_check='python3 -c "import tkinter as tk; print(tk.__file__)" 2>/dev/null'
 chk_pythontk_eval='[ -n "$check_result" ]'
 chk_pythontk_issue="\
-  Python package pythontk was not found. It is required to use the
+  Python package python3-tk was not found. It is required to use the
   visualisation tools available with the BenchBot API. Please install it via
   package manager. "
 chk_pythontk_fix='sudo apt install -y python3-tk'
 chk_pythontk_reboot=1
+
+chk_pythonpil_name='PIL (with ImageTk) for Python installed'
+chk_pythonpil_pass='Found'
+chk_pythonpil_fail='Not found'
+chk_pythonpil_check='python3 -c "from PIL import ImageTk; print("1")" 2>/dev/null'
+chk_pythonpil_eval='[ -n "$check_result" ]'
+chk_pythonpil_issue="\
+  Python packages python3-pil & python3-pil.imagetk were not found. They are
+  required to use the visualisation tools available with the BenchBot API.
+  Please install it via package manager. "
+chk_pythonpil_fix='sudo apt install -y python3-pil python3-pil.imagetk'
+chk_pythonpil_reboot=1
 
 
 checks_list_sim_omni=(
