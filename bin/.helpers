@@ -154,8 +154,10 @@ function kill_benchbot() {
   targets=$(docker ps -q -f name='benchbot*' || true)
   if [ "${2:-0}" -ne 0 ]; then
     # Remove benchbot_robot container from our "stop list"
-    targets="$(echo "$targets" | \
-      grep -v "$(docker ps -q -f name=$HOSTNAME_ROBOT)" || true)"
+    p="$(docker ps -q -f name=$HOSTNAME_ROBOT)"
+    if [ -n "$p" ]; then
+      targets="$(echo "$targets" | grep -v "$p" || true)"
+    fi
 
     # Kill specific processes within the container instead if it exists
     if [ -n "$(docker ps -q -f name=$HOSTNAME_ROBOT)" ]; then
