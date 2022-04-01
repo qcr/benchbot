@@ -58,8 +58,18 @@ RETIRED_SIMULATORS=(
   "sim_unreal:Isaac Sim 2019.2, powered by Unreal engine"
   )
 
-SIZE_GB_FULL=64
-SIZE_GB_LITE=32
+SIZE_GB_FULL=32
+SIZE_GB_LITE=20
+
+SIM_OMNI_ARGS=(
+  -v $PATH_CACHE/isaac-sim/cache/ov:/root/.cache/ov:rw
+  -v $PATH_CACHE/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
+  -v $PATH_CACHE/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
+  -v $PATH_CACHE/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
+  -v $PATH_CACHE/isaac-sim/config:/root/.nvidia-omniverse/config:rw
+  -v $PATH_CACHE/isaac-sim/data:/root/.local/share/ov/data:rw
+  -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
+)
 
 SUPPORTED_SIMULATORS=(
   "sim_omni:The latest Isaac Sim, powered by Omniverse"
@@ -127,8 +137,10 @@ function eval_version() {
 }
 
 function kill_benchbot() {
+  # $1 set this to run without header block
+  # $2 binary flag on whether we should keep persistent containers
   # TODO make this quieter when I am confident it works as expected...
-  if [ -z "${1-}" ]; then
+  if [ -z "${1:-}" ]; then
     header_block "CLEANING UP ALL BENCHBOT REMNANTS" ${colour_blue}
   fi
 
@@ -140,6 +152,29 @@ function kill_benchbot() {
   fi
 
   targets=$(docker ps -q -f name='benchbot*' || true)
+  if [ "${2:-0}" -ne 0 ]; then
+    # Remove benchbot_robot container from our "stop list"
+    p="$(docker ps -q -f name=$HOSTNAME_ROBOT)"
+    if [ -n "$p" ]; then
+      targets="$(echo "$targets" | grep -v "$p" || true)"
+    fi
+
+    # Kill specific processes within the container instead if it exists
+    if [ -n "$(docker ps -q -f name=$HOSTNAME_ROBOT)" ]; then
+      kill_targets="$(docker exec benchbot_robot /bin/bash -c \
+        'ps aux | grep benchbot_robot_controller' | grep -v 'grep' | \
+        awk '{ for (i=11; i<=NF; i++) { printf $i " " } print "(pid="$2")" }' \
+        || true)"
+      printf "\n${colour_blue}%s${colour_nc}\n" \
+        "Killing following targets in '$HOSTNAME_ROBOT' container:"
+      echo "$kill_targets"
+      if [ -n "$kill_targets" ]; then
+        echo "$kill_targets" | sed 's/.*pid=\(.*\)).*/\1/' | while read pid ; \
+          do docker exec $HOSTNAME_ROBOT /bin/bash -c \
+          'kill -TERM '$pid'; while kill -0 '$pid' 2>/dev/null; do sleep 1; done'; done
+      fi
+    fi
+  fi
   if [ -n "$targets" ]; then
     echo -e "\n${colour_blue}Stopped the following containers:${colour_nc}"
     docker stop $targets

@@ -2,6 +2,10 @@
 #   https://catalog.ngc.nvidia.com/orgs/nvidia/containers/isaac-sim
 FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
 
+# Fix scripts provided with image
+RUN sed -i 's/$@/"\0"/' python.sh
+RUN sed -i 's/sleep/# \0/' start_nucleus.sh
+
 # Overrides to make things play nicely with the BenchBot ecosystem
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT []

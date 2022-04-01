@@ -14,15 +14,13 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-SIM_OMNI_ARGS=(
-  -v $PATH_CACHE/isaac-sim/cache/ov:/root/.cache/ov:rw
-  -v $PATH_CACHE/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
-  -v $PATH_CACHE/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
-  -v $PATH_CACHE/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
-  -v $PATH_CACHE/isaac-sim/config:/root/.nvidia-omniverse/config:rw
-  -v $PATH_CACHE/isaac-sim/data:/root/.local/share/ov/data:rw
-  -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
-)
+SIM_OMNI_PERSISTENT_CHK=$(printf "%s%s" \
+  'docker logs benchbot_robot 2>/dev/null | tail -n 100 | ' \
+  'grep -q "Omniverse System Monitor.*started"')
+
+SIM_OMNI_PERSISTENT_CMD=(
+  '/isaac-sim/start_nucleus.sh && sleep infinity'
+  )
 
 ################################################################################
 ######################## Helper functions for commands #########################
@@ -172,15 +170,30 @@ should not happen under normal operating conditions. Please see the complete
 log below for a dump of the crash output:"
 
 exit_code=
+kill_persist=
 function exit_gracefully() {
   if [ -z "$simulator_required" ]; then
     printf "\n\n${colour_blue}%s${colour_nc}\n" \
       "Re-closing network openings used for real robot:"
     close_network $network_forwarding $network_policy
   fi
-  kill_benchbot
+  kill_benchbot "" $kill_persist
   xhost -local:root > /dev/null
   exit ${exit_code:-0}
+}
+
+function persist_chk() {
+  # $1 run type
+  if [ "$type" = "sim_omni" ]; then
+    echo "$SIM_OMNI_PERSISTENT_CHK"
+  fi
+}
+
+function persist_cmd() {
+  # $1 run type
+  if [ "$type" = "sim_omni" ]; then
+    echo "$SIM_OMNI_PERSISTENT_CMD"
+  fi
 }
 
 
@@ -252,6 +265,9 @@ if [ -z "$updates_exit" ]; then
   simulator_required=1
   if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
 
+  # TODO this is logic is flaky as all hell... (see 'TODO DANGER' notice below)
+  [ -z "$(persist_cmd "$type")" ] && kill_persist=0 || kill_persist=1
+
   # Bail if any of the requested configurations are invalid
   validate_run_args "$robot" "$task" "$type" "$environment" "${environments[@]}"
 fi
@@ -272,7 +288,7 @@ fi
 if [ -n "$updates_exit" ]; then exit 0; fi
 
 # Run the BenchBot software stack (kill whenever they exit)
-kill_benchbot
+kill_benchbot "" $kill_persist
 trap exit_gracefully SIGINT SIGQUIT SIGKILL SIGTERM EXIT
 header_block "STARTING THE BENCHBOT SOFTWARE STACK" ${colour_blue}
 
@@ -304,7 +320,8 @@ echo ""
 
 # Create the network for BenchBot software stack
 echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
-docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
+docker network inspect "$DOCKER_NETWORK" >/dev/null 2>&1 || \
+  docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
 if [ -z "$simulator_required" ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
@@ -337,18 +354,64 @@ ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
 
 if [ -n "$simulator_required" ]; then
   # TODO would be nice to have a less stupid way to do this, but bash's lack of
-  # nested arrays makes it hard...
+  # nested arrays (and difficulties passing arrays in general from functions)
+  # makes it hard...
   args=()
   if [ "$type" = "sim_omni" ]; then
       args=("${SIM_OMNI_ARGS[@]}")
   fi
+  persist_cmd="$(persist_cmd "$type")"
+  persist_chk="$(persist_chk "$type")"
 
-  printf "\n${colour_blue}%s${colour_nc}\n" \
-    "Starting container for BenchBot Robot Controller ($type):"
-  cmd="${docker_run//'$name'/benchbot_robot}"
-  ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
-    -it $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
-    "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  if [ -n "$persist_cmd" ]; then 
+    # TODO DANGER: there are LOTS of ways this can go wrong. Need to do this
+    # more robustly if we ever expand outside Omniverse-only focus. Examples:
+    # - if next run uses a different simulator type, what do we do?
+    # - the persist variables are vary ad-hoc / hacky
+    # - it's really unclear to the user what is still running in background
+    # - our checks for the status of things are weak (how do we know if an exec
+    #   has failed now???)
+
+    # Run a persistent container and execute within it if our simulator has
+    # caching utilities (e.g. Cache in Omniverse)
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Starting persistent container for BenchBot Robot Controller ($type):"
+    eval $persist_chk && loaded=0 || loaded=1
+    if [ $loaded -eq 0 ]; then
+      printf "Skipping (already running)\n"
+    else
+      cmd="${docker_run//'$name'/benchbot_robot}"
+      ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
+        -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c $persist_cmd
+    fi
+
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Executing BenchBot Robot Controller in persistent container:"
+    while [ $loaded -eq 1 ]; do 
+      eval $persist_chk && loaded=0 || loaded=1 
+      sleep 1
+    done
+
+    docker exec -d benchbot_robot /bin/bash -c \
+      "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+
+    controller_pid=
+    while [ -z "$controller_pid" ]; do
+      controller_pid="$(docker container top benchbot_robot | \
+        grep 'benchbot_robot_controller' | grep -v 'grep' | awk '{print $2}' | \
+        tr '\n' ',' | sed 's/,$//')"
+      sleep 1
+    done
+    printf "Started in persistent container (pids = $controller_pid)\n"
+  else
+    # Run a new container each time when there's no persistence requirement
+    printf "\n${colour_blue}%s${colour_nc}\n" \
+      "Starting container for BenchBot Robot Controller ($type):"
+    cmd="${docker_run//'$name'/benchbot_robot}"
+    ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
+      -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
+      "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+  fi
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
