@@ -14,9 +14,7 @@ source .helpers
 ########################### Script Specific Settings ###########################
 ################################################################################
 
-SIM_OMNI_PERSISTENT_CHK=$(printf "%s%s" \
-  'docker logs benchbot_robot 2>/dev/null | tail -n 100 | ' \
-  'grep -q "Omniverse System Monitor.*started"')
+# None
 
 ################################################################################
 ######################## Helper functions for commands #########################
