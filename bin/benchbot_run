@@ -18,10 +18,6 @@ SIM_OMNI_PERSISTENT_CHK=$(printf "%s%s" \
   'docker logs benchbot_robot 2>/dev/null | tail -n 100 | ' \
   'grep -q "Omniverse System Monitor.*started"')
 
-SIM_OMNI_PERSISTENT_CMD=(
-  '/isaac-sim/start_nucleus.sh && sleep infinity'
-  )
-
 ################################################################################
 ######################## Helper functions for commands #########################
 ################################################################################
@@ -365,8 +361,8 @@ if [ -n "$simulator_required" ]; then
   else
     cmd="${docker_run//'$name'/benchbot_robot}"
     ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
-      -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
-      "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+      -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c 'sleep infinity'
+    #   "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
   fi
 
   printf "\n${colour_blue}%s${colour_nc}\n" \
