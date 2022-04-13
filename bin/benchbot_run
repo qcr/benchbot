@@ -359,8 +359,8 @@ if [ -n "$simulator_required" ]; then
   else
     cmd="${docker_run//'$name'/benchbot_robot}"
     ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
-      -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c 'sleep infinity'
-    #   "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
+      -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
+      "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
   fi
 
   printf "\n${colour_blue}%s${colour_nc}\n" \
