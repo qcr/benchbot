@@ -353,8 +353,8 @@ if [ -n "$simulator_required" ]; then
   # caching utilities (e.g. Cache in Omniverse)
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Starting persistent container for BenchBot Robot Controller ($type):"
-  if [ "$(docker container inspect -f '{{.State.Running}}' benchbot_robot)" \
-      == "true" ]; then
+  if [ "$(docker container inspect -f '{{.State.Running}}' \
+        benchbot_robot 2> /dev/null)" == "true" ]; then
     printf "Skipping (already running)\n"
   else
     cmd="${docker_run//'$name'/benchbot_robot}"
