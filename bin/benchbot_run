@@ -344,10 +344,7 @@ if [ -n "$simulator_required" ]; then
   # TODO DANGER: there are LOTS of ways this can go wrong. Need to do this
   # more robustly if we ever expand outside Omniverse-only focus. Examples:
   # - if next run uses a different simulator type, what do we do?
-  # - the persist variables are vary ad-hoc / hacky
   # - it's really unclear to the user what is still running in background
-  # - our checks for the status of things are weak (how do we know if an exec
-  #   has failed now???)
 
   # Run a persistent container and execute within it if our simulator has
   # caching utilities (e.g. Cache in Omniverse)
@@ -362,28 +359,6 @@ if [ -n "$simulator_required" ]; then
       -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
       "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
   fi
-
-  printf "\n${colour_blue}%s${colour_nc}\n" \
-    "Executing BenchBot Robot Controller in persistent container:"
-  # TODO redo this check
-  # while [ $loaded -eq 1 ]; do 
-  #   eval $persist_chk && loaded=0 || loaded=1 
-  #   sleep 1
-  # done
-
-  # TODO redo sending a "start command" to existing controller
-  # docker exec -d benchbot_robot /bin/bash -c \
-  #   "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
-
-  # TODO redo checking if you're alive
-  controller_pid=
-  # while [ -z "$controller_pid" ]; do
-  #   controller_pid="$(docker container top benchbot_robot | \
-  #     grep 'benchbot_robot_controller' | grep -v 'grep' | awk '{print $2}' | \
-  #     tr '\n' ',' | sed 's/,$//')"
-  #   sleep 1
-  # done
-  printf "Started in persistent container (pids = $controller_pid)\n"
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
