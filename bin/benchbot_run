@@ -170,7 +170,7 @@ log below for a dump of the crash output:"
 exit_code=
 kill_persist=
 function exit_gracefully() {
-  if [ -z "$simulator_required" ]; then
+  if [ "$simulator_required" -ne 0 ]; then
     printf "\n\n${colour_blue}%s${colour_nc}\n" \
       "Re-closing network openings used for real robot:"
     close_network $network_forwarding $network_policy
@@ -187,10 +187,11 @@ function exit_gracefully() {
 ################################################################################
 
 # Safely parse options input
-_args="help,env:,environment:,force-updateless,list-envs,list-environments,\
-list-formats,list-robots,list-tasks,robot:,show-env:,show-environment:,\
-show-format:,show-robot:,show-task:,task:,updates-check,version"
-parse_out=$(getopt -o he:t:r:fuv --long $_args  -n "$(basename "$abs_path")" \
+_args="help,env:,environment:,force-updateless,kill-controller,list-envs,\
+list-environments,list-formats,list-robots,list-tasks,robot:,show-env:,\
+show-environment:,show-format:,show-robot:,show-task:,task:,updates-check,\
+version"
+parse_out=$(getopt -o he:t:r:fuvk --long $_args  -n "$(basename "$abs_path")" \
   -- "$@")
 if [ $? != 0 ]; then exit 1; fi
 eval set -- "$parse_out"
@@ -207,6 +208,8 @@ while true; do
       environment="$2"; shift 2 ;;
     -f|--force-updateless)
       updates_skip=1 ; shift ;;
+    -k|--kill-controller)
+      kill_persist=0; simulator_required=0; exit_gracefully ;;
     --list-envs|--list-environments)
       list_environments "$_list_environments_pre" "an"; exit $? ;;
     --list-formats)
