@@ -173,6 +173,7 @@ function exit_gracefully() {
   fi
   kill_benchbot "" $kill_persist
   xhost -local:root > /dev/null
+  trap '' SIGINT SIGQUIT SIGKILL SIGTERM EXIT
   exit ${exit_code:-0}
 }
 
