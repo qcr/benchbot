@@ -164,7 +164,7 @@ function kill_benchbot() {
       # Use the supervisor to ask the simulator to stop
       printf "\n${colour_blue}%s${colour_nc}\n" \
         "Sending stop request to running controller:"
-      curl -sS -L "$HOSTNAME_SUPERVISOR:$PORT_SUPERVISOR/robot/stop"
+      curl -sS -L "$HOSTNAME_ROBOT:$PORT_ROBOT/stop"
         
       # TODO some wait / success checking logic?
     fi
