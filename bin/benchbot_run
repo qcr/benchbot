@@ -65,6 +65,10 @@ OPTION DETAILS:
             novel work will focus on the latest software stack. You should only
             use this flag when it is inconvenient to update immediately.
 
+    -k, --kill-controller
+            Run a kill command that stops everything BenchBot currently
+            running, including the persistent robot controller.
+
     --list-envs, --list-environments
             Search for & list all installed environments. The listed
             environment names are in the format needed for the '--env' option.
