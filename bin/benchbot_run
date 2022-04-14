@@ -251,7 +251,7 @@ if [ -z "$updates_exit" ]; then
   type="$(run_manager_cmd 'exists("robots", [("name", "'$robot'")]) and print(\
     get_value_by_name("robots", "'$robot'", "type"))')"
   simulator_required=1
-  if [[ "$type" != "sim_"* ]]; then simulator_required=0; fi
+  if [[ "$type" == "sim_"* ]]; then simulator_required=0; fi
 
   # TODO add an option for managing the persistent container
   kill_persist=1
@@ -302,8 +302,8 @@ for i in "${!environments[@]}"; do
     "'${environments[$i]}'", "map_path"))')"
 done
 printf "    %-22s" "Simulator required:"
-printf "%s (%s)\n"  $([ -z "$simulator_required" ] && echo "No" || echo "Yes") \
-  "$type"
+printf "%s (%s)\n" \
+  $([ "$simulator_required" -ne 0 ] && echo "No" || echo "Yes") "$type"
 echo ""
 
 # Create the network for BenchBot software stack
@@ -311,7 +311,7 @@ echo -e "${colour_blue}Creating shared network '$DOCKER_NETWORK':${colour_nc}"
 docker network inspect "$DOCKER_NETWORK" >/dev/null 2>&1 || \
   docker network create "$DOCKER_NETWORK" --subnet="$URL_DOCKER_SUBNET" \
   --ip-range="$URL_DOCKER_SUBNET" --gateway="$URL_DOCKER_GATEWAY"
-if [ -z "$simulator_required" ]; then
+if [ "$simulator_required" -ne 0 ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Opening network to facilitate communications with real robot:"
   network_forwarding=$(cat /proc/sys/net/ipv4/conf/all/forwarding)
@@ -340,7 +340,7 @@ cmd="${docker_run//'$name'/$ros_master_host}"
 ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'roscore'
 
-if [ -n "$simulator_required" ]; then
+if [ "$simulator_required" -eq 0 ]; then
   # TODO would be nice to have a less stupid way to do this, but bash's lack of
   # nested arrays (and difficulties passing arrays in general from functions)
   # makes it hard...
@@ -386,13 +386,13 @@ header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 docker logs --follow benchbot_supervisor &
 
 while [ -n "$(docker ps -q -f 'name=benchbot_supervisor')" ] && \
-  ([ -z "$simulator_required" ] || \
+  ([ "$simulator_required" -ne 0 ] || \
   [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]); do
   sleep 1
 done
 # sleep infinity
 
-if [ -n "$simulator_required" ] && \
+if [ "$simulator_required" -eq 0 ] && \
     [ -z "$(docker ps -q -f 'name=benchbot_robot')" ]; then
   header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
