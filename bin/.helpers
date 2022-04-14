@@ -161,18 +161,12 @@ function kill_benchbot() {
 
     # Kill specific processes within the container instead if it exists
     if [ -n "$(docker ps -q -f name=$HOSTNAME_ROBOT)" ]; then
-      kill_targets="$(docker exec benchbot_robot /bin/bash -c \
-        'ps aux | grep benchbot_robot_controller' | grep -v 'grep' | \
-        awk '{ for (i=11; i<=NF; i++) { printf $i " " } print "(pid="$2")" }' \
-        || true)"
+      # Use the supervisor to ask the simulator to stop
       printf "\n${colour_blue}%s${colour_nc}\n" \
-        "Killing following targets in '$HOSTNAME_ROBOT' container:"
-      echo "$kill_targets"
-      if [ -n "$kill_targets" ]; then
-        echo "$kill_targets" | sed 's/.*pid=\(.*\)).*/\1/' | while read pid ; \
-          do docker exec $HOSTNAME_ROBOT /bin/bash -c \
-          'kill -TERM '$pid'; while kill -0 '$pid' 2>/dev/null; do sleep 1; done'; done
-      fi
+        "Sending stop request to running controller:"
+      curl -sS -L "$HOSTNAME_SUPERVISOR:$PORT_SUPERVISOR/robot/stop"
+        
+      # TODO some wait / success checking logic?
     fi
   fi
   if [ -n "$targets" ]; then
