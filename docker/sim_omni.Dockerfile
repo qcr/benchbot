@@ -19,6 +19,7 @@ ARG BENCHBOT_SIMULATOR_HASH
 ENV BENCHBOT_SIMULATOR_PATH="/benchbot/benchbot_simulator"
 RUN mkdir -p $BENCHBOT_SIMULATOR_PATH && \
     git clone $BENCHBOT_SIMULATOR_GIT $BENCHBOT_SIMULATOR_PATH && \
-    pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH
+    pushd $BENCHBOT_SIMULATOR_PATH && git checkout $BENCHBOT_SIMULATOR_HASH && \
+    /isaac-sim/kit/python/bin/python3 -m pip install -r ./.custom_deps
 
 # Expects to be built with shared_tools.Dockerfile added to the end
