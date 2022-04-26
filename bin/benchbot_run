@@ -335,10 +335,16 @@ docker_run="docker run -t --gpus all \
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
-echo -e "\n${colour_blue}Starting container for BenchBot ROS:${colour_nc}"
-cmd="${docker_run//'$name'/$ros_master_host}"
-${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-  "$cmd_prefix"'roscore'
+printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Starting persistent container for ROS core:"
+if [ "$(docker container inspect -f '{{.State.Running}}' \
+    $ros_master_host 2> /dev/null)" == "true" ]; then
+  printf "Skipping (already running)\n"
+else
+  cmd="${docker_run//'$name'/$ros_master_host}"
+  ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+    "$cmd_prefix"'roscore'
+fi
 
 if [ "$simulator_required" -eq 0 ]; then
   # TODO would be nice to have a less stupid way to do this, but bash's lack of
