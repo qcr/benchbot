@@ -153,13 +153,15 @@ function kill_benchbot() {
 
   targets=$(docker ps -q -f name='benchbot*' || true)
   if [ "${2:-0}" -ne 0 ]; then
-    # Remove benchbot_robot container from our "stop list"
-    p="$(docker ps -q -f name=$HOSTNAME_ROBOT)"
+    # Remove our persistent containers from our stop list (benchbot_robot and
+    # benchbot_ros)
+    p="$(docker ps -q -f name=$HOSTNAME_ROBOT -f name=$HOSTNAME_ROS)"
     if [ -n "$p" ]; then
       targets="$(echo "$targets" | grep -v "$p" || true)"
     fi
 
-    # Kill specific processes within the container instead if it exists
+    # Kill specific processes within container benchbot_robot container if it
+    # exists
     if [ -n "$(docker ps -q -f name=$HOSTNAME_ROBOT)" ]; then
       # Use the supervisor to ask the simulator to stop
       printf "\n${colour_blue}%s${colour_nc}\n" \
