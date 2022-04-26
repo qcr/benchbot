@@ -322,10 +322,9 @@ fi
 
 # Declare reusable parts to ensure our containers run with consistent settings
 xhost +local:root > /dev/null
-ros_master_host="benchbot_roscore"
 docker_run="docker run -t --gpus all \
             --env DISPLAY \
-            --env ROS_MASTER_URI=http://$ros_master_host:11311 \
+            --env ROS_MASTER_URI=http://$HOSTNAME_ROS:11311 \
             --env ROS_HOSTNAME=\$name \
             --network $DOCKER_NETWORK \
             --name=\$name \
@@ -335,10 +334,16 @@ docker_run="docker run -t --gpus all \
 cmd_prefix='source $ROS_WS_PATH/devel/setup.bash && '
 
 # Start containers for ROS, isaac_simulator, benchbot_simulator, & benchbot_supervisor
-echo -e "\n${colour_blue}Starting container for BenchBot ROS:${colour_nc}"
-cmd="${docker_run//'$name'/$ros_master_host}"
-${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
-  "$cmd_prefix"'roscore'
+printf "\n${colour_blue}%s${colour_nc}\n" \
+    "Starting persistent container for ROS core:"
+if [ "$(docker container inspect -f '{{.State.Running}}' \
+    $HOSTNAME_ROS 2> /dev/null)" == "true" ]; then
+  printf "Skipping (already running)\n"
+else
+  cmd="${docker_run//'$name'/$HOSTNAME_ROS}"
+  ${cmd// /$'\t'} --ip "$URL_ROS" -d $DOCKER_TAG_BACKEND /bin/bash -c \
+    "$cmd_prefix"'roscore'
+fi
 
 if [ "$simulator_required" -eq 0 ]; then
   # TODO would be nice to have a less stupid way to do this, but bash's lack of
@@ -359,10 +364,10 @@ if [ "$simulator_required" -eq 0 ]; then
   printf "\n${colour_blue}%s${colour_nc}\n" \
     "Starting persistent container for BenchBot Robot Controller ($type):"
   if [ "$(docker container inspect -f '{{.State.Running}}' \
-        benchbot_robot 2> /dev/null)" == "true" ]; then
+      $HOSTNAME_ROBOT 2> /dev/null)" == "true" ]; then
     printf "Skipping (already running)\n"
   else
-    cmd="${docker_run//'$name'/benchbot_robot}"
+    cmd="${docker_run//'$name'/$HOSTNAME_ROBOT}"
     ${cmd// /$'\t'} --ip "$URL_ROBOT" -d "${args[@]}" \
       -t $DOCKER_TAG_SIM_PREFIX$type /bin/bash -c \
       "$cmd_prefix"'rosrun benchbot_robot_controller benchbot_robot_controller'
@@ -370,33 +375,33 @@ if [ "$simulator_required" -eq 0 ]; then
 fi
 
 echo -e "\n${colour_blue}Starting container for BenchBot Supervisor:${colour_nc}"
-cmd="${docker_run//'$name'/benchbot_supervisor}"
+cmd="${docker_run//'$name'/$HOSTNAME_SUPERVISOR}"
 ${cmd// /$'\t'} --ip "$URL_SUPERVISOR" -d $DOCKER_TAG_BACKEND /bin/bash -c \
   "$cmd_prefix"'python3 -m benchbot_supervisor --task-name "'$task'" \
   --robot-name "'$robot'" --environment-names "'$environments_string'" \
   --addons-path "'$PATH_ADDONS_INTERNAL'"'
 
 echo -e "\n${colour_blue}Starting container for BenchBot Debugging:${colour_nc}"
-cmd="${docker_run//'$name'/benchbot_debug}"
+cmd="${docker_run//'$name'/$HOSTNAME_DEBUG}"
 ${cmd// /$'\t'} --ip "$URL_DEBUG" -it -d $DOCKER_TAG_BACKEND /bin/bash
 
 # Print the output of the Supervisor, watching for failures
 header_block "BENCHBOT IS RUNNING (Ctrl^C to exit) ..." ${colour_green}
 
-docker logs --follow benchbot_supervisor &
+docker logs --follow $HOSTNAME_SUPERVISOR &
 
-while [ -n "$(docker ps -q -f 'name=benchbot_supervisor')" ] && \
+while [ -n "$(docker ps -q -f 'name='$HOSTNAME_SUPERVISOR)" ] && \
   ([ "$simulator_required" -ne 0 ] || \
-  [ -n "$(docker ps -q -f 'name=benchbot_robot')" ]); do
+  [ -n "$(docker ps -q -f 'name='$HOSTNAME_ROBOT)" ]); do
   sleep 1
 done
 # sleep infinity
 
 if [ "$simulator_required" -eq 0 ] && \
-    [ -z "$(docker ps -q -f 'name=benchbot_robot')" ]; then
+    [ -z "$(docker ps -q -f 'name='$HOSTNAME_ROBOT)" ]; then
   header_block "BENCHBOT ROBOT CONTROLLER ERROR" ${colour_red}
   echo -e "\n${colour_red}$_robot_err${colour_nc}\n"
-  docker logs benchbot_robot
+  docker logs $HOSTNAME_ROBOT
 fi
 exit_code=1
 exit
