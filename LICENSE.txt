@@ -1,4 +1,4 @@
-Copyright (c) 2020, Queensland University of Technology (Ben Talbot, David Hall, Haoyang Zhang, Suman Bista, Rohan Smith, Niko Sünderhauf, and Feras Dayoub)
+Copyright (c) 2020, Queensland University of Technology (Ben Talbot, David Hall, and Niko Sünderhauf)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
