@@ -177,7 +177,9 @@ function kill_benchbot() {
   fi
   echo -e "\n${colour_blue}Deleted the following containers:${colour_nc}"
   docker system prune -f  # TODO this is still maybe a little too aggressive
-  echo -e "\n${colour_blue}Finished cleaning!${colour_nc}\n"
+
+  printf "\n${colour_blue}Finished cleaning!%s${colour_nc}\n\n" \
+    "$([ ${2:-0} -ne 0 ] && echo " (use 'benchbot_run -k' for a full clean)")"
 }
 
 function open_network() {
