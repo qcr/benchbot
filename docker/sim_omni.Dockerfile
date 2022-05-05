@@ -2,6 +2,11 @@
 #   https://catalog.ngc.nvidia.com/orgs/nvidia/containers/isaac-sim
 FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
 
+# Fix to address key rotation breaking APT with the official Isaac Sim image
+#   https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
+RUN apt-key del 7fa2af80 && apt-key adv --fetch-keys \
+    https://developer.download.nvidia.com/compute/cuda/repos/$distro/$arch/3bf863cc.pub
+
 # Fix scripts provided with image
 RUN sed -i 's/$@/"\0"/' python.sh
 RUN sed -i 's/sleep/# \0/' start_nucleus.sh
