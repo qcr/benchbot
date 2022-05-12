@@ -47,7 +47,7 @@ u@pc:~$ git clone https://github.com/qcr/benchbot && cd benchbot
 u@pc:~$ ./install
 ```
 
-Any missing software components, or configuration issues with your system, should be detected by the install script and resolved interactively. The installation asks if you want to add BenchBot helper scripts to your `PATH`. Choosing yes will make the following commands available from any directory: `benchbot_install` (same as `./install` above), `benchbot_run`, `benchbot_submit`, `benchbot_eval`, and `benchbot_batch`.
+Any missing software components, or configuration issues with your system, should be detected by the install script and resolved interactively (you may be prompted to manually reboot and restart the install script). The installation asks if you want to add BenchBot helper scripts to your `PATH`. Choosing yes will make the following commands available from any directory: `benchbot_install` (same as `./install` above), `benchbot_run`, `benchbot_submit`, `benchbot_eval`, and `benchbot_batch`.
 
 BenchBot installs a default set of add-ons (currently `'benchbot-addons/ssu'`), but this can be changed based on how you want to use BenchBot. For example, the following will also install the `'benchbot-addons/data_collect'` add-ons:
 
