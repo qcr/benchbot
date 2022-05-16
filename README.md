@@ -49,14 +49,6 @@ u@pc:~$ ./install
 
 Any missing software components, or configuration issues with your system, should be detected by the install script and resolved interactively (you may be prompted to manually reboot and restart the install script). The installation asks if you want to add BenchBot helper scripts to your `PATH`. Choosing yes will make the following commands available from any directory: `benchbot_install` (same as `./install` above), `benchbot_run`, `benchbot_submit`, `benchbot_eval`, and `benchbot_batch`.
 
-BenchBot installs a default set of add-ons (currently `'benchbot-addons/ssu'`), but this can be changed based on how you want to use BenchBot. For example, the following will also install the `'benchbot-addons/data_collect'` add-ons:
-
-```
-u@pc:~$ benchbot_install --addons benchbot-addons/ssu,benchbot-addons/data_collect
-```
-
-See the [BenchBot Add-ons Manager's documentation](https://github.com/qcr/benchbot_addons) for more information on using add-ons.
-
 The BenchBot software stack will frequently check for updates and can update itself automatically. To update simply run the install script again (add the `--force-clean` flag if you would like to install from scratch):
 
 ```
@@ -75,6 +67,16 @@ There are a number of other options to customise your BenchBot installation, whi
 u@pc:~$ benchbot_install --help
 ```
 
+### Managing installed BenchBot add-ons
+
+BenchBot installs a default set of add-ons, which is currently `'benchbot-addons/ssu'` (and all of its dependencies declared [here](https://github.com/benchbot-addons/ssu/blob/master/.dependencies)). But you can also choose to install a different set of add-ons instead. For example, the following will also install the `'benchbot-addons/data_collect'` add-ons:
+
+```
+u@pc:~$ benchbot_install --addons benchbot-addons/ssu,benchbot-addons/data_collect
+```
+
+See the [BenchBot Add-ons Manager's documentation](https://github.com/qcr/benchbot_addons) for more information on using add-ons. All of our official add-ons can be found in our [benchbot-addons GitHub organisation](https://github.com/benchbot-addons). We're open to adding add-ons contributed by our users to the official list as well.
+
 ## Getting started
 
 Getting a solution up and running with BenchBot is as simple as 1,2,3. Here's how to use BenchBot with content from the [semantic scene understanding add-on](https://github.com/benchbot-addons/ssu):
@@ -82,7 +84,7 @@ Getting a solution up and running with BenchBot is as simple as 1,2,3. Here's ho
 1. Run a simulator with the BenchBot software stack by selecting an available robot, environment, and task definition:
 
    ```
-   u@pc:~$ benchbot_run --robot carter --env miniroom:1 --task semantic_slam:active:ground_truth
+   u@pc:~$ benchbot_run --robot carter_omni --env miniroom:1 --task semantic_slam:active:ground_truth
    ```
 
    A number of useful flags exist to help you explore what content is available in your installation (see `--help` for full details). For example, you can list what tasks are available via `--list-tasks` and view the task specification via `--show-task TASK_NAME`.
@@ -122,25 +124,25 @@ Once you are confident your algorithm is a solution to the chosen task, the Benc
 - Use `benchbot_batch` to run your algorithm in a number of environments and produce a set of results. The script has a number of toggles available to customise the process (see `--help` for full details). To autonomously run your `semantic_slam:active:ground_truth` algorithm over 3 environments:
 
   ```
-  u@pc:~$ benchbot_batch --robot carter --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --native python my_solution.py
+  u@pc:~$ benchbot_batch --robot carter_omni --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --native python my_solution.py
   ```
 
   Or you can use one of the pre-defined environment batches installed via add-ons (e.g. [`benchbot-addons/batches_isaac`](https://github.com/benchbot-addons/batches_isaac)):
 
   ```
-  u@pc:~$ benchbot_batch --robot carter --task semantic_slam:active:ground_truth --envs-batch develop_1 --native python my_solution.py
+  u@pc:~$ benchbot_batch --robot carter_omni --task semantic_slam:active:ground_truth --envs-batch develop_1 --native python my_solution.py
   ```
 
   Additionally, you can create a results ZIP and request an overall evaluation score at the end of the batch:
 
   ```
-  u@pc:~$ benchbot_batch --robot carter --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --zip --evaluate-with omq --native python my_solution.py
+  u@pc:~$ benchbot_batch --robot carter_omni --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --zip --evaluate-with omq --native python my_solution.py
   ```
 
   Lastly, both native and containerised submissions are supported exactly as in `benchbot_submit`:
 
   ```
-  u@pc:~$ benchbot_batch --robot carter --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --containerised my_solution_folder/
+  u@pc:~$ benchbot_batch --robot carter_omni --task semantic_slam:active:ground_truth --envs miniroom:1,miniroom:3,house:5 --containerised my_solution_folder/
   ```
 
 - You can also directly call the holistic evaluation performed above by `benchbot_batch` through the `benchbot_eval` script. The script supports single result files, multiple results files, or a ZIP of multiple results files. See `benchbot_eval --help` for full details. Below are examples calling `benchbot_eval` with a series of results and a ZIP of results respectively:
@@ -189,5 +191,3 @@ The BenchBot software stack is split into a number of standalone components, eac
 Development of the BenchBot software stack was directly supported by:
 
 [![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)&emsp;&emsp;&emsp;&emsp;[![NVIDIA AI & Robotics](./docs/nvidia_logo_small.png)](https://www.nvidia.com/en-au/ai-data-science/)&emsp;&emsp;&emsp;&emsp;[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)
-
-
