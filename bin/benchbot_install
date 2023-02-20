@@ -150,13 +150,13 @@ checks_list_pre=(
   "nvidiacard"  # Is a valid graphics card available?
   "nvidiadriver"  # Is the driver available?
   "nvidiaversion"  # Is the driver version valid?
-  "nvidiappa"  # Does the driver come from a supported PPA?
-  "cudadriversavailable" # Is cuda-drivers package available?
-  "cudadriversversion"  # Is cuda-drivers version valid?
-  "cudadriversppa"  # Is cuda-drivers from the Nvidia PPA?
-  "cudaavailable"  # Is CUDA available?
+  # "nvidiappa"  # Does the driver come from a supported PPA?
+  #"cudadriversavailable" # Is cuda-drivers package available?
+  #"cudadriversversion"  # Is cuda-drivers version valid?
+  # "cudadriversppa"  # Is cuda-drivers from the Nvidia PPA?
+  #"cudaavailable"  # Is CUDA available?
   "cudaversion"  # Is the cuda version valid?
-  "cudappa"  # Is cuda from the Nvidia PPA?
+  # "cudappa"  # Is cuda from the Nvidia PPA?
   "Running Docker related system checks:"
   "dockeravailable"  # Is Docker available?
   "dockerversion"  # Is Docker version > 19.0?
@@ -244,31 +244,31 @@ chk_nvidiaversion_issue="\
 chk_nvidiaversion_fix="$chk_nvidiadriver_fix"
 chk_nvidiaversion_reboot=0
 
-chk_nvidiappa_name='NVIDIA driver from a standard PPA'
-chk_nvidiappa_pass='PPA is valid'
-chk_nvidiappa_fail='PPA is invalid'
-chk_nvidiappa_check='version=$(apt list --installed 2>/dev/null | '\
-'grep nvidia-driver- | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"'); '\
-'apt download --print-uris nvidia-driver-$(echo $version | '\
-'cut -d'"'"'.'"'"' -f1)=$version 2>/dev/null | cut -d'"'"' '"'"' -f1'
-chk_nvidiappa_eval=\
-'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"'| \
-'"'"'ppa.launchpad.net/graphics-drivers/ppa/ubuntu'"'"').* ]]'
-chk_nvidiappa_issue="\
-  The installed NVIDIA driver was detected to have come from somewhere other
-  than the NVIDIA / Ubuntu graphics-drivers PPAs. The driver was sourced from:
-    "'$check_result'"
+# chk_nvidiappa_name='NVIDIA driver from a standard PPA'
+# chk_nvidiappa_pass='PPA is valid'
+# chk_nvidiappa_fail='PPA is invalid'
+# chk_nvidiappa_check='version=$(apt list --installed 2>/dev/null | '\
+# 'grep nvidia-driver- | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"'); '\
+# 'apt download --print-uris nvidia-driver-$(echo $version | '\
+# 'cut -d'"'"'.'"'"' -f1)=$version 2>/dev/null | cut -d'"'"' '"'"' -f1'
+# chk_nvidiappa_eval=\
+# '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"'| \
+# '"'"'ppa.launchpad.net/graphics-drivers/ppa/ubuntu'"'"').* ]]'
+# chk_nvidiappa_issue="\
+#   The installed NVIDIA driver was detected to have come from somewhere other
+#   than the NVIDIA / Ubuntu graphics-drivers PPAs. The driver was sourced from:
+#     "'$check_result'"
 
-  Our Docker container only supports official drivers, & GPUs only work in 
-  containers if the driver version exactly matches the version of the host.
-  Please use a driver from either of the following locations (the NVIDIA PPA is
-  preferred):
-    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
-    http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
-chk_nvidiappa_fix=\
-'sudo apt remove -y nvidia-driver-* && sudo apt -y autoremove; '\
-"$chk_nvidiadriver_fix"
-chk_nvidiappa_reboot=0
+#   Our Docker container only supports official drivers, & GPUs only work in 
+#   containers if the driver version exactly matches the version of the host.
+#   Please use a driver from either of the following locations (the NVIDIA PPA is
+#   preferred):
+#     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64
+#     http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu"
+# chk_nvidiappa_fix=\
+# 'sudo apt remove -y nvidia-driver-* && sudo apt -y autoremove; '\
+# "$chk_nvidiadriver_fix"
+# chk_nvidiappa_reboot=0
 
 chk_cudadriversavailable_name='CUDA drivers installed'
 chk_cudadriversavailable_pass='Drivers found'
@@ -300,30 +300,30 @@ chk_cudadriversversion_fix=\
 "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
 chk_cudadriversversion_reboot=1
 
-chk_cudadriversppa_name='CUDA drivers from the NVIDIA PPA'
-chk_cudadriversppa_pass='PPA is valid'
-chk_cudadriversppa_fail='PPA is invalid'
-chk_cudadriversppa_check=\
-'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-drivers/" | \
-awk '"'"'{print $2}'"'"'); \
-apt download --print-uris cuda-drivers=\
-$(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
-cut -d'"'"' '"'"' -f1'
-chk_cudadriversppa_eval=\
-'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
-chk_cudadriversppa_issue="\
-  CUDA drivers were detected to have come from somewhere other than the NVIDIA 
-  PPAs. The CUDA drivers were sourced from:
-    "'$check_result'"
+# chk_cudadriversppa_name='CUDA drivers from the NVIDIA PPA'
+# chk_cudadriversppa_pass='PPA is valid'
+# chk_cudadriversppa_fail='PPA is invalid'
+# chk_cudadriversppa_check=\
+# 'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-drivers/" | \
+# awk '"'"'{print $2}'"'"'); \
+# apt download --print-uris cuda-drivers=\
+# $(echo $installed | sed '"'"'s/.*now \([^ ]*\).*/\1/'"'"') 2>/dev/null | \
+# cut -d'"'"' '"'"' -f1'
+# chk_cudadriversppa_eval=\
+# '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
+# chk_cudadriversppa_issue="\
+#   CUDA drivers were detected to have come from somewhere other than the NVIDIA 
+#   PPAs. The CUDA drivers were sourced from:
+#     "'$check_result'"
 
-  Our Docker container only supports official CUDA installs, & GPUs only work
-  in containers if the CUDA drivers version exactly matches the version of the
-  host.  Please install CUDA drivers from the official NVIDIA repository:
-    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
-chk_cudadriversppa_fix=\
-'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
-"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
-chk_cudadriversppa_reboot=1
+#   Our Docker container only supports official CUDA installs, & GPUs only work
+#   in containers if the CUDA drivers version exactly matches the version of the
+#   host.  Please install CUDA drivers from the official NVIDIA repository:
+#     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
+# chk_cudadriversppa_fix=\
+# 'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
+# "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
+# chk_cudadriversppa_reboot=1
 
 chk_cudaavailable_name='CUDA is installed'
 chk_cudaavailable_pass='CUDA found'
@@ -352,29 +352,29 @@ chk_cudaversion_issue="\
 chk_cudaversion_fix="${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
 chk_cudaversion_reboot=1
 
-chk_cudappa_name='CUDA is from the NVIDIA PPA'
-chk_cudappa_pass='PPA is valid'
-chk_cudappa_fail='PPA is invalid'
-chk_cudappa_check=\
-'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-$(\
-/usr/local/cuda/bin/nvcc --version | grep release | \
-sed '"'"'s/.*release \([0-9\.]*\).*/\1/'"'"')"); \
-apt download --print-uris "$(echo "$installed" | sed '"'"'s/\([^\/]*\).*/\1/'"'"')=$(echo "$installed" | cut -d " " -f 2)" 2>/dev/null'
-chk_cudappa_eval=\
-'[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
-chk_cudappa_issue="\
-  CUDA was detected to have come from somewhere other than the NVIDIA PPAs. The 
-  CUDA package was sourced from:
-    "'$check_result'"
+# chk_cudappa_name='CUDA is from the NVIDIA PPA'
+# chk_cudappa_pass='PPA is valid'
+# chk_cudappa_fail='PPA is invalid'
+# chk_cudappa_check=\
+# 'installed=$(apt list --installed 2>/dev/null | grep -E "cuda-$(\
+# /usr/local/cuda/bin/nvcc --version | grep release | \
+# sed '"'"'s/.*release \([0-9\.]*\).*/\1/'"'"')"); \
+# apt download --print-uris "$(echo "$installed" | sed '"'"'s/\([^\/]*\).*/\1/'"'"')=$(echo "$installed" | cut -d " " -f 2)" 2>/dev/null'
+# chk_cudappa_eval=\
+# '[[ "$check_result" =~ .*('"'"'developer.download.nvidia.com/'"'"').* ]]'
+# chk_cudappa_issue="\
+#   CUDA was detected to have come from somewhere other than the NVIDIA PPAs. The 
+#   CUDA package was sourced from:
+#     "'$check_result'"
 
-  Our Docker container only supports official CUDA installs, & GPUs only work in 
-  containers if the CUDA version exactly matches the version of the host.
-  Please install CUDA from the official NVIDIA repository:
-    http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
-chk_cudappa_fix=\
-'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
-"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
-chk_cudappa_reboot=1
+#   Our Docker container only supports official CUDA installs, & GPUs only work in 
+#   containers if the CUDA version exactly matches the version of the host.
+#   Please install CUDA from the official NVIDIA repository:
+#     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64"
+# chk_cudappa_fix=\
+# 'sudo apt remove -y cuda-10* && sudo apt -y autoremove; '\
+# "${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DEFAULT}"
+# chk_cudappa_reboot=1
 
 chk_dockeravailable_name='Docker is available'
 chk_dockeravailable_pass='Found'
@@ -1197,22 +1197,23 @@ header_block "PART 3: BUILDING DOCKER IMAGES" $colour_blue
 
 # Gather some useful variables, including from the host
 _tmp_dockerfile="/tmp/dockerfile"
-nvidia_driver_version=$(apt list --installed 2>/dev/null | \
-  grep "nvidia-driver-" | cut -d ' ' -f 2)
-cuda_drivers_version=$(apt list --installed 2>/dev/null | \
-  grep "cuda-drivers/" | cut -d ' ' -f 2)
-cuda_version=$(apt list --installed 2>/dev/null | \
-  grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
-  sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
+# nvidia_driver_version=$(apt list --installed 2>/dev/null | \
+#   grep "nvidia-driver-" | cut -d ' ' -f 2)
+# cuda_drivers_version=$(apt list --installed 2>/dev/null | \
+#   grep "cuda-drivers/" | cut -d ' ' -f 2)
+# cuda_version=$(apt list --installed 2>/dev/null | \
+#   grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
+#   sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
+
+# printf "CUDA DRIVERS VERSION ${cuda_drivers_version}"
+# printf "CUDA VERSION ${cuda_drivers_version}"
 
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT CORE DOCKER IMAGE:"
 docker buildx build -t "$DOCKER_TAG_CORE" -f "$PATH_DOCKERFILE_CORE" \
   --build-arg TZ=$(cat /etc/timezone) \
-  --build-arg NVIDIA_DRIVER_VERSION="${nvidia_driver_version}" \
-  --build-arg CUDA_DRIVERS_VERSION="${cuda_drivers_version}" \
-  --build-arg CUDA_VERSION="${cuda_version}" $PATH_ROOT && \
+  --build-arg CUDA_VERSION=11.8.0 $PATH_ROOT && \
   build_ret=0 || build_ret=1
 if [ $build_ret -ne 0 ]; then
   printf "\n${colour_red}%s: %d\n\n${build_err}${colour_nc}\n" \

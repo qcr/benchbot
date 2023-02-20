@@ -1,6 +1,6 @@
 # Extend NVIDIA's official Docker Image for Isaac Sim. Download instructions:
 #   https://catalog.ngc.nvidia.com/orgs/nvidia/containers/isaac-sim
-FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
+FROM  nvcr.io/nvidia/isaac-sim:2022.2.0
 
 # Fix to address key rotation breaking APT with the official Isaac Sim image
 #   https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
