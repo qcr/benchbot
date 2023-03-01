@@ -395,7 +395,7 @@ while [ -n "$(docker ps -q -f 'name='$HOSTNAME_SUPERVISOR)" ] && \
   [ -n "$(docker ps -q -f 'name='$HOSTNAME_ROBOT)" ]); do
   sleep 1
 done
-# sleep infinity
+#sleep infinity
 
 if [ "$simulator_required" -eq 0 ] && \
     [ -z "$(docker ps -q -f 'name='$HOSTNAME_ROBOT)" ]; then

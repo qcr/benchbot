@@ -6,21 +6,21 @@
 ENV BENCHBOT_DIR="/benchbot"
 RUN mkdir -p $BENCHBOT_DIR
 
-# Install ROS Melodic
+# Install ROS Noetic
 RUN apt update && apt install -y curl && \
-    echo "deb http://packages.ros.org/ros/ubuntu bionic main" > \
+    echo "deb http://packages.ros.org/ros/ubuntu focal main" > \
     /etc/apt/sources.list.d/ros-latest.list && \
     curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | \
     apt-key add - && apt update && \
-    apt install -y ros-melodic-ros-base python-rosdep \
-    python-rosinstall python-rosinstall-generator python-wstool \
-    python-catkin-tools python-pip build-essential \
-    ros-melodic-tf2-ros ros-melodic-tf
+    apt install -y ros-noetic-ros-base python3-rosdep \
+    python3-rosinstall python3-rosinstall-generator python3-wstool \
+    python3-catkin-tools python3-pip build-essential \
+    ros-noetic-tf2-ros ros-noetic-tf
 
 # Build a ROS Catkin workspace
 ENV ROS_WS_PATH="$BENCHBOT_DIR/ros_ws"
 RUN rosdep init && rosdep update && mkdir -p $ROS_WS_PATH/src && \
-    source /opt/ros/melodic/setup.bash && \
+    source /opt/ros/noetic/setup.bash && \
     pushd $ROS_WS_PATH && catkin_make && source devel/setup.bash && popd 
 
 # Add BenchBot's common ROS packages
@@ -37,7 +37,9 @@ ARG BENCHBOT_CONTROLLER_HASH
 ENV BENCHBOT_CONTROLLER_PATH="$BENCHBOT_DIR/benchbot_robot_controller"
 RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pushd $BENCHBOT_CONTROLLER_PATH && git checkout $BENCHBOT_CONTROLLER_HASH && \
-    pip install -r requirements.txt && pushd $ROS_WS_PATH && \
+    pip install -r requirements.txt && \
+    sed -i 's/np.float/float/g' /usr/local/lib/python3.8/dist-packages/transforms3d/quaternions.py && \ 
+    pushd $ROS_WS_PATH && \
     pushd src && git clone https://github.com/eric-wieser/ros_numpy && popd && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
