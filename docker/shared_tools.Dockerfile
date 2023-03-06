@@ -40,7 +40,9 @@ RUN git clone $BENCHBOT_CONTROLLER_GIT $BENCHBOT_CONTROLLER_PATH && \
     pip install -r requirements.txt && \
     sed -i 's/np.float/float/g' /usr/local/lib/python3.8/dist-packages/transforms3d/quaternions.py && \ 
     pushd $ROS_WS_PATH && \
-    pushd src && git clone https://github.com/eric-wieser/ros_numpy && popd && \
+    pushd src && git clone https://github.com/eric-wieser/ros_numpy && \
+    sed -i 's/np.float/float/g' /benchbot/ros_ws/src/ros_numpy/src/ros_numpy/point_cloud2.py && \
+    popd && \
     ln -sv $BENCHBOT_CONTROLLER_PATH src/ && source devel/setup.bash && catkin_make
 
 # Create a place to mount our add-ons, & install manager dependencies
