@@ -1205,9 +1205,6 @@ cuda_version=$(apt list --installed 2>/dev/null | \
   grep "cuda-$(/usr/local/cuda/bin/nvcc --version | grep release | \
   sed 's/.*release \([0-9\.]*\).*/\1/; s/\./-/g')" | cut -d ' ' -f 2)
 
-printf "CUDA DRIVERS VERSION ${cuda_drivers_version}"
-printf "CUDA VERSION ${cuda_drivers_version}"
-
 # Build the BenchBot Core Docker image
 printf "\n${colour_blue}%s${colour_nc}\n" \
   "BUILDING BENCHBOT CORE DOCKER IMAGE:"
