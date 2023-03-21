@@ -190,4 +190,9 @@ The BenchBot software stack is split into a number of standalone components, eac
 
 Development of the BenchBot software stack was directly supported by:
 
-[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)&emsp;&emsp;&emsp;&emsp;[![NVIDIA AI & Robotics](./docs/nvidia_logo_small.png)](https://www.nvidia.com/en-au/ai-data-science/)&emsp;&emsp;&emsp;&emsp;[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)
+[![QUT Centre for Robotics](./docs/qcr_logo_small.png)](https://research.qut.edu.au/qcr/)&emsp;&emsp;&emsp;&emsp;[![CSIRO Machine Learning and Artificial Intelligence Future Science Platform (MLAI FSP)](./docs/csirod61_logo_small.png)](https://research.csiro.au/mlai-fsp/)&emsp;&emsp;&emsp;&emsp; 
+
+</br>
+</br>
+
+[![NVIDIA AI & Robotics](./docs/nvidia_logo_small.png)](https://www.nvidia.com/en-au/ai-data-science/)&emsp;&emsp;&emsp;&emsp;[![Australian Centre for Robotic Vision](./docs/acrv_logo_small.png)](https://www.roboticvision.org/)
