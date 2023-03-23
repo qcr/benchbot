@@ -69,7 +69,6 @@ SIM_OMNI_ARGS=(
   -v $PATH_CACHE/isaac-sim/config:/root/.nvidia-omniverse/config:rw
   -v $PATH_CACHE/isaac-sim/data:/root/.local/share/ov/data:rw
   -v $PATH_CACHE/isaac-sim/documents:/root/Documents:rw
-  -v /usr/share/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/nvidia_icd.json 
   -v /usr/share/vulkan/implicit_layer.d/VkLayer_MESA_device_select.json:/usr/share/vulkan/implicit_layer.d/VkLayer_MESA_device_select.json 
   -v /usr/share/glvnd/egl_vendor.d/10_nvidia.json:/usr/share/glvnd/egl_vendor.d/10_nvidia.json
 )
