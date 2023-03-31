@@ -4,7 +4,7 @@ FROM benchbot/core:base
 # Install some requirements for BenchBot API & visualisation tools
 # (BenchBot supports both python2 & python3, but python3 is preferred)
 RUN apt update && apt install -y libsm6 libxext6 libxrender-dev python3 \
-    python3-pip python3-tk python-pip python-tk
+    python3-pip python3-tk
 
 # Upgrade to latest pip (OpenCV fails to install because the pip installed by
 # Ubuntu is so old). See following issues for details:
@@ -16,7 +16,7 @@ RUN apt update && apt install -y libsm6 libxext6 libxrender-dev python3 \
 #     https://github.com/pypa/pip/issues/5599
 # I'll move on rather than digressing into how stupid it is that that's the
 # state of things...
-RUN pip3 install --upgrade pip
+#RUN pip3 install --upgrade pip
 
 # Install BenchBot API
 ARG BENCHBOT_API_GIT

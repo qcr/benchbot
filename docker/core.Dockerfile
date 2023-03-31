@@ -1,5 +1,5 @@
 # Start from the official Ubuntu image
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 # Setup a base state with needed packages & useful default settings
 SHELL ["/bin/bash", "-c"]
@@ -19,10 +19,10 @@ ARG CUDA_VERSION
 ENV NVIDIA_VISIBLE_DEVICES="all"
 ENV NVIDIA_DRIVER_CAPABILITIES="compute,display,graphics,utility"
 RUN add-apt-repository ppa:graphics-drivers && \
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin && \
-    mv -v cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
-    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && \
-    add-apt-repository -n "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /" && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin && \
+    mv -v cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600 && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub && \
+    add-apt-repository -n "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /" && \
     apt update
 RUN CUDA_NAME="cuda-$(echo "${CUDA_VERSION}" | \
     sed 's/\([0-9]*\)\.\([0-9]*\).*/\1\.\2/; s/\./-/')" && \
