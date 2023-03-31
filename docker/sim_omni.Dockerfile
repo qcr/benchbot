@@ -1,15 +1,18 @@
 # Extend NVIDIA's official Docker Image for Isaac Sim. Download instructions:
 #   https://catalog.ngc.nvidia.com/orgs/nvidia/containers/isaac-sim
-FROM  nvcr.io/nvidia/isaac-sim:2021.2.1
+FROM  nvcr.io/nvidia/isaac-sim:2022.2.1
 
 # Fix to address key rotation breaking APT with the official Isaac Sim image
 #   https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-RUN apt-key adv --fetch-keys \
-    https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+# RUN apt-key adv --fetch-keys \
+#     https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
 
 # Fix scripts provided with image
-RUN sed -i 's/$@/"\0"/' python.sh
-RUN sed -i 's/sleep/# \0/' start_nucleus.sh
+# RUN sed -i 's/$@/"\0"/' python.sh
+# RUN sed -i 's/sleep/# \0/' start_nucleus.sh
+
+RUN echo "$TZ" > /etc/timezone && ln -s /usr/share/zoneinfo/"$TZ" \
+    /etc/localtime && apt update && apt -y install tzdata
 
 # Overrides to make things play nicely with the BenchBot ecosystem
 SHELL ["/bin/bash", "-c"]

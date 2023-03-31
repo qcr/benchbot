@@ -1,4 +1,4 @@
-<p align=center><strong>~ Our <a href="https://eval.ai/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include RTX A6000 NVIDIA GPUs and $2,500USD cash)</strong></p>
+<p align=center><strong>~ Our <a href="https://eval.ai/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include RTX A6000 NVIDIA GPUs)</strong></p>
 <p align=center><strong>~ BenchBot is now powered by <a href="https://developer.nvidia.com/nvidia-omniverse-platform">NVIDIA Omniverse</a> and <a href="https://developer.nvidia.com/isaac-sim">Isaac Sim</a>. We are aware of some issues, please <a href="https://github.com/qcr/benchbot/issues">report any you do encounter</a>. ~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/qcr/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
@@ -25,18 +25,18 @@ This repository contains the software stack needed to develop solutions for Benc
 
 The BenchBot software stack is designed to run seamlessly on a wide number of system configurations (currently limited to Ubuntu 18.04+). System hardware requirements are relatively high due to the software run for 3D simulation (e.g. NVIDIA Omniverse-powered Isaac Sim):
 
-- Nvidia Graphics card (GeForce RTX 2070 minimum, GeForce GTX 3080+ / RTX A6000+ recommended)
+- Nvidia Graphics card (GeForce RTX 2080 minimum, Quadro RTX 5000 recommended)
 - CPU with multiple cores (Intel i7-6800K 7th Generation minimum)
 - 32GB+ RAM
 - 64GB+ spare storage (an SSD storage device is **strongly** recommended)
 
 Having a system that meets the above hardware requirements is all that is required to begin installing the BenchBot software stack. The install script analyses your system configuration and offers to install any missing software components interactively. The list of 3rd party software components involved includes:
 
-- NVIDIA GPU Driver (470.57+ recommended)
+- NVIDIA GPU Driver (520.60.11+ recommended)
 - CUDA with GPU support (10.0+ required, 10.1+ recommended)
 - Docker Engine - Community Edition (19.03+ required, 19.03.2+ recommended)
 - NVIDIA Container Toolkit (1.0+ required, 1.0.5+ recommended)
-- Isaac 2021.2 Omniverse simulator (when installing `sim_omni`)
+- Isaac 2022.2.1 Omniverse simulator (when installing `sim_omni`)
 
 ## Managing your installation
 
@@ -167,6 +167,21 @@ To use our system, we just ask that you cite our paper on the BenchBot system. T
     eprint={2008.00635},
     archivePrefix={arXiv},
     primaryClass={cs.RO}
+}
+```
+
+If you use our benchbot environments for active robotics (BEAR) which are installed by default, we ask you please cite our data paper on BEAR. Citation details are as follows:
+
+```
+@article{hall2022bear,
+author = {David Hall and Ben Talbot and Suman Raj Bista and Haoyang Zhang and Rohan Smith and Feras Dayoub and Niko Sünderhauf},
+title ={BenchBot environments for active robotics (BEAR): Simulated data for active scene understanding research},
+journal = {The International Journal of Robotics Research},
+volume = {41},
+number = {3},
+pages = {259-269},
+year = {2022},
+doi = {10.1177/02783649211069404},
 }
 ```
 
