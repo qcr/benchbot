@@ -24,9 +24,10 @@ $URL_DEBUG $HOSTNAME_DEBUG"
 
 # Defaults for the installation process
 ADDONS_DEFAULT='benchbot-addons/ssu'
-CUDA_DEFAULT='cuda'
+CUDA_DEFAULT='cuda=12.0.0-1'
 NVIDIA_DEFAULT='nvidia-driver-525'
 SIMULATOR_DEFAULT='sim_omni'
+CUDA_DRIVER_DEFAULT='cuda-drivers=525.125.06-1'
 
 ################################################################################
 ########################### Definitions for messages ###########################
@@ -281,7 +282,7 @@ chk_cudadriversavailable_issue="\
   installations from the official Nvidia repository. Please add the NVIDIA 
   repository, & install 'cuda-drivers' through apt."
 chk_cudadriversavailable_fix=\
-"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DRIVER_DEFAULT}"
 chk_cudadriversavailable_reboot=1
 
 chk_cudadriversversion_name='CUDA drivers version valid'
@@ -297,7 +298,7 @@ chk_cudadriversversion_issue="\
   Please install a more recent version of the CUDA drivers from the NVIDIA 
   repository."
 chk_cudadriversversion_fix=\
-"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DRIVER_DEFAULT}"
 chk_cudadriversversion_reboot=1
 
 chk_cudadriversppa_name='CUDA drivers from the NVIDIA PPA'
@@ -322,7 +323,7 @@ chk_cudadriversppa_issue="\
     http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64"
 chk_cudadriversppa_fix=\
 'sudo apt remove -y cuda-drivers && sudo apt -y autoremove; '\
-"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/cuda-drivers}"
+"${chk_nvidiadriver_fix//$NVIDIA_DEFAULT/$CUDA_DRIVER_DEFAULT}"
 chk_cudadriversppa_reboot=1
 
 chk_cudaavailable_name='CUDA is installed'
