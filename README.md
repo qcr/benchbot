@@ -1,4 +1,4 @@
-<p align=center><strong>~ Our <a href="https://eval.ai/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~<br>(prizes include RTX A6000 NVIDIA GPUs)</strong></p>
+<p align=center><strong>~ Our <a href="https://eval.ai/web/challenges/challenge-page/1614/overview">Robotic Vision Scene Understanding (RVSU) Challenge is live on EvalAI</a> ~</strong></p>
 <p align=center><strong>~ BenchBot is now powered by <a href="https://developer.nvidia.com/nvidia-omniverse-platform">NVIDIA Omniverse</a> and <a href="https://developer.nvidia.com/isaac-sim">Isaac Sim</a>. We are aware of some issues, please <a href="https://github.com/qcr/benchbot/issues">report any you do encounter</a>. ~</strong></p>
 <p align=center><strong>~ Our <a href="https://github.com/qcr/benchbot/wiki/Tutorial:-Performing-Semantic-SLAM-with-Votenet">BenchBot tutorial</a> is the best place to get started developing with BenchBot ~</strong></p>
 
